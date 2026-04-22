@@ -4,32 +4,50 @@ import {
   LayoutDashboard, Wrench, Package, Users,
   BarChart3, Map, LogOut, Menu, X, AlertTriangle,
   ShoppingCart, Database, FileText, Settings, Bell,
+  Shield, ChevronDown, ChevronUp, UserCog,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { useLowStockCount } from '@/hooks/useInventory'
 import { useInTransitCount } from '@/hooks/useOrders'
 import { useSettings } from '@/contexts/SettingsContext'
+import { useRole } from '@/contexts/RoleContext'
 import { cn } from '@/lib/utils'
 
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/projects', label: 'Projectos', icon: Wrench },
-  { href: '/orders', label: 'Encomendas de Peças', icon: ShoppingCart, badge: 'orders' },
-  { href: '/inventory', label: 'Inventário', icon: Package, badge: 'stock' },
-  { href: '/defects', label: 'Base de Defeitos', icon: Database },
-  { href: '/contacts', label: 'Contactos', icon: Users },
-  { href: '/reports', label: 'Relatórios', icon: FileText },
-  { href: '/analytics', label: 'Analytics', icon: BarChart3 },
-  { href: '/map', label: 'Mapa', icon: Map },
+type NavItem = {
+  href: string
+  label: string
+  icon: typeof LayoutDashboard
+  badge?: 'stock' | 'orders'
+}
+
+const ALL_NAV: NavItem[] = [
+  { href: '/dashboard',  label: 'Dashboard',           icon: LayoutDashboard },
+  { href: '/projects',   label: 'Projectos',            icon: Wrench },
+  { href: '/orders',     label: 'Encomendas de Peças',  icon: ShoppingCart,  badge: 'orders' },
+  { href: '/inventory',  label: 'Inventário',           icon: Package,       badge: 'stock' },
+  { href: '/defects',    label: 'Base de Defeitos',     icon: Database },
+  { href: '/contacts',   label: 'Contactos',            icon: Users },
+  { href: '/reports',    label: 'Relatórios',           icon: FileText },
+  { href: '/analytics',  label: 'Analytics',            icon: BarChart3 },
+  { href: '/map',        label: 'Mapa',                 icon: Map },
 ]
+
+const TECH_NAV_HREFS = ['/dashboard', '/projects', '/orders', '/inventory', '/defects', '/contacts']
+const VIEWER_NAV_HREFS = ['/dashboard', '/analytics']
+
+function getNavItems(role: string | null): NavItem[] {
+  if (role === 'admin') return ALL_NAV
+  if (role === 'technician') return ALL_NAV.filter(i => TECH_NAV_HREFS.includes(i.href))
+  return ALL_NAV.filter(i => VIEWER_NAV_HREFS.includes(i.href))
+}
 
 function NavLink({ href, label, icon: Icon, badgeCount, onClick }: {
   href: string; label: string; icon: typeof LayoutDashboard
   badgeCount?: number; onClick?: () => void
 }) {
   const [location] = useLocation()
-  const active = location === href
+  const active = location === href || location.startsWith(href + '/')
 
   return (
     <Link href={href}>
@@ -51,6 +69,63 @@ function NavLink({ href, label, icon: Icon, badgeCount, onClick }: {
         )}
       </span>
     </Link>
+  )
+}
+
+function AdminMenu({ onNavigate }: { onNavigate?: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [location] = useLocation()
+  const isAdminRoute = location === '/settings' || location.startsWith('/admin')
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className={cn(
+          'w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium cursor-pointer transition-all select-none',
+          isAdminRoute
+            ? 'bg-accent/15 text-accent border border-accent/20'
+            : 'text-text-muted hover:bg-surface hover:text-text-primary border border-transparent'
+        )}
+      >
+        <Shield className={cn('h-4 w-4 shrink-0', isAdminRoute ? 'text-accent' : 'text-text-muted')} />
+        <span className="flex-1 text-left">Admin</span>
+        {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+      </button>
+
+      {open && (
+        <div className="ml-3 mt-1 space-y-0.5 border-l border-border pl-3">
+          <Link href="/settings">
+            <span
+              onClick={() => { setOpen(false); onNavigate?.() }}
+              className={cn(
+                'flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium cursor-pointer transition-colors',
+                location === '/settings'
+                  ? 'text-accent bg-accent/10'
+                  : 'text-text-muted hover:text-text-primary hover:bg-surface'
+              )}
+            >
+              <Settings className="h-3.5 w-3.5" />
+              Configurações
+            </span>
+          </Link>
+          <Link href="/admin/users">
+            <span
+              onClick={() => { setOpen(false); onNavigate?.() }}
+              className={cn(
+                'flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium cursor-pointer transition-colors',
+                location === '/admin/users'
+                  ? 'text-accent bg-accent/10'
+                  : 'text-text-muted hover:text-text-primary hover:bg-surface'
+              )}
+            >
+              <UserCog className="h-3.5 w-3.5" />
+              Gestão de Utilizadores
+            </span>
+          </Link>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -115,12 +190,14 @@ interface LayoutProps { children: ReactNode }
 export function Layout({ children }: LayoutProps) {
   const { user } = useAuth()
   const { settings } = useSettings()
+  const { role, isAdmin } = useRole()
   const lowStockCount = useLowStockCount()
   const inTransitCount = useInTransitCount()
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const avatar = user?.user_metadata?.avatar_url
   const name = user?.user_metadata?.full_name ?? user?.email ?? ''
+  const navItems = getNavItems(role)
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -159,8 +236,8 @@ export function Layout({ children }: LayoutProps) {
         ))}
       </nav>
 
-      {/* User + Settings */}
-      <div className="border-t border-border p-3 space-y-2">
+      {/* User + Admin + Logout */}
+      <div className="border-t border-border p-3 space-y-1">
         <div className="flex items-center gap-3 px-2 py-1.5">
           {avatar ? (
             <img src={avatar} alt={name} className="h-8 w-8 rounded-full object-cover ring-2 ring-border" />
@@ -170,22 +247,26 @@ export function Layout({ children }: LayoutProps) {
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-text-primary truncate">{name}</p>
+            <div className="flex items-center gap-1">
+              <p className="text-xs font-semibold text-text-primary truncate">{name}</p>
+              {role && (
+                <span className={cn(
+                  'text-xs px-1.5 py-0.5 rounded font-medium shrink-0',
+                  role === 'admin' ? 'bg-accent/20 text-accent' :
+                  role === 'technician' ? 'bg-yellow-500/20 text-yellow-400' :
+                  'bg-surface text-text-muted'
+                )}>
+                  {role === 'admin' ? 'admin' : role === 'technician' ? 'técnico' : 'viewer'}
+                </span>
+              )}
+            </div>
             <p className="text-xs text-text-muted truncate">{user?.email}</p>
           </div>
           <NotificationBell stockCount={lowStockCount} ordersCount={inTransitCount} />
         </div>
 
-        {/* Settings link */}
-        <Link href="/settings">
-          <span
-            onClick={() => setMobileOpen(false)}
-            className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-muted hover:bg-surface hover:text-text-primary transition-colors cursor-pointer"
-          >
-            <Settings className="h-4 w-4" />
-            Configurações
-          </span>
-        </Link>
+        {/* Admin submenu (admin only) */}
+        {isAdmin && <AdminMenu onNavigate={() => setMobileOpen(false)} />}
 
         <button
           onClick={handleLogout}

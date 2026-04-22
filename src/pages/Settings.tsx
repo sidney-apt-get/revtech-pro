@@ -3,7 +3,7 @@ import { useSettings } from '@/contexts/SettingsContext'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
-import { Upload, Save, LogOut, Palette, Building2, Briefcase, User, AlertTriangle } from 'lucide-react'
+import { Upload, Save, LogOut, Palette, Building2, Briefcase, User, AlertTriangle, Lock } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 const THEME_PRESETS = [
@@ -19,6 +19,7 @@ const TABS = [
   { id: 'appearance', label: 'Aparência', icon: Palette },
   { id: 'business', label: 'Negócio', icon: Briefcase },
   { id: 'account', label: 'Conta', icon: User },
+  { id: 'security', label: 'Segurança', icon: Lock },
 ] as const
 
 type Tab = typeof TABS[number]['id']
@@ -46,6 +47,44 @@ export function Settings() {
   const [currency, setCurrency] = useState(settings.currency)
   const [vatRate, setVatRate] = useState(settings.vat_rate)
   const [ticketPrefix, setTicketPrefix] = useState(settings.ticket_prefix)
+
+  // Security tab state
+  const [currentPin, setCurrentPin] = useState('')
+  const [newPin, setNewPin] = useState('')
+  const [confirmPin, setConfirmPin] = useState('')
+  const [pinError, setPinError] = useState('')
+  const [pinSuccess, setPinSuccess] = useState(false)
+  const [savingPin, setSavingPin] = useState(false)
+
+  async function handlePinChange(e: React.FormEvent) {
+    e.preventDefault()
+    setPinError('')
+    setPinSuccess(false)
+    if (newPin.length < 4 || newPin.length > 6) { setPinError('PIN deve ter 4 a 6 dígitos.'); return }
+    if (newPin !== confirmPin) { setPinError('Os PINs não coincidem.'); return }
+    setSavingPin(true)
+    // Verify current PIN first
+    const { data } = await supabase.from('app_settings').select('admin_pin').single()
+    const stored = data?.admin_pin ?? '1234'
+    if (currentPin !== stored) {
+      setSavingPin(false)
+      setPinError('PIN actual incorrecto.')
+      return
+    }
+    await supabase.from('app_settings').upsert({
+      user_id: (await supabase.auth.getUser()).data.user!.id,
+      admin_pin: newPin,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' })
+    setCurrentPin('')
+    setNewPin('')
+    setConfirmPin('')
+    setSavingPin(false)
+    setPinSuccess(true)
+    // Refresh session unlock so they don't get locked out
+    sessionStorage.setItem('revtech_admin_pin_unlocked', JSON.stringify({ ts: Date.now() }))
+    setTimeout(() => setPinSuccess(false), 3000)
+  }
 
   async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -345,6 +384,75 @@ export function Settings() {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* ABA 5 — SEGURANÇA */}
+      {activeTab === 'security' && (
+        <Card>
+          <CardHeader><CardTitle className="text-base flex items-center gap-2"><Lock className="h-4 w-4 text-accent" />Alterar PIN de Administrador</CardTitle></CardHeader>
+          <CardContent>
+            <form onSubmit={handlePinChange} className="space-y-4 max-w-sm">
+              <div className="rounded-lg bg-surface border border-border px-4 py-3 text-xs text-text-muted space-y-1">
+                <p>O PIN protege o acesso às Configurações.</p>
+                <p>Deve ter entre <strong className="text-text-primary">4 e 6 dígitos</strong>.</p>
+                <p>A sessão fica desbloqueada por <strong className="text-text-primary">30 minutos</strong> após cada autenticação.</p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-text-muted font-medium">PIN actual</label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={currentPin}
+                  onChange={e => setCurrentPin(e.target.value.replace(/\D/g, ''))}
+                  placeholder="PIN actual"
+                  className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-accent/50"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-text-muted font-medium">Novo PIN</label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={newPin}
+                  onChange={e => setNewPin(e.target.value.replace(/\D/g, ''))}
+                  placeholder="4 a 6 dígitos"
+                  className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-accent/50"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-text-muted font-medium">Confirmar novo PIN</label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={confirmPin}
+                  onChange={e => setConfirmPin(e.target.value.replace(/\D/g, ''))}
+                  placeholder="Repete o novo PIN"
+                  className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-accent/50"
+                />
+              </div>
+
+              {pinError && (
+                <p className="text-xs text-danger bg-danger/10 border border-danger/30 rounded-lg px-3 py-2">{pinError}</p>
+              )}
+              {pinSuccess && (
+                <p className="text-xs text-success bg-success/10 border border-success/30 rounded-lg px-3 py-2">✓ PIN alterado com sucesso!</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={savingPin || !currentPin || newPin.length < 4 || confirmPin.length < 4}
+                className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent/90 transition-colors disabled:opacity-50"
+              >
+                <Lock className="h-4 w-4" />
+                {savingPin ? 'A guardar...' : 'Alterar PIN'}
+              </button>
+            </form>
+          </CardContent>
+        </Card>
       )}
     </div>
   )
