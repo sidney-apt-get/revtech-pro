@@ -1,13 +1,16 @@
 import { useDashboard } from '@/hooks/useDashboard'
-import { fmtGBP } from '@/lib/utils'
+import { useOrders } from '@/hooks/useOrders'
+import { useInventory } from '@/hooks/useInventory'
+import { fmtGBP, fmtDate } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StockAlert } from '@/components/Layout'
 import { ProjectCard } from '@/components/ProjectCard'
-import { TrendingUp, TrendingDown, DollarSign, Activity } from 'lucide-react'
+import { TrendingUp, TrendingDown, DollarSign, Activity, ShoppingCart, ClipboardCheck, Wrench } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts'
 import { cn } from '@/lib/utils'
+import { addDays, parseISO } from 'date-fns'
 
 const STATUS_CHART_COLORS: Record<string, string> = {
   'Recebido': '#4F8EF7',
@@ -48,6 +51,16 @@ function MetricCard({ title, value, sub, icon: Icon, positive }: {
 
 export function Dashboard() {
   const { totalInvested, totalRevenue, netProfit, activeCount, readyToSell, lowStock, byStatus, recentProjects } = useDashboard()
+  const { data: orders = [] } = useOrders()
+  const { data: inventory = [] } = useInventory()
+
+  const inTransitOrders = orders.filter(o => ['Encomendado', 'Em Trânsito'].includes(o.status))
+  const toolsToCalibrate = inventory.filter(i => {
+    if (!i.calibration_date || i.category !== 'Ferramentas') return false
+    const calibDate = parseISO(i.calibration_date)
+    const in30Days = addDays(new Date(), 30)
+    return calibDate <= in30Days
+  })
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -69,6 +82,105 @@ export function Dashboard() {
           positive={netProfit >= 0}
         />
         <MetricCard title="Projectos activos" value={String(activeCount)} icon={Activity} />
+      </div>
+
+      {/* New widgets row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Peças a chegar */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <ShoppingCart className="h-4 w-4 text-orange-400" />
+                Peças a Chegar
+              </CardTitle>
+              <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full border',
+                inTransitOrders.length > 0 ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-surface text-text-muted border-border')}>
+                {inTransitOrders.length}
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {inTransitOrders.length === 0 ? (
+              <p className="text-xs text-text-muted py-2">Sem encomendas pendentes</p>
+            ) : (
+              <div className="space-y-2">
+                {inTransitOrders.slice(0, 3).map(o => (
+                  <div key={o.id} className="flex items-center justify-between">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-text-primary truncate">{o.part_name}</p>
+                      <p className="text-xs text-text-muted">{o.supplier}</p>
+                    </div>
+                    <span className={cn('text-xs px-1.5 py-0.5 rounded font-medium shrink-0 ml-2',
+                      o.status === 'Em Trânsito' ? 'bg-orange-500/15 text-orange-400' : 'bg-blue-500/15 text-blue-400')}>
+                      {o.status}
+                    </span>
+                  </div>
+                ))}
+                {inTransitOrders.length > 3 && (
+                  <p className="text-xs text-text-muted">+{inTransitOrders.length - 3} mais</p>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Checklists pendentes */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <ClipboardCheck className="h-4 w-4 text-purple-400" />
+                Checklists
+              </CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between rounded-lg bg-surface px-3 py-2 border border-border">
+                <p className="text-xs text-text-muted">Recepção pendentes</p>
+                <span className="text-xs font-bold text-text-primary">
+                  {recentProjects.filter(p => !['Vendido', 'Cancelado'].includes(p.status)).length}
+                </span>
+              </div>
+              <div className="flex items-center justify-between rounded-lg bg-surface px-3 py-2 border border-border">
+                <p className="text-xs text-text-muted">Prontos para entrega</p>
+                <span className="text-xs font-bold text-success">{readyToSell.length}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Ferramentas a calibrar */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Wrench className="h-4 w-4 text-yellow-400" />
+                Calibrações
+              </CardTitle>
+              {toolsToCalibrate.length > 0 && (
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full border bg-warning/10 text-warning border-warning/20">
+                  {toolsToCalibrate.length}
+                </span>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {toolsToCalibrate.length === 0 ? (
+              <p className="text-xs text-text-muted py-2">Nenhuma calibração próxima</p>
+            ) : (
+              <div className="space-y-2">
+                {toolsToCalibrate.slice(0, 3).map(t => (
+                  <div key={t.id} className="flex items-center justify-between">
+                    <p className="text-xs font-medium text-text-primary truncate">{t.item_name}</p>
+                    <p className="text-xs text-warning shrink-0 ml-2">{fmtDate(t.calibration_date)}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

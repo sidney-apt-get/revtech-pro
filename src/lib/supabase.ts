@@ -14,6 +14,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
 export type Project = {
   id: string
   user_id: string
+  ticket_number: string | null
   equipment: string
   brand: string | null
   model: string | null
@@ -86,4 +87,74 @@ export type Transaction = {
   category: string | null
   date: string
   created_at: string
+}
+
+export type ChecklistItem = {
+  id: string
+  label: string
+  checked: boolean
+}
+
+export type Checklist = {
+  id: string
+  project_id: string
+  type: 'reception' | 'delivery'
+  items: ChecklistItem[]
+  photos: string[]
+  completed_at: string | null
+  created_at: string
+}
+
+export type DefectEntry = {
+  id: string
+  user_id: string
+  equipment_type: string
+  brand: string | null
+  model: string | null
+  common_defect: string
+  likely_cause: string | null
+  required_parts: string[]
+  avg_repair_time_hours: number | null
+  avg_parts_cost: number | null
+  difficulty: 'Fácil' | 'Médio' | 'Difícil' | null
+  success_rate: number | null
+  notes: string | null
+  created_at: string
+}
+
+export type PartsOrder = {
+  id: string
+  user_id: string
+  project_id: string | null
+  supplier: string
+  part_name: string
+  quantity: number
+  unit_cost: number | null
+  total_cost: number | null
+  order_number: string | null
+  order_url: string | null
+  status: 'Encomendado' | 'Em Trânsito' | 'Entregue' | 'Cancelado'
+  ordered_at: string
+  expected_at: string | null
+  delivered_at: string | null
+  tracking_number: string | null
+  notes: string | null
+  created_at: string
+}
+
+export type AppSettings = {
+  id: string
+  user_id: string
+  company_name: string
+  company_subtitle: string
+  company_location: string
+  logo_url: string | null
+  primary_color: string
+  accent_color: string
+  currency: string
+  currency_symbol: string
+  vat_rate: number
+  ticket_prefix: string
+  created_at: string
+  updated_at: string
 }

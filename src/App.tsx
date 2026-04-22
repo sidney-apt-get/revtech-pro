@@ -8,7 +8,12 @@ import { Inventory } from '@/pages/Inventory'
 import { Contacts } from '@/pages/Contacts'
 import { Analytics } from '@/pages/Analytics'
 import { Map } from '@/pages/Map'
+import { DefectDatabase } from '@/pages/DefectDatabase'
+import { PartsOrders } from '@/pages/PartsOrders'
+import { Reports } from '@/pages/Reports'
+import { Settings } from '@/pages/Settings'
 import AuthCallback from '@/pages/AuthCallback'
+import { SettingsProvider } from '@/contexts/SettingsContext'
 
 function Spinner() {
   return (
@@ -37,31 +42,45 @@ function Public({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <Switch>
-      <Route path="/"><Redirect to="/dashboard" /></Route>
-      <Route path="/login">
-        <Public><Login /></Public>
-      </Route>
-      <Route path="/auth/callback" component={AuthCallback} />
-      <Route path="/dashboard">
-        <Protected><Dashboard /></Protected>
-      </Route>
-      <Route path="/projects">
-        <Protected><Projects /></Protected>
-      </Route>
-      <Route path="/inventory">
-        <Protected><Inventory /></Protected>
-      </Route>
-      <Route path="/contacts">
-        <Protected><Contacts /></Protected>
-      </Route>
-      <Route path="/analytics">
-        <Protected><Analytics /></Protected>
-      </Route>
-      <Route path="/map">
-        <Protected><Map /></Protected>
-      </Route>
-      <Route><Redirect to="/dashboard" /></Route>
-    </Switch>
+    <SettingsProvider>
+      <Switch>
+        <Route path="/"><Redirect to="/dashboard" /></Route>
+        <Route path="/login">
+          <Public><Login /></Public>
+        </Route>
+        <Route path="/auth/callback" component={AuthCallback} />
+        <Route path="/dashboard">
+          <Protected><Dashboard /></Protected>
+        </Route>
+        <Route path="/projects">
+          <Protected><Projects /></Protected>
+        </Route>
+        <Route path="/inventory">
+          <Protected><Inventory /></Protected>
+        </Route>
+        <Route path="/contacts">
+          <Protected><Contacts /></Protected>
+        </Route>
+        <Route path="/analytics">
+          <Protected><Analytics /></Protected>
+        </Route>
+        <Route path="/map">
+          <Protected><Map /></Protected>
+        </Route>
+        <Route path="/defects">
+          <Protected><DefectDatabase /></Protected>
+        </Route>
+        <Route path="/orders">
+          <Protected><PartsOrders /></Protected>
+        </Route>
+        <Route path="/reports">
+          <Protected><Reports /></Protected>
+        </Route>
+        <Route path="/settings">
+          <Protected><Settings /></Protected>
+        </Route>
+        <Route><Redirect to="/dashboard" /></Route>
+      </Switch>
+    </SettingsProvider>
   )
 }

@@ -10,9 +10,23 @@ async function fetchProjects(): Promise<Project[]> {
   return data
 }
 
+async function generateTicketNumber(prefix = 'RT'): Promise<string> {
+  const year = new Date().getFullYear()
+  const { data } = await supabase
+    .from('projects')
+    .select('ticket_number')
+    .like('ticket_number', `${prefix}-${year}-%`)
+    .order('ticket_number', { ascending: false })
+    .limit(1)
+  if (!data || data.length === 0) return `${prefix}-${year}-001`
+  const last = parseInt(data[0].ticket_number?.split('-')[2] ?? '0', 10)
+  return `${prefix}-${year}-${String(last + 1).padStart(3, '0')}`
+}
+
 async function createProject(p: Omit<Project, 'id' | 'user_id' | 'created_at' | 'updated_at'>) {
   const { data: { user } } = await supabase.auth.getUser()
-  const { data, error } = await supabase.from('projects').insert({ ...p, user_id: user!.id }).select().single()
+  const ticket_number = p.ticket_number ?? await generateTicketNumber()
+  const { data, error } = await supabase.from('projects').insert({ ...p, user_id: user!.id, ticket_number }).select().single()
   if (error) throw error
   return data
 }

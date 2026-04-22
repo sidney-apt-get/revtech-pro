@@ -3,24 +3,30 @@ import { Link, useLocation } from 'wouter'
 import {
   LayoutDashboard, Wrench, Package, Users,
   BarChart3, Map, LogOut, Menu, X, AlertTriangle,
+  ShoppingCart, Database, FileText, Settings, Bell,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { useLowStockCount } from '@/hooks/useInventory'
+import { useInTransitCount } from '@/hooks/useOrders'
+import { useSettings } from '@/contexts/SettingsContext'
 import { cn } from '@/lib/utils'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/projects', label: 'Projectos', icon: Wrench },
-  { href: '/inventory', label: 'Inventário', icon: Package, badge: true },
+  { href: '/orders', label: 'Encomendas de Peças', icon: ShoppingCart, badge: 'orders' },
+  { href: '/inventory', label: 'Inventário', icon: Package, badge: 'stock' },
+  { href: '/defects', label: 'Base de Defeitos', icon: Database },
   { href: '/contacts', label: 'Contactos', icon: Users },
+  { href: '/reports', label: 'Relatórios', icon: FileText },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/map', label: 'Mapa', icon: Map },
 ]
 
-function NavLink({ href, label, icon: Icon, badge, count, onClick }: {
+function NavLink({ href, label, icon: Icon, badgeCount, onClick }: {
   href: string; label: string; icon: typeof LayoutDashboard
-  badge?: boolean; count?: number; onClick?: () => void
+  badgeCount?: number; onClick?: () => void
 }) {
   const [location] = useLocation()
   const active = location === href
@@ -37,10 +43,10 @@ function NavLink({ href, label, icon: Icon, badge, count, onClick }: {
         )}
       >
         <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-accent' : 'text-text-muted group-hover:text-text-primary')} />
-        <span className="flex-1">{label}</span>
-        {badge && count != null && count > 0 && (
+        <span className="flex-1 truncate">{label}</span>
+        {badgeCount != null && badgeCount > 0 && (
           <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-danger text-white text-xs font-bold px-1">
-            {count}
+            {badgeCount}
           </span>
         )}
       </span>
@@ -48,11 +54,69 @@ function NavLink({ href, label, icon: Icon, badge, count, onClick }: {
   )
 }
 
+function NotificationBell({ stockCount, ordersCount }: { stockCount: number; ordersCount: number }) {
+  const [open, setOpen] = useState(false)
+  const total = stockCount + ordersCount
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="relative p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-surface transition-colors"
+      >
+        <Bell className="h-4 w-4" />
+        {total > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 h-4 w-4 flex items-center justify-center rounded-full bg-danger text-white text-xs font-bold">
+            {total > 9 ? '9+' : total}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-8 z-50 w-72 rounded-xl border border-border bg-card shadow-2xl p-2">
+          <p className="text-xs font-semibold text-text-muted px-2 py-1.5">Notificações</p>
+          {total === 0 ? (
+            <p className="text-xs text-text-muted px-2 py-3 text-center">Nenhuma notificação</p>
+          ) : (
+            <div className="space-y-1">
+              {stockCount > 0 && (
+                <Link href="/inventory">
+                  <span onClick={() => setOpen(false)} className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-surface cursor-pointer transition-colors">
+                    <div className="h-7 w-7 rounded-full bg-warning/20 flex items-center justify-center shrink-0">
+                      <Package className="h-3.5 w-3.5 text-warning" />
+                    </div>
+                    <p className="text-xs text-text-primary"><span className="font-semibold">{stockCount}</span> items com stock baixo</p>
+                  </span>
+                </Link>
+              )}
+              {ordersCount > 0 && (
+                <Link href="/orders">
+                  <span onClick={() => setOpen(false)} className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-surface cursor-pointer transition-colors">
+                    <div className="h-7 w-7 rounded-full bg-orange-500/20 flex items-center justify-center shrink-0">
+                      <ShoppingCart className="h-3.5 w-3.5 text-orange-400" />
+                    </div>
+                    <p className="text-xs text-text-primary"><span className="font-semibold">{ordersCount}</span> encomendas a caminho</p>
+                  </span>
+                </Link>
+              )}
+            </div>
+          )}
+          <button onClick={() => setOpen(false)} className="absolute top-2 right-2 p-0.5 text-text-muted hover:text-text-primary">
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface LayoutProps { children: ReactNode }
 
 export function Layout({ children }: LayoutProps) {
   const { user } = useAuth()
+  const { settings } = useSettings()
   const lowStockCount = useLowStockCount()
+  const inTransitCount = useInTransitCount()
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const avatar = user?.user_metadata?.avatar_url
@@ -66,10 +130,14 @@ export function Layout({ children }: LayoutProps) {
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 py-5 border-b border-border">
-        <img src="/revtech-logo.png" alt="RevTech" className="h-8 w-8 rounded-lg object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display='none' }} />
+        {settings.logo_url ? (
+          <img src={settings.logo_url} alt={settings.company_name} className="h-8 w-8 rounded-lg object-cover" />
+        ) : (
+          <img src="/revtech-logo.png" alt="RevTech" className="h-8 w-8 rounded-lg object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+        )}
         <div>
-          <span className="text-base font-bold text-text-primary tracking-tight">RevTech</span>
-          <p className="text-xs text-text-muted leading-none mt-0.5">PRO v2</p>
+          <span className="text-base font-bold text-text-primary tracking-tight">{settings.company_name}</span>
+          <p className="text-xs text-text-muted leading-none mt-0.5">{settings.company_subtitle}</p>
         </div>
       </div>
 
@@ -78,14 +146,20 @@ export function Layout({ children }: LayoutProps) {
         {navItems.map((item) => (
           <NavLink
             key={item.href}
-            {...item}
-            count={item.badge ? lowStockCount : undefined}
+            href={item.href}
+            label={item.label}
+            icon={item.icon}
+            badgeCount={
+              item.badge === 'stock' ? lowStockCount :
+              item.badge === 'orders' ? inTransitCount :
+              undefined
+            }
             onClick={() => setMobileOpen(false)}
           />
         ))}
       </nav>
 
-      {/* User */}
+      {/* User + Settings */}
       <div className="border-t border-border p-3 space-y-2">
         <div className="flex items-center gap-3 px-2 py-1.5">
           {avatar ? (
@@ -99,7 +173,20 @@ export function Layout({ children }: LayoutProps) {
             <p className="text-xs font-semibold text-text-primary truncate">{name}</p>
             <p className="text-xs text-text-muted truncate">{user?.email}</p>
           </div>
+          <NotificationBell stockCount={lowStockCount} ordersCount={inTransitCount} />
         </div>
+
+        {/* Settings link */}
+        <Link href="/settings">
+          <span
+            onClick={() => setMobileOpen(false)}
+            className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-muted hover:bg-surface hover:text-text-primary transition-colors cursor-pointer"
+          >
+            <Settings className="h-4 w-4" />
+            Configurações
+          </span>
+        </Link>
+
         <button
           onClick={handleLogout}
           className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-muted hover:bg-surface hover:text-danger transition-colors"
@@ -133,12 +220,19 @@ export function Layout({ children }: LayoutProps) {
         {/* Mobile header */}
         <header className="md:hidden flex items-center justify-between px-4 py-3 border-b border-border bg-surface shrink-0">
           <div className="flex items-center gap-2">
-            <img src="/revtech-logo.png" alt="RevTech" className="h-7 w-7 rounded-md object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display='none' }} />
-            <span className="font-bold text-text-primary">RevTech</span>
+            {settings.logo_url ? (
+              <img src={settings.logo_url} alt={settings.company_name} className="h-7 w-7 rounded-md object-cover" />
+            ) : (
+              <img src="/revtech-logo.png" alt="RevTech" className="h-7 w-7 rounded-md object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+            )}
+            <span className="font-bold text-text-primary">{settings.company_name}</span>
           </div>
-          <button onClick={() => setMobileOpen(!mobileOpen)} className="text-text-muted hover:text-text-primary p-1">
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
+          <div className="flex items-center gap-2">
+            <NotificationBell stockCount={lowStockCount} ordersCount={inTransitCount} />
+            <button onClick={() => setMobileOpen(!mobileOpen)} className="text-text-muted hover:text-text-primary p-1">
+              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
         </header>
 
         {/* Content */}
