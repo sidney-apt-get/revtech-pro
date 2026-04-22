@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth'
 
 export type Role = 'admin' | 'technician' | 'viewer'
 
-const ADMIN_EMAIL = 'sidneyalves@msn.com'
+const ADMIN_EMAIL = 'sidneycomvoce@gmail.com'
 
 interface RoleContextValue {
   role: Role | null
