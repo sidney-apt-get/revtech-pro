@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useProjects, useDeleteProject } from '@/hooks/useProjects'
+import { useProjects } from '@/hooks/useProjects'
 import { ProjectCard } from '@/components/ProjectCard'
 import { KanbanBoard } from '@/components/KanbanBoard'
 import { ProjectModal } from '@/components/ProjectModal'
@@ -12,7 +12,6 @@ type View = 'grid' | 'kanban'
 
 export function Projects() {
   const { data: projects = [], isLoading } = useProjects()
-  const deleteProject = useDeleteProject()
   const [view, setView] = useState<View>('grid')
   const [filter, setFilter] = useState<ProjectStatus | 'all'>('all')
   const [modalOpen, setModalOpen] = useState(false)

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useContacts, useCreateContact, useUpdateContact, useDeleteContact } from '@/hooks/useContacts'
@@ -46,7 +46,7 @@ export function Contacts() {
   const [editing, setEditing] = useState<Contact | null>(null)
 
   const { register, handleSubmit, watch, setValue, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as Resolver<FormData>,
     defaultValues: { type: 'Fornecedor', country: 'UK' },
   })
 

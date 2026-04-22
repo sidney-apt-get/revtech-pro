@@ -1,9 +1,9 @@
 import { useDashboard } from '@/hooks/useDashboard'
-import { fmtGBP, fmtDate, STATUS_COLORS, STATUS_DOT } from '@/lib/utils'
+import { fmtGBP } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StockAlert } from '@/components/Layout'
 import { ProjectCard } from '@/components/ProjectCard'
-import { TrendingUp, TrendingDown, Wrench, Package, DollarSign, Activity } from 'lucide-react'
+import { TrendingUp, TrendingDown, DollarSign, Activity } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts'
