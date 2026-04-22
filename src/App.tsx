@@ -8,6 +8,7 @@ import { Inventory } from '@/pages/Inventory'
 import { Contacts } from '@/pages/Contacts'
 import { Analytics } from '@/pages/Analytics'
 import { Map } from '@/pages/Map'
+import AuthCallback from '@/pages/AuthCallback'
 
 function Spinner() {
   return (
@@ -41,6 +42,7 @@ export default function App() {
       <Route path="/login">
         <Public><Login /></Public>
       </Route>
+      <Route path="/auth/callback" component={AuthCallback} />
       <Route path="/dashboard">
         <Protected><Dashboard /></Protected>
       </Route>
