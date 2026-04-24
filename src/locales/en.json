@@ -1,0 +1,322 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "projects": "Projects",
+    "partsOrders": "Parts Orders",
+    "inventory": "Inventory",
+    "defects": "Defect Database",
+    "contacts": "Contacts",
+    "reports": "Reports",
+    "analytics": "Analytics",
+    "map": "Map",
+    "ebay": "eBay UK"
+  },
+  "admin": {
+    "menu": "Admin",
+    "settings": "Settings",
+    "userManagement": "User Management"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "none": "No notifications",
+    "lowStock_one": "{{count}} item with low stock",
+    "lowStock_other": "{{count}} items with low stock",
+    "inTransit_one": "{{count}} order in transit",
+    "inTransit_other": "{{count}} orders in transit"
+  },
+  "auth": {
+    "logout": "Sign out",
+    "signingIn": "Signing in...",
+    "signInWith": "Sign in with Google"
+  },
+  "roles": {
+    "admin": "admin",
+    "technician": "technician",
+    "viewer": "viewer"
+  },
+  "common": {
+    "save": "Save",
+    "saving": "Saving...",
+    "saved": "Saved!",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "filter": "Filter",
+    "close": "Close",
+    "confirm": "Confirm",
+    "yes": "Yes",
+    "no": "No",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "noData": "No data found",
+    "back": "Back",
+    "view": "View",
+    "download": "Download",
+    "upload": "Upload",
+    "open": "Open",
+    "add": "Add",
+    "remove": "Remove",
+    "refresh": "Refresh",
+    "export": "Export",
+    "import": "Import",
+    "of": "of"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Customise RevTech PRO",
+    "tabs": {
+      "company": "Company",
+      "appearance": "Appearance",
+      "business": "Business",
+      "account": "Account",
+      "security": "Security",
+      "data": "Data"
+    },
+    "company": {
+      "title": "Company Information",
+      "logo": "Logo",
+      "uploadHint": "Click to upload",
+      "uploadFormats": "PNG, JPG, SVG, WebP",
+      "removeLogo": "Remove logo",
+      "name": "Company name",
+      "subtitle": "Subtitle",
+      "location": "Location"
+    },
+    "appearance": {
+      "title": "Theme and Colours",
+      "presets": "Ready themes",
+      "primaryColor": "Primary colour",
+      "accentColor": "Highlight colour",
+      "preview": "Preview",
+      "primaryBtn": "Primary button",
+      "highlight": "Highlight"
+    },
+    "business": {
+      "title": "Business Settings",
+      "currency": "Currency",
+      "vatRate": "VAT Rate (%)",
+      "ticketPrefix": "Ticket prefix (e.g. RT → RT-2026-001)",
+      "format": "Format"
+    },
+    "account": {
+      "title": "Profile",
+      "googleOAuth": "Google OAuth",
+      "dangerZone": "Danger Zone",
+      "dangerDesc": "These actions are irreversible. Proceed with caution.",
+      "deleteAll": "Delete all data",
+      "deleteConfirm": "Are you sure? This permanently deletes ALL your data."
+    },
+    "security": {
+      "title": "Change Admin PIN",
+      "desc": "The PIN protects access to Settings.",
+      "mustHave": "Must have between 4 and 6 digits.",
+      "sessionInfo": "Session stays unlocked for 30 minutes after each authentication.",
+      "currentPin": "Current PIN",
+      "newPin": "New PIN",
+      "confirmPin": "Confirm new PIN",
+      "changePin": "Change PIN",
+      "pinChanged": "PIN changed successfully!",
+      "wrongPin": "Incorrect current PIN.",
+      "pinMismatch": "PINs do not match.",
+      "pinLength": "PIN must have 4 to 6 digits."
+    },
+    "data": {
+      "title": "Backups & Data",
+      "subtitle": "Back up all your projects, inventory and contacts",
+      "backupNow": "Backup Now",
+      "backingUp": "Backing up...",
+      "lastBackup": "Last backup",
+      "never": "Never",
+      "restoreBackup": "Restore Backup",
+      "restoring": "Restoring...",
+      "autoBackup": "Automatic weekly backup",
+      "autoBackupDesc": "Backs up automatically every Monday at 9am to Google Drive",
+      "backupSuccess": "Backup completed successfully!",
+      "backupError": "Error creating backup",
+      "noBackups": "No backups available",
+      "savedToDrive": "Backup saved to Google Drive",
+      "selectBackup": "Select a backup to restore",
+      "downloadLocal": "Download as JSON",
+      "driveScope": "Grant Google Drive access",
+      "driveScopeDesc": "To save backups to Google Drive, re-authenticate with Drive scope. Meanwhile, you can download a local copy.",
+      "confirmRestore": "Are you sure? This will overwrite current data.",
+      "restoreSuccess": "Data restored successfully!",
+      "restoreError": "Error restoring backup",
+      "availableBackups": "Available backups",
+      "backupSize": "Backup file"
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "activeProjects": "Active Projects",
+    "revenue": "Total Revenue",
+    "completedProjects": "Completed Projects",
+    "avgROI": "Average ROI",
+    "recentActivity": "Recent Activity",
+    "noActivity": "No recent activity",
+    "projectsStatus": "Projects by Status",
+    "quickStats": "Quick Stats",
+    "welcome": "Good morning",
+    "weekSummary": "Weekly summary"
+  },
+  "projects": {
+    "title": "Projects",
+    "new": "New Project",
+    "search": "Search projects...",
+    "noProjects": "No projects found",
+    "status": {
+      "intake": "Intake",
+      "diagnosis": "Diagnosis",
+      "waiting_parts": "Waiting Parts",
+      "repair": "In Repair",
+      "testing": "Testing",
+      "complete": "Complete"
+    },
+    "fields": {
+      "equipment": "Equipment",
+      "defect": "Defect",
+      "customer": "Customer",
+      "status": "Status",
+      "created": "Created",
+      "updated": "Updated",
+      "purchasePrice": "Purchase Price",
+      "partsTotal": "Parts Total",
+      "salePrice": "Sale Price",
+      "notes": "Notes"
+    }
+  },
+  "inventory": {
+    "title": "Inventory",
+    "new": "New Item",
+    "search": "Search inventory...",
+    "lowStock": "Low Stock",
+    "noItems": "No items found",
+    "fields": {
+      "name": "Name",
+      "category": "Category",
+      "quantity": "Qty",
+      "minStock": "Min Stock",
+      "price": "Unit Price",
+      "supplier": "Supplier",
+      "location": "Location"
+    }
+  },
+  "contacts": {
+    "title": "Contacts",
+    "new": "New Contact",
+    "search": "Search contacts...",
+    "noContacts": "No contacts found",
+    "fields": {
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "type": "Type",
+      "notes": "Notes"
+    }
+  },
+  "orders": {
+    "title": "Parts Orders",
+    "new": "New Order",
+    "search": "Search orders...",
+    "noOrders": "No orders found",
+    "status": {
+      "pending": "Pending",
+      "ordered": "Ordered",
+      "in_transit": "In Transit",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled"
+    },
+    "fields": {
+      "part": "Part",
+      "supplier": "Supplier",
+      "quantity": "Qty",
+      "price": "Price",
+      "status": "Status",
+      "expectedDate": "Expected Date"
+    }
+  },
+  "defects": {
+    "title": "Defect Database",
+    "search": "Search defects...",
+    "noDefects": "No defects found",
+    "new": "Add Defect"
+  },
+  "reports": {
+    "title": "Reports",
+    "generate": "Generate Report",
+    "dateRange": "Date Range",
+    "download": "Download PDF"
+  },
+  "analytics": {
+    "title": "Analytics"
+  },
+  "map": {
+    "title": "Map"
+  },
+  "ebay": {
+    "title": "eBay UK Search",
+    "subtitle": "Search for equipment to buy and flip",
+    "searchPlaceholder": "Search equipment (e.g. MacBook Pro M1)...",
+    "search": "Search",
+    "searching": "Searching...",
+    "maxPrice": "Max Price (£)",
+    "condition": "Condition",
+    "category": "Category",
+    "allConditions": "All conditions",
+    "conditionNew": "New",
+    "conditionUsedExcellent": "Used – Excellent",
+    "conditionUsedGood": "Used – Good",
+    "conditionForParts": "For parts",
+    "allCategories": "All categories",
+    "laptops": "Laptops",
+    "phones": "Mobile Phones",
+    "tablets": "Tablets",
+    "audio": "Audio Equipment",
+    "cameras": "Cameras",
+    "consoles": "Gaming Consoles",
+    "seller": "Seller",
+    "viewOnEbay": "View on eBay",
+    "importProject": "Import as Project",
+    "calculateROI": "Calculate ROI",
+    "noResults": "No results found. Try different search terms.",
+    "keysRequired": "eBay API Keys Required",
+    "keysDesc": "Add VITE_EBAY_APP_ID and VITE_EBAY_CERT_ID to .env.local to enable live eBay search. Showing demo data.",
+    "importSuccess": "Project created from eBay listing!",
+    "buyItNow": "Buy It Now",
+    "auction": "Auction",
+    "shipping": "Shipping",
+    "freeShipping": "Free shipping",
+    "watching": "{{count}} watching",
+    "results": "{{count}} results",
+    "demoMode": "Demo Mode",
+    "roiCalculator": "ROI Calculator",
+    "purchasePrice": "Purchase price (eBay)",
+    "partsCost": "Parts cost (estimate)",
+    "shippingIn": "Shipping in",
+    "shippingOut": "Shipping out",
+    "salePrice": "Expected sale price",
+    "profit": "Profit",
+    "loss": "Loss"
+  },
+  "login": {
+    "welcome": "Welcome to",
+    "subtitle": "Professional electronics restoration management",
+    "signInBtn": "Sign in with Google",
+    "signingIn": "Signing in...",
+    "terms": "By signing in, you agree to our terms of service."
+  },
+  "pwa": {
+    "installTitle": "Install RevTech PRO",
+    "installDesc": "Add to your home screen for a native app experience",
+    "install": "Install",
+    "later": "Later"
+  },
+  "language": {
+    "select": "Language",
+    "en": "English",
+    "pt": "Português"
+  }
+}

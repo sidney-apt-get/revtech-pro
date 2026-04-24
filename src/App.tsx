@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useRole } from '@/contexts/RoleContext'
 import { Layout } from '@/components/Layout'
 import { PinProtection } from '@/components/PinProtection'
+import { PWAInstallBanner } from '@/components/PWAInstallBanner'
 import { Login } from '@/pages/Login'
 import { Dashboard } from '@/pages/Dashboard'
 import { Projects } from '@/pages/Projects'
@@ -15,6 +16,7 @@ import { PartsOrders } from '@/pages/PartsOrders'
 import { Reports } from '@/pages/Reports'
 import { Settings } from '@/pages/Settings'
 import { UserManagement } from '@/pages/UserManagement'
+import { EbaySearch } from '@/pages/EbaySearch'
 import AuthCallback from '@/pages/AuthCallback'
 import { SettingsProvider } from '@/contexts/SettingsContext'
 import { RoleProvider } from '@/contexts/RoleContext'
@@ -96,6 +98,9 @@ export default function App() {
           <Route path="/reports">
             <Protected><Reports /></Protected>
           </Route>
+          <Route path="/ebay">
+            <Protected><EbaySearch /></Protected>
+          </Route>
           {/* Admin-only routes — require isAdmin + PIN */}
           <Route path="/settings">
             <ProtectedAdmin><Settings /></ProtectedAdmin>
@@ -105,6 +110,7 @@ export default function App() {
           </Route>
           <Route><Redirect to="/dashboard" /></Route>
         </Switch>
+        <PWAInstallBanner />
       </RoleProvider>
     </SettingsProvider>
   )

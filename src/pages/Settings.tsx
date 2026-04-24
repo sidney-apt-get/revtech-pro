@@ -1,10 +1,17 @@
 import { useState, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
-import { Upload, Save, LogOut, Palette, Building2, Briefcase, User, AlertTriangle, Lock } from 'lucide-react'
+import { Upload, Save, LogOut, Palette, Building2, Briefcase, User, AlertTriangle, Lock, Database, Download, RotateCcw, CloudUpload, HardDrive } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  backupToGoogleDrive,
+  downloadBackupLocally,
+  listDriveBackups,
+  restoreFromDriveBackup,
+} from '@/lib/googleDriveBackup'
 
 const THEME_PRESETS = [
   { name: 'Dark Blue', primary: '#4F8EF7', accent: '#6C63FF' },
@@ -15,11 +22,12 @@ const THEME_PRESETS = [
 ]
 
 const TABS = [
-  { id: 'company', label: 'Empresa', icon: Building2 },
-  { id: 'appearance', label: 'Aparência', icon: Palette },
-  { id: 'business', label: 'Negócio', icon: Briefcase },
-  { id: 'account', label: 'Conta', icon: User },
-  { id: 'security', label: 'Segurança', icon: Lock },
+  { id: 'company',    labelKey: 'settings.tabs.company',    icon: Building2 },
+  { id: 'appearance', labelKey: 'settings.tabs.appearance', icon: Palette },
+  { id: 'business',   labelKey: 'settings.tabs.business',   icon: Briefcase },
+  { id: 'account',    labelKey: 'settings.tabs.account',    icon: User },
+  { id: 'security',   labelKey: 'settings.tabs.security',   icon: Lock },
+  { id: 'data',       labelKey: 'settings.tabs.data',       icon: Database },
 ] as const
 
 type Tab = typeof TABS[number]['id']
@@ -31,12 +39,71 @@ const CURRENCIES = [
 ]
 
 export function Settings() {
+  const { t } = useTranslation()
   const { settings, save } = useSettings()
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<Tab>('company')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const logoInputRef = useRef<HTMLInputElement>(null)
+
+  // Data tab state
+  const [backingUp, setBackingUp] = useState(false)
+  const [backupMsg, setBackupMsg] = useState('')
+  const [backupError, setBackupError] = useState('')
+  const [driveBackups, setDriveBackups] = useState<Array<{ id: string; name: string; createdTime: string }>>([])
+  const [loadingBackups, setLoadingBackups] = useState(false)
+  const [restoring, setRestoring] = useState(false)
+  const lastBackup = localStorage.getItem('revtech_last_backup')
+  const [autoBackup, setAutoBackup] = useState(() => localStorage.getItem('revtech_auto_backup') === '1')
+
+  async function handleDriveBackup() {
+    setBackingUp(true)
+    setBackupMsg('')
+    setBackupError('')
+    const result = await backupToGoogleDrive()
+    setBackingUp(false)
+    if (result.success) {
+      setBackupMsg(t('settings.data.backupSuccess'))
+      setTimeout(() => setBackupMsg(''), 4000)
+    } else if (result.message === 'drive_scope_missing') {
+      setBackupError(t('settings.data.driveScopeDesc'))
+    } else {
+      setBackupError(t('settings.data.backupError'))
+    }
+  }
+
+  async function handleLocalBackup() {
+    await downloadBackupLocally()
+    setBackupMsg(t('common.download') + ' ✓')
+    setTimeout(() => setBackupMsg(''), 3000)
+  }
+
+  async function handleLoadBackups() {
+    setLoadingBackups(true)
+    const backups = await listDriveBackups()
+    setDriveBackups(backups)
+    setLoadingBackups(false)
+  }
+
+  async function handleRestore(fileId: string) {
+    if (!window.confirm(t('settings.data.confirmRestore'))) return
+    setRestoring(true)
+    const result = await restoreFromDriveBackup(fileId)
+    setRestoring(false)
+    if (result.success) {
+      setBackupMsg(t('settings.data.restoreSuccess'))
+      setTimeout(() => setBackupMsg(''), 4000)
+    } else {
+      setBackupError(t('settings.data.restoreError'))
+    }
+  }
+
+  function toggleAutoBackup() {
+    const next = !autoBackup
+    setAutoBackup(next)
+    localStorage.setItem('revtech_auto_backup', next ? '1' : '0')
+  }
 
   const [companyName, setCompanyName] = useState(settings.company_name)
   const [companySubtitle, setCompanySubtitle] = useState(settings.company_subtitle)
@@ -138,12 +205,12 @@ export function Settings() {
   return (
     <div className="space-y-6 animate-fade-in max-w-2xl">
       <div>
-        <h1 className="text-2xl font-bold text-text-primary">Configurações</h1>
-        <p className="text-text-muted text-sm mt-0.5">Personaliza o RevTech PRO</p>
+        <h1 className="text-2xl font-bold text-text-primary">{t('settings.title')}</h1>
+        <p className="text-text-muted text-sm mt-0.5">{t('settings.subtitle')}</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-border">
+      <div className="flex flex-wrap gap-1 border-b border-border">
         {TABS.map(tab => (
           <button
             key={tab.id}
@@ -156,7 +223,7 @@ export function Settings() {
             )}
           >
             <tab.icon className="h-3.5 w-3.5" />
-            {tab.label}
+            {t(tab.labelKey)}
           </button>
         ))}
       </div>
@@ -453,6 +520,144 @@ export function Settings() {
             </form>
           </CardContent>
         </Card>
+      )}
+
+      {/* ABA 6 — DADOS */}
+      {activeTab === 'data' && (
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <HardDrive className="h-4 w-4 text-accent" />
+                {t('settings.data.title')}
+              </CardTitle>
+              <p className="text-xs text-text-muted mt-0.5">{t('settings.data.subtitle')}</p>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {/* Feedback messages */}
+              {backupMsg && (
+                <p className="text-xs text-success bg-success/10 border border-success/30 rounded-lg px-3 py-2">✓ {backupMsg}</p>
+              )}
+              {backupError && (
+                <div className="text-xs text-warning bg-warning/10 border border-warning/30 rounded-lg px-3 py-2 space-y-2">
+                  <p>{backupError}</p>
+                  <button
+                    onClick={() => { setBackupError(''); handleLocalBackup() }}
+                    className="flex items-center gap-1.5 text-accent hover:underline"
+                  >
+                    <Download className="h-3 w-3" />
+                    {t('settings.data.downloadLocal')}
+                  </button>
+                </div>
+              )}
+
+              {/* Last backup */}
+              <div className="flex items-center justify-between py-2 border-b border-border">
+                <div>
+                  <p className="text-sm font-medium text-text-primary">{t('settings.data.lastBackup')}</p>
+                  <p className="text-xs text-text-muted mt-0.5">
+                    {lastBackup
+                      ? new Date(lastBackup).toLocaleString()
+                      : t('settings.data.never')}
+                  </p>
+                </div>
+              </div>
+
+              {/* Backup buttons */}
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={handleDriveBackup}
+                  disabled={backingUp}
+                  className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent/90 transition-colors disabled:opacity-50"
+                >
+                  {backingUp ? (
+                    <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  ) : (
+                    <CloudUpload className="h-4 w-4" />
+                  )}
+                  {backingUp ? t('settings.data.backingUp') : t('settings.data.backupNow')}
+                </button>
+
+                <button
+                  onClick={handleLocalBackup}
+                  className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm text-text-muted hover:bg-surface hover:text-text-primary transition-colors"
+                >
+                  <Download className="h-4 w-4" />
+                  {t('settings.data.downloadLocal')}
+                </button>
+              </div>
+
+              {/* Auto backup toggle */}
+              <div className="flex items-center justify-between rounded-xl border border-border bg-surface px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-text-primary">{t('settings.data.autoBackup')}</p>
+                  <p className="text-xs text-text-muted mt-0.5">{t('settings.data.autoBackupDesc')}</p>
+                </div>
+                <button
+                  onClick={toggleAutoBackup}
+                  className={cn(
+                    'relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0',
+                    autoBackup ? 'bg-accent' : 'bg-surface border border-border'
+                  )}
+                >
+                  <span className={cn(
+                    'inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform',
+                    autoBackup ? 'translate-x-6' : 'translate-x-1'
+                  )} />
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Restore */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <RotateCcw className="h-4 w-4 text-accent" />
+                {t('settings.data.restoreBackup')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <button
+                onClick={handleLoadBackups}
+                disabled={loadingBackups}
+                className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm text-text-muted hover:bg-surface hover:text-text-primary transition-colors disabled:opacity-50"
+              >
+                {loadingBackups ? (
+                  <span className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                ) : (
+                  <Database className="h-4 w-4" />
+                )}
+                {t('settings.data.availableBackups')}
+              </button>
+
+              {driveBackups.length === 0 && !loadingBackups && (
+                <p className="text-xs text-text-muted">{t('settings.data.noBackups')}</p>
+              )}
+
+              {driveBackups.length > 0 && (
+                <div className="space-y-2">
+                  {driveBackups.map(b => (
+                    <div key={b.id} className="flex items-center justify-between rounded-lg border border-border bg-surface px-3 py-2">
+                      <div>
+                        <p className="text-xs font-medium text-text-primary">{b.name}</p>
+                        <p className="text-xs text-text-muted">{new Date(b.createdTime).toLocaleString()}</p>
+                      </div>
+                      <button
+                        onClick={() => handleRestore(b.id)}
+                        disabled={restoring}
+                        className="flex items-center gap-1.5 rounded-lg bg-warning/20 text-warning px-3 py-1.5 text-xs font-semibold hover:bg-warning/30 transition-colors disabled:opacity-50"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                        {restoring ? t('settings.data.restoring') : t('common.import')}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   )

@@ -1,10 +1,11 @@
 import { type ReactNode, useState } from 'react'
 import { Link, useLocation } from 'wouter'
+import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard, Wrench, Package, Users,
   BarChart3, Map, LogOut, Menu, X, AlertTriangle,
   ShoppingCart, Database, FileText, Settings, Bell,
-  Shield, ChevronDown, ChevronUp, UserCog,
+  Shield, ChevronDown, ChevronUp, UserCog, ShoppingBag,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
@@ -12,28 +13,30 @@ import { useLowStockCount } from '@/hooks/useInventory'
 import { useInTransitCount } from '@/hooks/useOrders'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useRole } from '@/contexts/RoleContext'
+import { LanguageSelector } from '@/components/LanguageSelector'
 import { cn } from '@/lib/utils'
 
 type NavItem = {
   href: string
-  label: string
+  labelKey: string
   icon: typeof LayoutDashboard
   badge?: 'stock' | 'orders'
 }
 
 const ALL_NAV: NavItem[] = [
-  { href: '/dashboard',  label: 'Dashboard',           icon: LayoutDashboard },
-  { href: '/projects',   label: 'Projectos',            icon: Wrench },
-  { href: '/orders',     label: 'Encomendas de Peças',  icon: ShoppingCart,  badge: 'orders' },
-  { href: '/inventory',  label: 'Inventário',           icon: Package,       badge: 'stock' },
-  { href: '/defects',    label: 'Base de Defeitos',     icon: Database },
-  { href: '/contacts',   label: 'Contactos',            icon: Users },
-  { href: '/reports',    label: 'Relatórios',           icon: FileText },
-  { href: '/analytics',  label: 'Analytics',            icon: BarChart3 },
-  { href: '/map',        label: 'Mapa',                 icon: Map },
+  { href: '/dashboard',  labelKey: 'nav.dashboard',    icon: LayoutDashboard },
+  { href: '/projects',   labelKey: 'nav.projects',      icon: Wrench },
+  { href: '/orders',     labelKey: 'nav.partsOrders',   icon: ShoppingCart,  badge: 'orders' },
+  { href: '/inventory',  labelKey: 'nav.inventory',     icon: Package,       badge: 'stock' },
+  { href: '/defects',    labelKey: 'nav.defects',       icon: Database },
+  { href: '/contacts',   labelKey: 'nav.contacts',      icon: Users },
+  { href: '/reports',    labelKey: 'nav.reports',       icon: FileText },
+  { href: '/analytics',  labelKey: 'nav.analytics',     icon: BarChart3 },
+  { href: '/map',        labelKey: 'nav.map',           icon: Map },
+  { href: '/ebay',       labelKey: 'nav.ebay',          icon: ShoppingBag },
 ]
 
-const TECH_NAV_HREFS = ['/dashboard', '/projects', '/orders', '/inventory', '/defects', '/contacts']
+const TECH_NAV_HREFS = ['/dashboard', '/projects', '/orders', '/inventory', '/defects', '/contacts', '/ebay']
 const VIEWER_NAV_HREFS = ['/dashboard', '/analytics']
 
 function getNavItems(role: string | null): NavItem[] {
@@ -42,10 +45,11 @@ function getNavItems(role: string | null): NavItem[] {
   return ALL_NAV.filter(i => VIEWER_NAV_HREFS.includes(i.href))
 }
 
-function NavLink({ href, label, icon: Icon, badgeCount, onClick }: {
-  href: string; label: string; icon: typeof LayoutDashboard
+function NavLink({ href, labelKey, icon: Icon, badgeCount, onClick }: {
+  href: string; labelKey: string; icon: typeof LayoutDashboard
   badgeCount?: number; onClick?: () => void
 }) {
+  const { t } = useTranslation()
   const [location] = useLocation()
   const active = location === href || location.startsWith(href + '/')
 
@@ -61,7 +65,7 @@ function NavLink({ href, label, icon: Icon, badgeCount, onClick }: {
         )}
       >
         <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-accent' : 'text-text-muted group-hover:text-text-primary')} />
-        <span className="flex-1 truncate">{label}</span>
+        <span className="flex-1 truncate">{t(labelKey)}</span>
         {badgeCount != null && badgeCount > 0 && (
           <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-danger text-white text-xs font-bold px-1">
             {badgeCount}
@@ -73,6 +77,7 @@ function NavLink({ href, label, icon: Icon, badgeCount, onClick }: {
 }
 
 function AdminMenu({ onNavigate }: { onNavigate?: () => void }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [location] = useLocation()
   const isAdminRoute = location === '/settings' || location.startsWith('/admin')
@@ -89,7 +94,7 @@ function AdminMenu({ onNavigate }: { onNavigate?: () => void }) {
         )}
       >
         <Shield className={cn('h-4 w-4 shrink-0', isAdminRoute ? 'text-accent' : 'text-text-muted')} />
-        <span className="flex-1 text-left">Admin</span>
+        <span className="flex-1 text-left">{t('admin.menu')}</span>
         {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
       </button>
 
@@ -106,7 +111,7 @@ function AdminMenu({ onNavigate }: { onNavigate?: () => void }) {
               )}
             >
               <Settings className="h-3.5 w-3.5" />
-              Configurações
+              {t('admin.settings')}
             </span>
           </Link>
           <Link href="/admin/users">
@@ -120,7 +125,7 @@ function AdminMenu({ onNavigate }: { onNavigate?: () => void }) {
               )}
             >
               <UserCog className="h-3.5 w-3.5" />
-              Gestão de Utilizadores
+              {t('admin.userManagement')}
             </span>
           </Link>
         </div>
@@ -130,6 +135,7 @@ function AdminMenu({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 function NotificationBell({ stockCount, ordersCount }: { stockCount: number; ordersCount: number }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const total = stockCount + ordersCount
 
@@ -149,9 +155,9 @@ function NotificationBell({ stockCount, ordersCount }: { stockCount: number; ord
 
       {open && (
         <div className="absolute right-0 top-8 z-50 w-72 rounded-xl border border-border bg-card shadow-2xl p-2">
-          <p className="text-xs font-semibold text-text-muted px-2 py-1.5">Notificações</p>
+          <p className="text-xs font-semibold text-text-muted px-2 py-1.5">{t('notifications.title')}</p>
           {total === 0 ? (
-            <p className="text-xs text-text-muted px-2 py-3 text-center">Nenhuma notificação</p>
+            <p className="text-xs text-text-muted px-2 py-3 text-center">{t('notifications.none')}</p>
           ) : (
             <div className="space-y-1">
               {stockCount > 0 && (
@@ -160,7 +166,9 @@ function NotificationBell({ stockCount, ordersCount }: { stockCount: number; ord
                     <div className="h-7 w-7 rounded-full bg-warning/20 flex items-center justify-center shrink-0">
                       <Package className="h-3.5 w-3.5 text-warning" />
                     </div>
-                    <p className="text-xs text-text-primary"><span className="font-semibold">{stockCount}</span> items com stock baixo</p>
+                    <p className="text-xs text-text-primary">
+                      <span className="font-semibold">{stockCount}</span> {t('notifications.lowStock_other', { count: stockCount })}
+                    </p>
                   </span>
                 </Link>
               )}
@@ -170,7 +178,9 @@ function NotificationBell({ stockCount, ordersCount }: { stockCount: number; ord
                     <div className="h-7 w-7 rounded-full bg-orange-500/20 flex items-center justify-center shrink-0">
                       <ShoppingCart className="h-3.5 w-3.5 text-orange-400" />
                     </div>
-                    <p className="text-xs text-text-primary"><span className="font-semibold">{ordersCount}</span> encomendas a caminho</p>
+                    <p className="text-xs text-text-primary">
+                      <span className="font-semibold">{ordersCount}</span> {t('notifications.inTransit_other', { count: ordersCount })}
+                    </p>
                   </span>
                 </Link>
               )}
@@ -188,6 +198,7 @@ function NotificationBell({ stockCount, ordersCount }: { stockCount: number; ord
 interface LayoutProps { children: ReactNode }
 
 export function Layout({ children }: LayoutProps) {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const { settings } = useSettings()
   const { role, isAdmin } = useRole()
@@ -202,6 +213,8 @@ export function Layout({ children }: LayoutProps) {
   async function handleLogout() {
     await supabase.auth.signOut()
   }
+
+  const roleLabel = role === 'admin' ? t('roles.admin') : role === 'technician' ? t('roles.technician') : t('roles.viewer')
 
   const sidebar = (
     <div className="flex flex-col h-full">
@@ -224,7 +237,7 @@ export function Layout({ children }: LayoutProps) {
           <NavLink
             key={item.href}
             href={item.href}
-            label={item.label}
+            labelKey={item.labelKey}
             icon={item.icon}
             badgeCount={
               item.badge === 'stock' ? lowStockCount :
@@ -237,7 +250,12 @@ export function Layout({ children }: LayoutProps) {
       </nav>
 
       {/* User + Admin + Logout */}
-      <div className="border-t border-border p-3 space-y-1">
+      <div className="border-t border-border p-3 space-y-2">
+        {/* Language selector */}
+        <div className="px-1">
+          <LanguageSelector />
+        </div>
+
         <div className="flex items-center gap-3 px-2 py-1.5">
           {avatar ? (
             <img src={avatar} alt={name} className="h-8 w-8 rounded-full object-cover ring-2 ring-border" />
@@ -256,7 +274,7 @@ export function Layout({ children }: LayoutProps) {
                   role === 'technician' ? 'bg-yellow-500/20 text-yellow-400' :
                   'bg-surface text-text-muted'
                 )}>
-                  {role === 'admin' ? 'admin' : role === 'technician' ? 'técnico' : 'viewer'}
+                  {roleLabel}
                 </span>
               )}
             </div>
@@ -273,7 +291,7 @@ export function Layout({ children }: LayoutProps) {
           className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-muted hover:bg-surface hover:text-danger transition-colors"
         >
           <LogOut className="h-4 w-4" />
-          Terminar sessão
+          {t('auth.logout')}
         </button>
       </div>
     </div>
@@ -309,6 +327,7 @@ export function Layout({ children }: LayoutProps) {
             <span className="font-bold text-text-primary">{settings.company_name}</span>
           </div>
           <div className="flex items-center gap-2">
+            <LanguageSelector compact />
             <NotificationBell stockCount={lowStockCount} ordersCount={inTransitCount} />
             <button onClick={() => setMobileOpen(!mobileOpen)} className="text-text-muted hover:text-text-primary p-1">
               {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
