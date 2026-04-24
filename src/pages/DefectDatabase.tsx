@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useDefects, useCreateDefect, useDeleteDefect } from '@/hooks/useDefects'
 import { type DefectEntry } from '@/lib/supabase'
 import { fmtGBP } from '@/lib/utils'
@@ -20,6 +21,7 @@ interface DefectCardProps {
 }
 
 function DefectCard({ defect, onDelete }: DefectCardProps) {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   return (
     <Card className="hover:border-accent/30 transition-colors">
@@ -36,7 +38,7 @@ function DefectCard({ defect, onDelete }: DefectCardProps) {
           <div className="flex items-center gap-1 shrink-0">
             {defect.difficulty && (
               <span className={cn('text-xs font-medium rounded-full border px-2 py-0.5', DIFFICULTY_COLOR[defect.difficulty])}>
-                {defect.difficulty}
+                {t(`difficultyMap.${defect.difficulty}`, { defaultValue: defect.difficulty })}
               </span>
             )}
             <button
@@ -58,13 +60,13 @@ function DefectCard({ defect, onDelete }: DefectCardProps) {
           <div className="space-y-2 pt-2 border-t border-border">
             {defect.likely_cause && (
               <div>
-                <p className="text-xs text-text-muted">Causa provável</p>
+                <p className="text-xs text-text-muted">{t('defects.likelyCause')}</p>
                 <p className="text-xs text-text-primary">{defect.likely_cause}</p>
               </div>
             )}
             {defect.required_parts && defect.required_parts.length > 0 && (
               <div>
-                <p className="text-xs text-text-muted">Peças necessárias</p>
+                <p className="text-xs text-text-muted">{t('defects.requiredParts')}</p>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {defect.required_parts.map(p => (
                     <span key={p} className="text-xs bg-surface border border-border rounded px-2 py-0.5 text-text-primary">{p}</span>
@@ -82,13 +84,13 @@ function DefectCard({ defect, onDelete }: DefectCardProps) {
               {defect.avg_parts_cost != null && (
                 <span className="flex items-center gap-1">
                   <PoundSterling className="h-3 w-3" />
-                  {fmtGBP(defect.avg_parts_cost)} peças
+                  {fmtGBP(defect.avg_parts_cost)}
                 </span>
               )}
               {defect.success_rate != null && (
                 <span className="flex items-center gap-1">
                   <Star className="h-3 w-3" />
-                  {defect.success_rate}% sucesso
+                  {defect.success_rate}{t('defects.successPercent')}
                 </span>
               )}
             </div>
@@ -101,6 +103,7 @@ function DefectCard({ defect, onDelete }: DefectCardProps) {
 }
 
 function AddDefectModal({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation()
   const createDefect = useCreateDefect()
   const [form, setForm] = useState<Partial<Omit<DefectEntry, 'id' | 'user_id' | 'created_at'>>>({
     equipment_type: 'Smartphone',
@@ -134,71 +137,73 @@ function AddDefectModal({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
       <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <h2 className="text-sm font-semibold text-text-primary">Novo defeito</h2>
+          <h2 className="text-sm font-semibold text-text-primary">{t('defects.new')}</h2>
           <button onClick={onClose}><X className="h-4 w-4 text-text-muted" /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-4 space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2 space-y-1">
-              <label className="text-xs text-text-muted">Tipo de equipamento *</label>
+              <label className="text-xs text-text-muted">{t('defects.equipmentType')}</label>
               <select value={form.equipment_type} onChange={e => set('equipment_type', e.target.value)}
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50">
-                {EQUIPMENT_TYPES.map(t => <option key={t}>{t}</option>)}
+                {EQUIPMENT_TYPES.map(tp => <option key={tp}>{tp}</option>)}
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-xs text-text-muted">Marca</label>
+              <label className="text-xs text-text-muted">{t('defects.brand')}</label>
               <input value={form.brand ?? ''} onChange={e => set('brand', e.target.value)}
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
                 placeholder="Apple, Samsung..." />
             </div>
             <div className="space-y-1">
-              <label className="text-xs text-text-muted">Modelo</label>
+              <label className="text-xs text-text-muted">{t('defects.model')}</label>
               <input value={form.model ?? ''} onChange={e => set('model', e.target.value)}
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
                 placeholder="iPhone 12, Galaxy S21..." />
             </div>
             <div className="col-span-2 space-y-1">
-              <label className="text-xs text-text-muted">Defeito comum *</label>
+              <label className="text-xs text-text-muted">{t('defects.commonDefect')}</label>
               <input value={form.common_defect ?? ''} onChange={e => set('common_defect', e.target.value)} required
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
-                placeholder="Ecrã partido, não liga..." />
+                placeholder={t('defects.defectPlaceholder')} />
             </div>
             <div className="col-span-2 space-y-1">
-              <label className="text-xs text-text-muted">Causa provável</label>
+              <label className="text-xs text-text-muted">{t('defects.likelyCause')}</label>
               <input value={form.likely_cause ?? ''} onChange={e => set('likely_cause', e.target.value)}
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50" />
             </div>
             <div className="col-span-2 space-y-1">
-              <label className="text-xs text-text-muted">Peças necessárias (separadas por vírgula)</label>
+              <label className="text-xs text-text-muted">{t('defects.partsSeparated')}</label>
               <input value={partsInput} onChange={e => setPartsInput(e.target.value)}
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
-                placeholder="Bateria, Ecrã LCD..." />
+                placeholder={t('defects.partsPlaceholder')} />
             </div>
             <div className="space-y-1">
-              <label className="text-xs text-text-muted">Tempo médio (h)</label>
+              <label className="text-xs text-text-muted">{t('defects.avgRepairTime')}</label>
               <input type="number" step="0.5" value={form.avg_repair_time_hours ?? ''} onChange={e => set('avg_repair_time_hours', parseFloat(e.target.value))}
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs text-text-muted">Custo médio peças (£)</label>
+              <label className="text-xs text-text-muted">{t('defects.avgPartsCost')}</label>
               <input type="number" step="0.01" value={form.avg_parts_cost ?? ''} onChange={e => set('avg_parts_cost', parseFloat(e.target.value))}
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs text-text-muted">Dificuldade</label>
+              <label className="text-xs text-text-muted">{t('defects.difficulty')}</label>
               <select value={form.difficulty ?? 'Médio'} onChange={e => set('difficulty', e.target.value)}
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50">
-                {DIFFICULTIES.map(d => <option key={d}>{d}</option>)}
+                {DIFFICULTIES.map(d => (
+                  <option key={d} value={d}>{t(`difficultyMap.${d}`, { defaultValue: d })}</option>
+                ))}
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-xs text-text-muted">Taxa de sucesso (%)</label>
+              <label className="text-xs text-text-muted">{t('defects.successRate')}</label>
               <input type="number" min="0" max="100" value={form.success_rate ?? ''} onChange={e => set('success_rate', parseInt(e.target.value))}
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50" />
             </div>
             <div className="col-span-2 space-y-1">
-              <label className="text-xs text-text-muted">Notas</label>
+              <label className="text-xs text-text-muted">{t('defects.notes')}</label>
               <textarea value={form.notes ?? ''} onChange={e => set('notes', e.target.value)} rows={2}
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none" />
             </div>
@@ -206,11 +211,11 @@ function AddDefectModal({ onClose }: { onClose: () => void }) {
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={onClose}
               className="flex-1 rounded-lg border border-border px-3 py-2 text-sm text-text-muted hover:bg-surface transition-colors">
-              Cancelar
+              {t('common.cancel')}
             </button>
             <button type="submit" disabled={createDefect.isPending}
               className="flex-1 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white hover:bg-accent/90 transition-colors disabled:opacity-50">
-              {createDefect.isPending ? 'A guardar...' : 'Guardar'}
+              {createDefect.isPending ? t('common.saving') : t('defects.save')}
             </button>
           </div>
         </form>
@@ -220,6 +225,7 @@ function AddDefectModal({ onClose }: { onClose: () => void }) {
 }
 
 export function DefectDatabase() {
+  const { t } = useTranslation()
   const { data: defects = [], isLoading } = useDefects()
   const deleteDefect = useDeleteDefect()
   const [search, setSearch] = useState('')
@@ -246,15 +252,15 @@ export function DefectDatabase() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Base de Defeitos</h1>
-          <p className="text-text-muted text-sm mt-0.5">{defects.length} entradas · conhecimento técnico</p>
+          <h1 className="text-2xl font-bold text-text-primary">{t('defects.title')}</h1>
+          <p className="text-text-muted text-sm mt-0.5">{t('defects.entries', { count: defects.length })} · {t('defects.knowledge')}</p>
         </div>
         <button
           onClick={() => setShowAdd(true)}
           className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent/90 transition-colors"
         >
           <Plus className="h-4 w-4" />
-          Novo defeito
+          {t('defects.new')}
         </button>
       </div>
 
@@ -265,26 +271,28 @@ export function DefectDatabase() {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Pesquisar defeito, marca..."
+            placeholder={t('defects.searchPlaceholder')}
             className="w-full pl-9 pr-3 py-2 rounded-lg bg-surface border border-border text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/50"
           />
         </div>
         <select value={filterType} onChange={e => setFilterType(e.target.value)}
           className="rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50">
-          <option value="">Todos os tipos</option>
-          {uniqueTypes.map(t => <option key={t}>{t}</option>)}
+          <option value="">{t('defects.allTypes')}</option>
+          {uniqueTypes.map(tp => <option key={tp}>{tp}</option>)}
         </select>
         <select value={filterDiff} onChange={e => setFilterDiff(e.target.value)}
           className="rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50">
-          <option value="">Qualquer dificuldade</option>
-          {DIFFICULTIES.map(d => <option key={d}>{d}</option>)}
+          <option value="">{t('defects.anyDifficulty')}</option>
+          {DIFFICULTIES.map(d => (
+            <option key={d} value={d}>{t(`difficultyMap.${d}`, { defaultValue: d })}</option>
+          ))}
         </select>
       </div>
 
       {isLoading ? (
-        <div className="text-center py-12 text-text-muted">A carregar base de dados...</div>
+        <div className="text-center py-12 text-text-muted">{t('common.loading')}</div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-12 text-text-muted">Nenhum defeito encontrado.</div>
+        <div className="text-center py-12 text-text-muted">{t('defects.noDefects')}</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(d => (

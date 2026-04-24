@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useOrders, useCreateOrder, useUpdateOrder, useDeleteOrder } from '@/hooks/useOrders'
 import { useProjects } from '@/hooks/useProjects'
 import { type PartsOrder } from '@/lib/supabase'
@@ -26,6 +27,7 @@ function OrderCard({ order, onUpdateStatus, onDelete }: {
   onUpdateStatus: (id: string, status: PartsOrder['status']) => void
   onDelete: (id: string) => void
 }) {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
 
   return (
@@ -35,12 +37,12 @@ function OrderCard({ order, onUpdateStatus, onDelete }: {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <span className={cn('text-xs font-medium rounded-full border px-2 py-0.5', STATUS_COLORS[order.status])}>
-                {order.status}
+                {t(`orderStatusMap.${order.status}`, { defaultValue: order.status })}
               </span>
               <span className="text-xs text-text-muted">{order.supplier}</span>
             </div>
             <p className="text-sm font-semibold text-text-primary mt-1">{order.part_name}</p>
-            <p className="text-xs text-text-muted">Qtd: {order.quantity} · {order.total_cost != null ? fmtGBP(order.total_cost) : '—'}</p>
+            <p className="text-xs text-text-muted">{t('orders.fields.quantity').slice(0, 3)}: {order.quantity} · {order.total_cost != null ? fmtGBP(order.total_cost) : '—'}</p>
           </div>
           <div className="flex items-center gap-1 shrink-0">
             <button onClick={() => setExpanded(e => !e)} className="p-1 text-text-muted hover:text-text-primary transition-colors">
@@ -72,10 +74,10 @@ function OrderCard({ order, onUpdateStatus, onDelete }: {
         {expanded && (
           <div className="space-y-2 pt-2 border-t border-border">
             <div className="grid grid-cols-2 gap-2 text-xs text-text-muted">
-              <div>Encomendado: {fmtDate(order.ordered_at)}</div>
-              {order.expected_at && <div>Esperado: {fmtDate(order.expected_at)}</div>}
-              {order.delivered_at && <div>Entregue: {fmtDate(order.delivered_at)}</div>}
-              {order.order_number && <div>N.º encomenda: {order.order_number}</div>}
+              <div>{t('orders.orderedDate')}: {fmtDate(order.ordered_at)}</div>
+              {order.expected_at && <div>{t('orders.expectedDate')}: {fmtDate(order.expected_at)}</div>}
+              {order.delivered_at && <div>{t('orders.deliveredDate')}: {fmtDate(order.delivered_at)}</div>}
+              {order.order_number && <div>{t('orders.orderNo')}: {order.order_number}</div>}
               {order.tracking_number && <div>Tracking: {order.tracking_number}</div>}
             </div>
             {order.notes && <p className="text-xs text-text-muted italic">{order.notes}</p>}
@@ -84,7 +86,7 @@ function OrderCard({ order, onUpdateStatus, onDelete }: {
                 <a href={order.order_url} target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-1 text-xs text-accent hover:underline">
                   <ExternalLink className="h-3 w-3" />
-                  Ver encomenda
+                  {t('orders.viewOrder')}
                 </a>
               )}
               {/* Status buttons */}
@@ -93,7 +95,7 @@ function OrderCard({ order, onUpdateStatus, onDelete }: {
                   <button key={s}
                     onClick={() => onUpdateStatus(order.id, s)}
                     className="text-xs px-2 py-0.5 rounded border border-border text-text-muted hover:bg-surface hover:text-text-primary transition-colors">
-                    → {s}
+                    → {t(`orderStatusMap.${s}`, { defaultValue: s })}
                   </button>
                 ))}
               </div>
@@ -106,6 +108,7 @@ function OrderCard({ order, onUpdateStatus, onDelete }: {
 }
 
 function AddOrderModal({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation()
   const createOrder = useCreateOrder()
   const { data: projects = [] } = useProjects()
   const [form, setForm] = useState<Partial<Omit<PartsOrder, 'id' | 'user_id' | 'created_at'>>>({
@@ -144,7 +147,7 @@ function AddOrderModal({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
       <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <h2 className="text-sm font-semibold text-text-primary">Nova encomenda</h2>
+          <h2 className="text-sm font-semibold text-text-primary">{t('orders.newOrder')}</h2>
           <button onClick={onClose}><X className="h-4 w-4 text-text-muted" /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-4 space-y-3">
@@ -161,10 +164,10 @@ function AddOrderModal({ onClose }: { onClose: () => void }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2 space-y-1">
-              <label className="text-xs text-text-muted">Projecto associado</label>
+              <label className="text-xs text-text-muted">{t('orders.associatedProject')}</label>
               <select value={form.project_id ?? ''} onChange={e => set('project_id', e.target.value || null)}
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50">
-                <option value="">Sem projecto</option>
+                <option value="">{t('common.noProject')}</option>
                 {projects.map(p => (
                   <option key={p.id} value={p.id}>
                     {p.ticket_number ? `${p.ticket_number} — ` : ''}{p.equipment}
@@ -173,51 +176,51 @@ function AddOrderModal({ onClose }: { onClose: () => void }) {
               </select>
             </div>
             <div className="col-span-2 space-y-1">
-              <label className="text-xs text-text-muted">Fornecedor *</label>
+              <label className="text-xs text-text-muted">{t('orders.fields.supplier')} *</label>
               <input value={form.supplier ?? ''} onChange={e => set('supplier', e.target.value)} required
                 placeholder="eBay, Amazon, AliExpress..."
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50" />
             </div>
             <div className="col-span-2 space-y-1">
-              <label className="text-xs text-text-muted">Peça *</label>
+              <label className="text-xs text-text-muted">{t('orders.fields.part')} *</label>
               <input value={form.part_name ?? ''} onChange={e => set('part_name', e.target.value)} required
                 placeholder="Ecrã LCD, Bateria..."
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs text-text-muted">Quantidade</label>
+              <label className="text-xs text-text-muted">{t('orders.fields.quantity')}</label>
               <input type="number" min="1" value={form.quantity ?? 1} onChange={e => set('quantity', parseInt(e.target.value))}
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs text-text-muted">Custo unit. (£)</label>
+              <label className="text-xs text-text-muted">{t('orders.fields.unitCost')}</label>
               <input type="number" step="0.01" value={form.unit_cost ?? ''} onChange={e => set('unit_cost', parseFloat(e.target.value))}
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs text-text-muted">Custo total (£)</label>
+              <label className="text-xs text-text-muted">{t('orders.fields.totalCost')}</label>
               <input type="number" step="0.01" value={form.total_cost ?? ''} onChange={e => set('total_cost', parseFloat(e.target.value))}
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs text-text-muted">Estado</label>
+              <label className="text-xs text-text-muted">{t('orders.fields.status')}</label>
               <select value={form.status} onChange={e => set('status', e.target.value)}
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50">
-                {ORDER_STATUSES.map(s => <option key={s}>{s}</option>)}
+                {ORDER_STATUSES.map(s => <option key={s} value={s}>{t(`orderStatusMap.${s}`, { defaultValue: s })}</option>)}
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-xs text-text-muted">Data encomenda</label>
+              <label className="text-xs text-text-muted">{t('orders.orderedAt')}</label>
               <input type="date" value={form.ordered_at ?? ''} onChange={e => set('ordered_at', e.target.value)}
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs text-text-muted">Data esperada</label>
+              <label className="text-xs text-text-muted">{t('orders.expectedAt')}</label>
               <input type="date" value={form.expected_at ?? ''} onChange={e => set('expected_at', e.target.value)}
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50" />
             </div>
             <div className="col-span-2 space-y-1">
-              <label className="text-xs text-text-muted">N.º encomenda / tracking</label>
+              <label className="text-xs text-text-muted">{t('orders.orderTracking')}</label>
               <div className="grid grid-cols-2 gap-2">
                 <input value={form.order_number ?? ''} onChange={e => set('order_number', e.target.value)} placeholder="Order #"
                   className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50" />
@@ -226,12 +229,12 @@ function AddOrderModal({ onClose }: { onClose: () => void }) {
               </div>
             </div>
             <div className="col-span-2 space-y-1">
-              <label className="text-xs text-text-muted">URL da encomenda</label>
+              <label className="text-xs text-text-muted">{t('orders.orderUrl')}</label>
               <input value={form.order_url ?? ''} onChange={e => set('order_url', e.target.value)} placeholder="https://..."
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50" />
             </div>
             <div className="col-span-2 space-y-1">
-              <label className="text-xs text-text-muted">Notas</label>
+              <label className="text-xs text-text-muted">{t('contacts.fields.notes')}</label>
               <textarea value={form.notes ?? ''} onChange={e => set('notes', e.target.value)} rows={2}
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none" />
             </div>
@@ -239,11 +242,11 @@ function AddOrderModal({ onClose }: { onClose: () => void }) {
           <div className="flex gap-2 pt-2">
             <button type="button" onClick={onClose}
               className="flex-1 rounded-lg border border-border px-3 py-2 text-sm text-text-muted hover:bg-surface transition-colors">
-              Cancelar
+              {t('common.cancel')}
             </button>
             <button type="submit" disabled={createOrder.isPending}
               className="flex-1 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white hover:bg-accent/90 transition-colors disabled:opacity-50">
-              {createOrder.isPending ? 'A guardar...' : 'Criar encomenda'}
+              {createOrder.isPending ? t('common.saving') : t('orders.createOrder')}
             </button>
           </div>
         </form>
@@ -253,6 +256,7 @@ function AddOrderModal({ onClose }: { onClose: () => void }) {
 }
 
 export function PartsOrders() {
+  const { t } = useTranslation()
   const { data: orders = [], isLoading } = useOrders()
   const updateOrder = useUpdateOrder()
   const deleteOrder = useDeleteOrder()
@@ -279,15 +283,15 @@ export function PartsOrders() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Encomendas de Peças</h1>
-          <p className="text-text-muted text-sm mt-0.5">{totalPending} pendentes · {fmtGBP(totalCost)} total</p>
+          <h1 className="text-2xl font-bold text-text-primary">{t('orders.title')}</h1>
+          <p className="text-text-muted text-sm mt-0.5">{t('orders.pendingLabel', { count: totalPending })} · {fmtGBP(totalCost)} total</p>
         </div>
         <button
           onClick={() => setShowAdd(true)}
           className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent/90 transition-colors"
         >
           <Plus className="h-4 w-4" />
-          Nova encomenda
+          {t('orders.new')}
         </button>
       </div>
 
@@ -302,7 +306,7 @@ export function PartsOrders() {
                 'rounded-xl border p-3 text-left transition-all',
                 filterStatus === s ? 'border-accent bg-accent/10' : 'border-border bg-card hover:border-accent/30',
               )}>
-              <p className="text-xs text-text-muted">{s}</p>
+              <p className="text-xs text-text-muted">{t(`orderStatusMap.${s}`, { defaultValue: s })}</p>
               <p className="text-xl font-bold text-text-primary">{count}</p>
             </button>
           )
@@ -314,7 +318,7 @@ export function PartsOrders() {
         <input
           value={filterSupplier}
           onChange={e => setFilterSupplier(e.target.value)}
-          placeholder="Filtrar por fornecedor..."
+          placeholder={t('orders.filterSupplier')}
           className="flex-1 min-w-48 rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/50"
         />
         <div className="flex gap-2">
@@ -329,11 +333,11 @@ export function PartsOrders() {
       </div>
 
       {isLoading ? (
-        <div className="text-center py-12 text-text-muted">A carregar encomendas...</div>
+        <div className="text-center py-12 text-text-muted">{t('common.loading')}</div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-text-muted gap-3">
           <Package className="h-12 w-12 opacity-30" />
-          <p>Nenhuma encomenda encontrada.</p>
+          <p>{t('orders.noOrders')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

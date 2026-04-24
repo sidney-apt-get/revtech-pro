@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -24,9 +25,9 @@ const TYPE_COLORS: Record<ContactType, string> = {
 }
 
 const schema = z.object({
-  name: z.string().min(1, 'Obrigatório'),
+  name: z.string().min(1),
   type: z.enum(types).default('Fornecedor'),
-  email: z.string().email('Email inválido').optional().or(z.literal('')),
+  email: z.string().email().optional().or(z.literal('')),
   phone: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
@@ -36,6 +37,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 export function Contacts() {
+  const { t } = useTranslation()
   const { data: contacts = [], isLoading } = useContacts()
   const create = useCreateContact()
   const update = useUpdateContact()
@@ -89,26 +91,26 @@ export function Contacts() {
     setModalOpen(false)
   }
 
-  if (isLoading) return <div className="text-text-muted animate-pulse p-4">A carregar...</div>
+  if (isLoading) return <div className="text-text-muted animate-pulse p-4">{t('common.loading')}</div>
 
   return (
     <div className="space-y-4 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Contactos</h1>
-          <p className="text-text-muted text-sm mt-0.5">{contacts.length} contactos</p>
+          <h1 className="text-2xl font-bold text-text-primary">{t('contacts.title')}</h1>
+          <p className="text-text-muted text-sm mt-0.5">{t('contacts.total_other', { count: contacts.length })}</p>
         </div>
-        <Button onClick={openNew} size="sm"><Plus className="h-4 w-4" /> Novo</Button>
+        <Button onClick={openNew} size="sm"><Plus className="h-4 w-4" /> {t('contacts.new')}</Button>
       </div>
 
       {/* Filter */}
       <div className="flex items-center gap-2 flex-wrap">
         <button onClick={() => setFilterType('all')} className={cn('rounded-full px-3 py-1 text-xs font-medium border transition-colors', filterType === 'all' ? 'bg-accent text-white border-accent' : 'border-border text-text-muted hover:text-text-primary')}>
-          Todos ({contacts.length})
+          {t('common.all')} ({contacts.length})
         </button>
-        {types.map(t => (
-          <button key={t} onClick={() => setFilterType(t)} className={cn('rounded-full px-3 py-1 text-xs font-medium border transition-colors', filterType === t ? 'bg-accent text-white border-accent' : 'border-border text-text-muted hover:text-text-primary')}>
-            {t} ({contacts.filter(c => c.type === t).length})
+        {types.map(t2 => (
+          <button key={t2} onClick={() => setFilterType(t2)} className={cn('rounded-full px-3 py-1 text-xs font-medium border transition-colors', filterType === t2 ? 'bg-accent text-white border-accent' : 'border-border text-text-muted hover:text-text-primary')}>
+            {t(`contactTypeMap.${t2}`, { defaultValue: t2 })} ({contacts.filter(c => c.type === t2).length})
           </button>
         ))}
       </div>
@@ -118,7 +120,7 @@ export function Contacts() {
         {filtered.length === 0 ? (
           <div className="col-span-full text-center py-16 text-text-muted">
             <Users className="h-10 w-10 mx-auto mb-3 opacity-30" />
-            <p>Nenhum contacto encontrado</p>
+            <p>{t('contacts.noContacts')}</p>
           </div>
         ) : (
           filtered.map(c => (
@@ -129,7 +131,9 @@ export function Contacts() {
                   {c.city && <p className="text-xs text-text-muted">{c.city}, {c.country}</p>}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <span className={cn('rounded-full border px-2 py-0.5 text-xs font-medium', TYPE_COLORS[c.type])}>{c.type}</span>
+                  <span className={cn('rounded-full border px-2 py-0.5 text-xs font-medium', TYPE_COLORS[c.type])}>
+                    {t(`contactTypeMap.${c.type}`, { defaultValue: c.type })}
+                  </span>
                 </div>
               </div>
               <div className="space-y-1 text-xs text-text-muted">
@@ -149,35 +153,43 @@ export function Contacts() {
 
       <Dialog open={modalOpen} onOpenChange={(o) => !o && setModalOpen(false)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{editing ? 'Editar contacto' : 'Novo contacto'}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>{editing ? t('contacts.editContact') : t('contacts.newContact')}</DialogTitle>
+          </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="p-6 pt-4 space-y-4">
             <div className="space-y-1.5">
-              <Label>Nome *</Label>
+              <Label>{t('contacts.fields.name')} *</Label>
               <Input {...register('name')} />
-              {errors.name && <p className="text-xs text-danger">{errors.name.message}</p>}
+              {errors.name && <p className="text-xs text-danger">{t('common.required')}</p>}
             </div>
             <div className="space-y-1.5">
-              <Label>Tipo</Label>
+              <Label>{t('contacts.fields.type')}</Label>
               <Select value={watch('type')} onValueChange={(v) => setValue('type', v as ContactType)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{types.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  {types.map(tp => (
+                    <SelectItem key={tp} value={tp}>{t(`contactTypeMap.${tp}`, { defaultValue: tp })}</SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Email</Label>
+                <Label>{t('contacts.fields.email')}</Label>
                 <Input type="email" {...register('email')} />
                 {errors.email && <p className="text-xs text-danger">{errors.email.message}</p>}
               </div>
-              <div className="space-y-1.5"><Label>Telefone</Label><Input {...register('phone')} /></div>
-              <div className="space-y-1.5"><Label>Cidade</Label><Input {...register('city')} /></div>
-              <div className="space-y-1.5"><Label>País</Label><Input {...register('country')} /></div>
+              <div className="space-y-1.5"><Label>{t('contacts.fields.phone')}</Label><Input {...register('phone')} /></div>
+              <div className="space-y-1.5"><Label>{t('contacts.fields.city')}</Label><Input {...register('city')} /></div>
+              <div className="space-y-1.5"><Label>{t('contacts.fields.country')}</Label><Input {...register('country')} /></div>
             </div>
-            <div className="space-y-1.5"><Label>Morada</Label><Input {...register('address')} /></div>
-            <div className="space-y-1.5"><Label>Notas</Label><Textarea {...register('notes')} rows={2} /></div>
+            <div className="space-y-1.5"><Label>{t('contacts.fields.address')}</Label><Input {...register('address')} /></div>
+            <div className="space-y-1.5"><Label>{t('contacts.fields.notes')}</Label><Textarea {...register('notes')} rows={2} /></div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>Cancelar</Button>
-              <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'A guardar...' : editing ? 'Actualizar' : 'Criar'}</Button>
+              <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>{t('common.cancel')}</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? t('common.saving') : editing ? t('common.update') : t('common.create')}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

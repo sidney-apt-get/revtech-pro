@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useProjects } from '@/hooks/useProjects'
 import { ProjectCard } from '@/components/ProjectCard'
 import { KanbanBoard } from '@/components/KanbanBoard'
@@ -11,6 +12,7 @@ import { Plus, LayoutGrid, Kanban, Filter } from 'lucide-react'
 type View = 'grid' | 'kanban'
 
 export function Projects() {
+  const { t } = useTranslation()
   const { data: projects = [], isLoading } = useProjects()
   const [view, setView] = useState<View>('grid')
   const [filter, setFilter] = useState<ProjectStatus | 'all'>('all')
@@ -22,15 +24,15 @@ export function Projects() {
   function handleEdit(p: Project) { setEditing(p); setModalOpen(true) }
   function handleNew() { setEditing(null); setModalOpen(true) }
 
-  if (isLoading) return <div className="text-text-muted animate-pulse p-4">A carregar...</div>
+  if (isLoading) return <div className="text-text-muted animate-pulse p-4">{t('common.loading')}</div>
 
   return (
     <div className="space-y-4 animate-fade-in h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Projectos</h1>
-          <p className="text-text-muted text-sm mt-0.5">{projects.length} projectos no total</p>
+          <h1 className="text-2xl font-bold text-text-primary">{t('projects.title')}</h1>
+          <p className="text-text-muted text-sm mt-0.5">{t('projects.total', { count: projects.length })}</p>
         </div>
         <div className="flex items-center gap-2">
           {/* View toggle */}
@@ -50,7 +52,7 @@ export function Projects() {
           </div>
           <Button onClick={handleNew} size="sm">
             <Plus className="h-4 w-4" />
-            Novo
+            {t('common.new')}
           </Button>
         </div>
       </div>
@@ -62,7 +64,7 @@ export function Projects() {
           onClick={() => setFilter('all')}
           className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium border transition-colors ${filter === 'all' ? 'bg-accent text-white border-accent' : 'border-border text-text-muted hover:text-text-primary hover:border-accent/40'}`}
         >
-          Todos ({projects.length})
+          {t('common.all')} ({projects.length})
         </button>
         {ALL_STATUSES.map(s => {
           const count = projects.filter(p => p.status === s).length
@@ -72,7 +74,7 @@ export function Projects() {
               onClick={() => setFilter(s)}
               className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium border transition-colors ${filter === s ? 'bg-accent text-white border-accent' : 'border-border text-text-muted hover:text-text-primary'}`}
             >
-              {s} ({count})
+              {t(`statusMap.${s}`, { defaultValue: s })} ({count})
             </button>
           )
         })}
@@ -87,9 +89,9 @@ export function Projects() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filtered.length === 0 ? (
             <div className="col-span-full text-center py-16 text-text-muted">
-              <p className="text-lg">Nenhum projecto encontrado</p>
+              <p className="text-lg">{t('projects.noProjects')}</p>
               <Button onClick={handleNew} className="mt-4" variant="outline">
-                <Plus className="h-4 w-4 mr-1" /> Criar primeiro projecto
+                <Plus className="h-4 w-4 mr-1" /> {t('projects.createFirst')}
               </Button>
             </div>
           ) : (

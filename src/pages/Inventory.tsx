@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -18,7 +19,7 @@ const categories = ['Peças', 'Consumíveis', 'Ferramentas', 'Patrimônio'] as c
 type Category = typeof categories[number]
 
 const schema = z.object({
-  item_name: z.string().min(1, 'Obrigatório'),
+  item_name: z.string().min(1),
   category: z.enum(categories),
   quantity: z.coerce.number().int().min(0).default(0),
   min_stock: z.coerce.number().int().min(0).default(5),
@@ -40,6 +41,7 @@ const CATEGORY_ICONS: Record<Category, typeof Package> = {
 }
 
 function ItemRow({ item, onEdit, onDelete }: { item: InventoryItem; onEdit: () => void; onDelete: () => void }) {
+  const { t } = useTranslation()
   const low = item.quantity < item.min_stock
 
   return (
@@ -49,7 +51,7 @@ function ItemRow({ item, onEdit, onDelete }: { item: InventoryItem; onEdit: () =
           {low && <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0" />}
           <span className="text-sm font-medium text-text-primary">{item.item_name}</span>
         </div>
-        {item.supplier && <p className="text-xs text-text-muted mt-0.5">Fornecedor: {item.supplier}</p>}
+        {item.supplier && <p className="text-xs text-text-muted mt-0.5">{t('inventory.supplier')}: {item.supplier}</p>}
       </td>
       <td className="px-4 py-3">
         <span className={`text-sm font-bold ${low ? 'text-warning' : 'text-text-primary'}`}>{item.quantity}</span>
@@ -59,8 +61,8 @@ function ItemRow({ item, onEdit, onDelete }: { item: InventoryItem; onEdit: () =
       <td className="px-4 py-3 text-sm text-text-primary">{fmtGBP(item.unit_cost)}</td>
       {(item.category === 'Ferramentas' || item.category === 'Patrimônio') && (
         <td className="px-4 py-3 text-xs text-text-muted">
-          {item.calibration_date ? <p>Calibração: {fmtDate(item.calibration_date)}</p> : null}
-          {item.next_maintenance ? <p>Manutenção: {fmtDate(item.next_maintenance)}</p> : null}
+          {item.calibration_date ? <p>{t('inventory.fields.calibration')}: {fmtDate(item.calibration_date)}</p> : null}
+          {item.next_maintenance ? <p>{t('inventory.fields.maintenance')}: {fmtDate(item.next_maintenance)}</p> : null}
         </td>
       )}
       <td className="px-4 py-3">
@@ -78,6 +80,7 @@ function ItemRow({ item, onEdit, onDelete }: { item: InventoryItem; onEdit: () =
 }
 
 export function Inventory() {
+  const { t } = useTranslation()
   const { data: inventory = [], isLoading } = useInventory()
   const create = useCreateInventoryItem()
   const update = useUpdateInventoryItem()
@@ -138,17 +141,17 @@ export function Inventory() {
 
   const isToolOrAsset = watch('category') === 'Ferramentas' || watch('category') === 'Patrimônio'
 
-  if (isLoading) return <div className="text-text-muted animate-pulse p-4">A carregar...</div>
+  if (isLoading) return <div className="text-text-muted animate-pulse p-4">{t('common.loading')}</div>
 
   return (
     <div className="space-y-4 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Inventário</h1>
-          <p className="text-text-muted text-sm mt-0.5">{inventory.length} itens registados</p>
+          <h1 className="text-2xl font-bold text-text-primary">{t('inventory.title')}</h1>
+          <p className="text-text-muted text-sm mt-0.5">{t('inventory.itemsRegistered', { count: inventory.length })}</p>
         </div>
         <Button onClick={() => openNew(activeTab)} size="sm">
-          <Plus className="h-4 w-4" /> Novo item
+          <Plus className="h-4 w-4" /> {t('inventory.new')}
         </Button>
       </div>
 
@@ -161,7 +164,7 @@ export function Inventory() {
             return (
               <TabsTrigger key={cat} value={cat} className="gap-1.5">
                 <Icon className="h-3.5 w-3.5" />
-                {cat}
+                {t(`categoryMap.${cat}`, { defaultValue: cat })}
                 {lowCount > 0 && <span className="ml-1 h-4 min-w-4 rounded-full bg-warning text-black text-xs font-bold flex items-center justify-center px-1">{lowCount}</span>}
                 <span className="text-text-muted ml-0.5">({count})</span>
               </TabsTrigger>
@@ -178,17 +181,17 @@ export function Inventory() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-border bg-surface">
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Item</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Quantidade</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Localização</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Custo unit.</th>
-                      {showCalColumns && <th className="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Datas</th>}
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">{t('inventory.fields.name')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">{t('inventory.fields.quantityLabel')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">{t('inventory.fields.location')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">{t('inventory.fields.price')}</th>
+                      {showCalColumns && <th className="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">{t('inventory.fields.dates')}</th>}
                       <th className="px-4 py-3"></th>
                     </tr>
                   </thead>
                   <tbody className="bg-card">
                     {items.length === 0 ? (
-                      <tr><td colSpan={6} className="text-center py-12 text-text-muted text-sm">Nenhum item nesta categoria</td></tr>
+                      <tr><td colSpan={6} className="text-center py-12 text-text-muted text-sm">{t('inventory.noItemsInCategory')}</td></tr>
                     ) : (
                       items.map(item => (
                         <ItemRow
@@ -210,64 +213,70 @@ export function Inventory() {
       <Dialog open={modalOpen} onOpenChange={(o) => !o && setModalOpen(false)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? 'Editar item' : 'Novo item de inventário'}</DialogTitle>
+            <DialogTitle>{editing ? t('inventory.editItem') : t('inventory.newItem')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="p-6 pt-4 space-y-4">
             <div className="space-y-1.5">
-              <Label>Nome do item *</Label>
+              <Label>{t('inventory.fields.itemName')} *</Label>
               <Input {...register('item_name')} placeholder="ex: Pasta térmica Arctic MX-4" />
-              {errors.item_name && <p className="text-xs text-danger">{errors.item_name.message}</p>}
+              {errors.item_name && <p className="text-xs text-danger">{t('common.required')}</p>}
             </div>
             <div className="space-y-1.5">
-              <Label>Categoria</Label>
+              <Label>{t('inventory.fields.category')}</Label>
               <Select value={watch('category')} onValueChange={(v) => setValue('category', v as Category)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  {categories.map(c => (
+                    <SelectItem key={c} value={c}>{t(`categoryMap.${c}`, { defaultValue: c })}</SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1.5">
-                <Label>Quantidade</Label>
+                <Label>{t('inventory.fields.quantityLabel')}</Label>
                 <Input type="number" {...register('quantity')} />
               </div>
               <div className="space-y-1.5">
-                <Label>Stock mínimo</Label>
+                <Label>{t('inventory.fields.minStockLabel')}</Label>
                 <Input type="number" {...register('min_stock')} />
               </div>
               <div className="space-y-1.5">
-                <Label>Custo unit. (£)</Label>
+                <Label>{t('inventory.fields.unitCost')}</Label>
                 <Input type="number" step="0.01" {...register('unit_cost')} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Localização</Label>
-                <Input {...register('location')} placeholder="Prateleira A1" />
+                <Label>{t('inventory.fields.location')}</Label>
+                <Input {...register('location')} placeholder={t('inventory.fields.locationPlaceholder')} />
               </div>
               <div className="space-y-1.5">
-                <Label>Fornecedor</Label>
-                <Input {...register('supplier')} placeholder="AliExpress, Amazon..." />
+                <Label>{t('inventory.fields.supplier')}</Label>
+                <Input {...register('supplier')} placeholder={t('inventory.fields.supplierPlaceholder')} />
               </div>
             </div>
             {isToolOrAsset && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label>Última calibração</Label>
+                  <Label>{t('inventory.fields.calibrationDate')}</Label>
                   <Input type="date" {...register('calibration_date')} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Próx. manutenção</Label>
+                  <Label>{t('inventory.fields.nextMaintenance')}</Label>
                   <Input type="date" {...register('next_maintenance')} />
                 </div>
               </div>
             )}
             <div className="space-y-1.5">
-              <Label>Notas</Label>
+              <Label>{t('inventory.fields.notes')}</Label>
               <Textarea {...register('notes')} rows={2} />
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>Cancelar</Button>
-              <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'A guardar...' : editing ? 'Actualizar' : 'Criar'}</Button>
+              <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>{t('common.cancel')}</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? t('common.saving') : editing ? t('common.update') : t('common.create')}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

@@ -345,11 +345,12 @@ export function Layout({ children }: LayoutProps) {
 }
 
 export function StockAlert({ count }: { count: number }) {
+  const { t } = useTranslation()
   if (count === 0) return null
   return (
     <div className="flex items-center gap-2 rounded-lg bg-warning/10 border border-warning/20 px-4 py-3 text-sm text-warning mb-4">
       <AlertTriangle className="h-4 w-4 shrink-0" />
-      <span><strong>{count}</strong> {count === 1 ? 'item' : 'itens'} com stock abaixo do mínimo</span>
+      <span>{t('inventory.stockAlert', { count })}</span>
     </div>
   )
 }

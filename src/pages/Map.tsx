@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { ExternalLink, MapPin, ShoppingCart } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
@@ -47,11 +48,13 @@ const PLATFORMS = [
 ]
 
 export function Map() {
+  const { t } = useTranslation()
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-bold text-text-primary">Mapa & Plataformas</h1>
-        <p className="text-text-muted text-sm mt-0.5">Livingston, West Lothian, Scotland</p>
+        <h1 className="text-2xl font-bold text-text-primary">{t('map.title')}</h1>
+        <p className="text-text-muted text-sm mt-0.5">{t('map.location')}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -60,7 +63,7 @@ export function Map() {
           <CardHeader className="pb-0">
             <CardTitle className="text-base flex items-center gap-2">
               <MapPin className="h-4 w-4 text-accent" />
-              Livingston, Scotland
+              {t('map.location')}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0 mt-3">
@@ -77,7 +80,7 @@ export function Map() {
                 rel="noopener noreferrer"
                 className="text-accent hover:underline flex items-center gap-1"
               >
-                Ver mapa completo <ExternalLink className="h-3 w-3" />
+                {t('map.viewFullMap')} <ExternalLink className="h-3 w-3" />
               </a>
             </div>
           </CardContent>
@@ -87,7 +90,7 @@ export function Map() {
         <div className="space-y-3">
           <h2 className="text-base font-semibold text-text-primary flex items-center gap-2">
             <ShoppingCart className="h-4 w-4 text-accent" />
-            Plataformas de venda
+            {t('map.salePlatforms')}
           </h2>
           <div className="space-y-2">
             {PLATFORMS.map((p) => (

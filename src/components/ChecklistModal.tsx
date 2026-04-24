@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useReactToPrint } from 'react-to-print'
 import { X, Printer, Save, Camera, Trash2 } from 'lucide-react'
 import { supabase, type Project, type Checklist, type ChecklistItem } from '@/lib/supabase'
@@ -38,6 +39,7 @@ function initItems(defaults: Omit<ChecklistItem, 'checked'>[], saved?: Checklist
 }
 
 export function ChecklistModal({ project, onClose }: ChecklistModalProps) {
+  const { t } = useTranslation()
   const printRef = useRef<HTMLDivElement>(null)
   const [activeTab, setActiveTab] = useState<'reception' | 'delivery'>('reception')
   const [saving, setSaving] = useState(false)
@@ -142,7 +144,7 @@ export function ChecklistModal({ project, onClose }: ChecklistModalProps) {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
           <div>
-            <h2 className="text-sm font-semibold text-text-primary">Checklist · {project.ticket_number ?? project.equipment}</h2>
+            <h2 className="text-sm font-semibold text-text-primary">{t('checklist.title')} · {project.ticket_number ?? project.equipment}</h2>
             <p className="text-xs text-text-muted">{project.equipment}</p>
           </div>
           <button onClick={onClose} className="text-text-muted hover:text-text-primary transition-colors">
@@ -163,7 +165,7 @@ export function ChecklistModal({ project, onClose }: ChecklistModalProps) {
                   : 'text-text-muted hover:text-text-primary'
               )}
             >
-              {tab === 'reception' ? '📥 Recepção' : '📤 Entrega'}
+              {tab === 'reception' ? `📥 ${t('checklist.reception')}` : `📤 ${t('checklist.delivery')}`}
               {tab === 'reception' && receptionChecklist && <span className="ml-1 text-success">✓</span>}
               {tab === 'delivery' && deliveryChecklist && <span className="ml-1 text-success">✓</span>}
             </button>
@@ -173,7 +175,7 @@ export function ChecklistModal({ project, onClose }: ChecklistModalProps) {
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3" ref={printRef}>
           <div className="print-only hidden" style={{ marginBottom: '8px' }}>
-            <strong>RevTech — Checklist de {isReception ? 'Recepção' : 'Entrega'}</strong><br />
+            <strong>RevTech — {isReception ? t('checklist.reception') : t('checklist.delivery')}</strong><br />
             <span style={{ fontSize: '12px' }}>{project.ticket_number} · {project.equipment} · {fmtDate(project.received_at)}</span>
           </div>
 
@@ -194,25 +196,25 @@ export function ChecklistModal({ project, onClose }: ChecklistModalProps) {
           {/* Notes */}
           <div className="space-y-1 pt-2">
             <p className="text-xs font-medium text-text-muted">
-              {isReception ? 'Notas de danos pré-existentes' : 'Observações'}
+              {isReception ? t('checklist.receptionNotes') : t('checklist.deliveryNotes')}
             </p>
             <textarea
               value={notes}
               onChange={e => setNotes(e.target.value)}
               rows={2}
               className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none"
-              placeholder="Sem observações..."
+              placeholder={t('checklist.noNotes')}
             />
           </div>
 
           {/* Photos */}
           <div className="space-y-2 pt-2">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-text-muted">Fotos ({photos.length}/4)</p>
+              <p className="text-xs font-medium text-text-muted">{t('checklist.photos')} ({photos.length}/4)</p>
               {photos.length < 4 && (
                 <label className="cursor-pointer flex items-center gap-1.5 text-xs text-accent hover:text-accent/80 transition-colors">
                   <Camera className="h-3.5 w-3.5" />
-                  Adicionar foto
+                  {t('checklist.addPhoto')}
                   <input type="file" accept="image/*" multiple className="hidden" onChange={e => handlePhotoUpload(activeTab, e)} />
                 </label>
               )}
@@ -235,7 +237,7 @@ export function ChecklistModal({ project, onClose }: ChecklistModalProps) {
           </div>
 
           {completed && (
-            <p className="text-xs text-success">✓ Concluído em {fmtDate(completed)}</p>
+            <p className="text-xs text-success">✓ {t('checklist.completedAt')} {fmtDate(completed)}</p>
           )}
         </div>
 
@@ -246,7 +248,7 @@ export function ChecklistModal({ project, onClose }: ChecklistModalProps) {
             className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-text-muted hover:bg-surface transition-colors"
           >
             <Printer className="h-4 w-4" />
-            Imprimir
+            {t('checklist.print')}
           </button>
           <button
             onClick={() => save(activeTab)}
@@ -254,7 +256,7 @@ export function ChecklistModal({ project, onClose }: ChecklistModalProps) {
             className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white hover:bg-accent/90 transition-colors disabled:opacity-50"
           >
             <Save className="h-4 w-4" />
-            {saving ? 'A guardar...' : 'Guardar Checklist'}
+            {saving ? t('common.saving') : t('checklist.save')}
           </button>
         </div>
       </div>
