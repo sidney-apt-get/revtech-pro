@@ -42,7 +42,7 @@ function OrderCard({ order, onUpdateStatus, onDelete }: {
               <span className="text-xs text-text-muted">{order.supplier}</span>
             </div>
             <p className="text-sm font-semibold text-text-primary mt-1">{order.part_name}</p>
-            <p className="text-xs text-text-muted">{t('orders.fields.quantity').slice(0, 3)}: {order.quantity} · {order.total_cost != null ? fmtGBP(order.total_cost) : '—'}</p>
+            <p className="text-xs text-text-muted">{t('orders.fields.quantity')}: {order.quantity} · {order.total_cost != null ? fmtGBP(order.total_cost) : '—'}</p>
           </div>
           <div className="flex items-center gap-1 shrink-0">
             <button onClick={() => setExpanded(e => !e)} className="p-1 text-text-muted hover:text-text-primary transition-colors">

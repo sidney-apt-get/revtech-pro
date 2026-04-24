@@ -19,6 +19,9 @@ i18n
       caches: ['localStorage'],
       lookupLocalStorage: 'revtech_language',
     },
+    react: {
+      useSuspense: false,
+    },
   })
 
 export default i18n

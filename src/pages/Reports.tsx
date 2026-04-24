@@ -234,7 +234,7 @@ export function Reports() {
                 <div key={o.id} className="flex items-center justify-between rounded-lg bg-surface px-3 py-2 border border-border">
                   <div>
                     <p className="text-xs font-medium text-text-primary">{o.part_name}</p>
-                    <p className="text-xs text-text-muted">{o.supplier} · {t('orders.fields.quantity').slice(0, 3)} {o.quantity}</p>
+                    <p className="text-xs text-text-muted">{o.supplier} · {t('orders.fields.quantity')}: {o.quantity}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-semibold text-text-primary">{fmtGBP(o.total_cost ?? 0)}</p>
