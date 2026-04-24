@@ -60,7 +60,7 @@ function ROIModal({
   ns?: 'ebay' | 'backmarket'
 }) {
   const { t } = useTranslation()
-  const price = 'price' in item ? item.price : item.price
+  const price = item.price
   const [parts, setParts] = useState(0)
   const [shipIn, setShipIn] = useState(item.shippingCost ?? 0)
   const [shipOut, setShipOut] = useState(8)
