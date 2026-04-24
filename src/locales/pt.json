@@ -14,7 +14,8 @@
   "admin": {
     "menu": "Admin",
     "settings": "Configurações",
-    "userManagement": "Gestão de Utilizadores"
+    "userManagement": "Gestão de Utilizadores",
+    "labels": "Etiquetas de Preço"
   },
   "notifications": {
     "title": "Notificações",
@@ -309,7 +310,8 @@
     },
     "stockAlert_one": "{{count}} item abaixo do stock mínimo",
     "stockAlert_other": "{{count}} itens abaixo do stock mínimo",
-    "supplier": "Fornecedor"
+    "supplier": "Fornecedor",
+    "scan": "Ler Código de Barras"
   },
   "contacts": {
     "title": "Contactos",
@@ -559,5 +561,29 @@
     "select": "Idioma",
     "en": "English",
     "pt": "Português"
+  },
+  "labels": {
+    "title": "Etiquetas de Preço",
+    "subtitle": "Imprime etiquetas para itens prontos para venda",
+    "printAll": "Imprimir Tudo",
+    "printSelected": "Imprimir Seleccionados ({{count}})",
+    "noItems": "Nenhum item pronto para venda",
+    "noItemsDesc": "Marca projectos como 'Pronto para Venda' para gerar etiquetas",
+    "label": "Etiqueta",
+    "print": "Imprimir Etiqueta",
+    "printBatch": "Impressão em Lote",
+    "saleDate": "Preparado",
+    "platform": "Plataforma"
+  },
+  "cex": {
+    "search": "Ver preço CeX",
+    "searching": "A pesquisar...",
+    "title": "Preço CeX",
+    "cashPrice": "Cash",
+    "exchangePrice": "Troca",
+    "boxPrice": "Preço Caixa",
+    "noResults": "Não encontrado no CeX",
+    "viewOnCex": "Ver no CeX",
+    "error": "Erro ao pesquisar CeX"
   }
 }

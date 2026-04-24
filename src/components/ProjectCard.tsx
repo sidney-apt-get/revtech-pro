@@ -2,15 +2,59 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { type Project } from '@/lib/supabase'
 import { calcROI, fmtGBP, fmtDate, STATUS_COLORS, STATUS_DOT } from '@/lib/utils'
-import { Wrench, Calendar, TrendingUp, TrendingDown, ClipboardCheck, Ticket } from 'lucide-react'
+import { Wrench, Calendar, TrendingUp, TrendingDown, ClipboardCheck, Ticket, Tag, ShoppingBag } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TicketPrint } from './TicketPrint'
 import { ChecklistModal } from './ChecklistModal'
+import { CexPriceWidget } from './CexPriceWidget'
 
 interface ProjectCardProps {
   project: Project
   onClick?: () => void
   compact?: boolean
+}
+
+function printLabel(project: Project) {
+  const win = window.open('', '_blank', 'width=900,height=600')
+  if (!win) return
+  win.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Etiqueta</title>
+        <style>
+          @page { size: 100mm 60mm; margin: 0; }
+          body { margin: 0; font-family: Arial, sans-serif; }
+          .label { width:100mm;height:60mm;padding:6mm;display:flex;flex-direction:column;justify-content:space-between;box-sizing:border-box; }
+        </style>
+      </head>
+      <body onload="window.print();window.close()">
+        <div class="label">
+          <div style="display:flex;justify-content:space-between">
+            <div>
+              <div style="font-size:7pt;font-weight:bold;color:#1a56db">RevTech PRO</div>
+              ${project.ticket_number ? `<div style="font-size:6pt;color:#666">#${project.ticket_number}</div>` : ''}
+            </div>
+          </div>
+          <div>
+            <div style="font-size:9pt;font-weight:bold">${project.equipment}</div>
+            ${(project.brand || project.model) ? `<div style="font-size:7pt;color:#444">${[project.brand, project.model].filter(Boolean).join(' · ')}</div>` : ''}
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-end">
+            <div>
+              <div style="font-size:16pt;font-weight:bold;color:#1a56db">${fmtGBP(project.sale_price ?? 0)}</div>
+              ${project.sale_platform ? `<div style="font-size:6pt;color:#666">${project.sale_platform}</div>` : ''}
+            </div>
+            <div style="font-size:6pt;color:#888;text-align:right">
+              <div>${new Date().toLocaleDateString('pt-PT')}</div>
+              <div>Testado ✓</div>
+            </div>
+          </div>
+        </div>
+      </body>
+    </html>
+  `)
+  win.document.close()
 }
 
 export function ProjectCard({ project, onClick, compact }: ProjectCardProps) {
@@ -19,6 +63,7 @@ export function ProjectCard({ project, onClick, compact }: ProjectCardProps) {
   const positive = profit >= 0
   const [showTicket, setShowTicket] = useState(false)
   const [showChecklist, setShowChecklist] = useState(false)
+  const [showCex, setShowCex] = useState(false)
 
   return (
     <>
@@ -111,6 +156,24 @@ export function ProjectCard({ project, onClick, compact }: ProjectCardProps) {
             >
               <Ticket className="h-3.5 w-3.5" />
             </button>
+            {project.status === 'Pronto para Venda' && (
+              <>
+                <button
+                  title={t('labels.print')}
+                  onClick={() => printLabel(project)}
+                  className="p-1 rounded hover:bg-surface hover:text-success transition-colors"
+                >
+                  <Tag className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  title={t('cex.search')}
+                  onClick={() => setShowCex(true)}
+                  className="p-1 rounded hover:bg-surface hover:text-accent transition-colors"
+                >
+                  <ShoppingBag className="h-3.5 w-3.5" />
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -120,6 +183,12 @@ export function ProjectCard({ project, onClick, compact }: ProjectCardProps) {
       )}
       {showChecklist && (
         <ChecklistModal project={project} onClose={() => setShowChecklist(false)} />
+      )}
+      {showCex && (
+        <CexPriceWidget
+          query={`${project.brand ?? ''} ${project.model ?? ''} ${project.equipment}`.trim()}
+          onClose={() => setShowCex(false)}
+        />
       )}
     </>
   )

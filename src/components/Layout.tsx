@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Wrench, Package, Users,
   BarChart3, Map, LogOut, Menu, X, AlertTriangle,
   ShoppingCart, Database, FileText, Settings, Bell,
-  Shield, ChevronDown, ChevronUp, UserCog, ShoppingBag,
+  Shield, ChevronDown, ChevronUp, UserCog, ShoppingBag, Tag,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
@@ -80,7 +80,7 @@ function AdminMenu({ onNavigate }: { onNavigate?: () => void }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [location] = useLocation()
-  const isAdminRoute = location === '/settings' || location.startsWith('/admin')
+  const isAdminRoute = location === '/settings' || location.startsWith('/admin') || location === '/labels'
 
   return (
     <div>
@@ -112,6 +112,20 @@ function AdminMenu({ onNavigate }: { onNavigate?: () => void }) {
             >
               <Settings className="h-3.5 w-3.5" />
               {t('admin.settings')}
+            </span>
+          </Link>
+          <Link href="/labels">
+            <span
+              onClick={() => { setOpen(false); onNavigate?.() }}
+              className={cn(
+                'flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium cursor-pointer transition-colors',
+                location === '/labels'
+                  ? 'text-accent bg-accent/10'
+                  : 'text-text-muted hover:text-text-primary hover:bg-surface'
+              )}
+            >
+              <Tag className="h-3.5 w-3.5" />
+              {t('admin.labels')}
             </span>
           </Link>
           <Link href="/admin/users">

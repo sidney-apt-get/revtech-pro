@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -11,9 +11,11 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ROICalculator } from './ROICalculator'
+import { BarcodeScanner } from './BarcodeScanner'
 import { useCreateProject, useUpdateProject } from '@/hooks/useProjects'
 import type { Project } from '@/lib/supabase'
 import { ALL_STATUSES } from '@/lib/utils'
+import { ScanLine } from 'lucide-react'
 
 const schema = z.object({
   equipment: z.string().min(1, 'Obrigatório'),
@@ -47,6 +49,7 @@ const PLATFORMS = ['eBay UK', 'Back Market', 'CeX', 'Gumtree', 'Facebook Marketp
 export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
   const create = useCreateProject()
   const update = useUpdateProject()
+  const [showScanner, setShowScanner] = useState(false)
 
   const { register, handleSubmit, watch, setValue, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
@@ -124,6 +127,7 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
   )
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -138,7 +142,20 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
             </div>
             <F label="Marca"><Input {...register('brand')} placeholder="Apple" /></F>
             <F label="Modelo"><Input {...register('model')} placeholder="A2159" /></F>
-            <F label="Número de série"><Input {...register('serial_number')} placeholder="C02X..." /></F>
+            <div className="space-y-1.5">
+              <Label>Número de série</Label>
+              <div className="flex gap-1.5">
+                <Input {...register('serial_number')} placeholder="C02X..." className="flex-1" />
+                <button
+                  type="button"
+                  onClick={() => setShowScanner(true)}
+                  title="Scanner"
+                  className="px-2 rounded-lg border border-border bg-surface text-text-muted hover:text-accent hover:border-accent/40 transition-colors"
+                >
+                  <ScanLine className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
             <div className="space-y-1.5">
               <Label>Estado</Label>
               <Select value={watch('status')} onValueChange={(v) => setValue('status', v as FormData['status'])}>
@@ -203,5 +220,14 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
         </form>
       </DialogContent>
     </Dialog>
+
+    {showScanner && (
+      <BarcodeScanner
+        title="Ler número de série"
+        onDetected={code => setValue('serial_number', code)}
+        onClose={() => setShowScanner(false)}
+      />
+    )}
+    </>
   )
 }

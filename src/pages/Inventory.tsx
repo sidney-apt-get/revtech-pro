@@ -13,7 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { InventoryItem } from '@/lib/supabase'
 import { fmtGBP, fmtDate } from '@/lib/utils'
-import { Plus, Pencil, Trash2, AlertTriangle, Wrench, Package, Beaker, Building } from 'lucide-react'
+import { Plus, Pencil, Trash2, AlertTriangle, Wrench, Package, Beaker, Building, ScanLine } from 'lucide-react'
+import { BarcodeScanner } from '@/components/BarcodeScanner'
 
 const categories = ['Peças', 'Consumíveis', 'Ferramentas', 'Patrimônio'] as const
 type Category = typeof categories[number]
@@ -89,11 +90,26 @@ export function Inventory() {
   const [activeTab, setActiveTab] = useState<Category>('Peças')
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<InventoryItem | null>(null)
+  const [scannerOpen, setScannerOpen] = useState(false)
 
   const { register, handleSubmit, watch, setValue, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
     defaultValues: { category: 'Peças', quantity: 0, min_stock: 5, unit_cost: 0 },
   })
+
+  function handleScanDetected(code: string) {
+    const match = inventory.find(i =>
+      i.item_name.toLowerCase().includes(code.toLowerCase()) ||
+      (i.supplier ?? '').toLowerCase().includes(code.toLowerCase())
+    )
+    if (match) {
+      setActiveTab(match.category as Category)
+      openEdit(match)
+    } else {
+      openNew(activeTab)
+      setValue('item_name', code)
+    }
+  }
 
   function openNew(cat: Category) {
     setEditing(null)
@@ -150,9 +166,18 @@ export function Inventory() {
           <h1 className="text-2xl font-bold text-text-primary">{t('inventory.title')}</h1>
           <p className="text-text-muted text-sm mt-0.5">{t('inventory.itemsRegistered', { count: inventory.length })}</p>
         </div>
-        <Button onClick={() => openNew(activeTab)} size="sm">
-          <Plus className="h-4 w-4" /> {t('inventory.new')}
-        </Button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setScannerOpen(true)}
+            title={t('inventory.scan')}
+            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm text-text-muted hover:bg-surface hover:text-accent transition-colors"
+          >
+            <ScanLine className="h-4 w-4" />
+          </button>
+          <Button onClick={() => openNew(activeTab)} size="sm">
+            <Plus className="h-4 w-4" /> {t('inventory.new')}
+          </Button>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as Category)}>
@@ -281,6 +306,14 @@ export function Inventory() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {scannerOpen && (
+        <BarcodeScanner
+          title={t('inventory.scan')}
+          onDetected={handleScanDetected}
+          onClose={() => setScannerOpen(false)}
+        />
+      )}
     </div>
   )
 }

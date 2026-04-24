@@ -25,5 +25,28 @@
   "lang": "pt-BR",
   "dir": "ltr",
   "scope": "/",
-  "prefer_related_applications": false
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "Novo Projecto",
+      "short_name": "Novo",
+      "description": "Criar novo projecto de restauro",
+      "url": "/projects",
+      "icons": [{ "src": "/revtech-logo.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Scanner",
+      "short_name": "Scanner",
+      "description": "Ler código de barras",
+      "url": "/inventory",
+      "icons": [{ "src": "/revtech-logo.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Etiquetas",
+      "short_name": "Etiquetas",
+      "description": "Imprimir etiquetas de preço",
+      "url": "/labels",
+      "icons": [{ "src": "/revtech-logo.png", "sizes": "96x96" }]
+    }
+  ]
 }

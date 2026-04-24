@@ -17,6 +17,7 @@ import { Reports } from '@/pages/Reports'
 import { Settings } from '@/pages/Settings'
 import { UserManagement } from '@/pages/UserManagement'
 import { EbaySearch } from '@/pages/EbaySearch'
+import { Labels } from '@/pages/Labels'
 import AuthCallback from '@/pages/AuthCallback'
 import { SettingsProvider } from '@/contexts/SettingsContext'
 import { RoleProvider } from '@/contexts/RoleContext'
@@ -100,6 +101,9 @@ export default function App() {
           </Route>
           <Route path="/ebay">
             <Protected><EbaySearch /></Protected>
+          </Route>
+          <Route path="/labels">
+            <Protected><Labels /></Protected>
           </Route>
           {/* Admin-only routes — require isAdmin + PIN */}
           <Route path="/settings">

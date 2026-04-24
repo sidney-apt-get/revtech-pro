@@ -14,7 +14,8 @@
   "admin": {
     "menu": "Admin",
     "settings": "Settings",
-    "userManagement": "User Management"
+    "userManagement": "User Management",
+    "labels": "Price Labels"
   },
   "notifications": {
     "title": "Notifications",
@@ -309,7 +310,8 @@
     },
     "stockAlert_one": "{{count}} item below minimum stock",
     "stockAlert_other": "{{count}} items below minimum stock",
-    "supplier": "Supplier"
+    "supplier": "Supplier",
+    "scan": "Scan Barcode"
   },
   "contacts": {
     "title": "Contacts",
@@ -559,5 +561,29 @@
     "select": "Language",
     "en": "English",
     "pt": "Português"
+  },
+  "labels": {
+    "title": "Price Labels",
+    "subtitle": "Print price labels for items ready for sale",
+    "printAll": "Print All",
+    "printSelected": "Print Selected ({{count}})",
+    "noItems": "No items ready for sale",
+    "noItemsDesc": "Mark projects as 'Ready for Sale' to generate labels here",
+    "label": "Label",
+    "print": "Print Label",
+    "printBatch": "Batch Print",
+    "saleDate": "Prepared",
+    "platform": "Platform"
+  },
+  "cex": {
+    "search": "Search CeX Price",
+    "searching": "Searching...",
+    "title": "CeX Price",
+    "cashPrice": "Cash",
+    "exchangePrice": "Exchange",
+    "boxPrice": "Box Price",
+    "noResults": "Not found on CeX",
+    "viewOnCex": "View on CeX",
+    "error": "Error fetching CeX price"
   }
 }
