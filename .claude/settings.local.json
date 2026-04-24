@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm add *)",
+      "Bash(mkdir -p C:/RevTech/revtech-new/src/locales)",
+      "Bash(mkdir -p C:/RevTech/revtech-new/supabase/functions/ebay-search)",
+      "Bash(mkdir -p C:/RevTech/revtech-new/supabase/functions/weekly-backup)",
+      "Bash(pnpm run *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(vercel --prod --yes)"
+    ]
+  }
+}

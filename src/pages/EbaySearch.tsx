@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Search, ExternalLink, ShoppingBag, Calculator, AlertCircle, Eye, Tag } from 'lucide-react'
+import { Search, ExternalLink, ShoppingBag, Calculator, AlertCircle, Eye, Tag, Star } from 'lucide-react'
 import { searchEbayListings, type EbayItem } from '@/lib/ebay'
+import { searchBackMarketListings, type BackMarketItem } from '@/lib/backmarket'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
+
+// ─── eBay constants ────────────────────────────────────────────────────────────
 
 const CONDITION_IDS = [
   { value: '', labelKey: 'ebay.allConditions' },
@@ -15,7 +18,7 @@ const CONDITION_IDS = [
   { value: '7000', labelKey: 'ebay.conditionForParts' },
 ]
 
-const CATEGORIES = [
+const EBAY_CATEGORIES = [
   { value: '', labelKey: 'ebay.allCategories' },
   { value: '177', labelKey: 'ebay.laptops' },
   { value: '9355', labelKey: 'ebay.phones' },
@@ -25,15 +28,45 @@ const CATEGORIES = [
   { value: '1249', labelKey: 'ebay.consoles' },
 ]
 
-function ROIModal({ item, onClose }: { item: EbayItem; onClose: () => void }) {
+// ─── Back Market constants ──────────────────────────────────────────────────────
+
+const BM_GRADES = [
+  { value: '', labelKey: 'backmarket.allGrades' },
+  { value: '1', labelKey: 'backmarket.gradePremium' },
+  { value: '2', labelKey: 'backmarket.gradeExcellent' },
+  { value: '3', labelKey: 'backmarket.gradeGood' },
+  { value: '4', labelKey: 'backmarket.gradeFair' },
+]
+
+const BM_CATEGORIES = [
+  { value: '', labelKey: 'backmarket.allCategories' },
+  { value: '1', labelKey: 'backmarket.laptops' },
+  { value: '2', labelKey: 'backmarket.phones' },
+  { value: '3', labelKey: 'backmarket.tablets' },
+  { value: '4', labelKey: 'backmarket.audio' },
+  { value: '5', labelKey: 'backmarket.cameras' },
+  { value: '6', labelKey: 'backmarket.consoles' },
+]
+
+// ─── ROI Modal (shared) ────────────────────────────────────────────────────────
+
+function ROIModal({
+  item,
+  onClose,
+  ns = 'ebay',
+}: {
+  item: EbayItem | BackMarketItem
+  onClose: () => void
+  ns?: 'ebay' | 'backmarket'
+}) {
   const { t } = useTranslation()
+  const price = 'price' in item ? item.price : item.price
   const [parts, setParts] = useState(0)
   const [shipIn, setShipIn] = useState(item.shippingCost ?? 0)
   const [shipOut, setShipOut] = useState(8)
   const [salePrice, setSalePrice] = useState(0)
 
-  const purchase = item.price
-  const cost = purchase + parts + shipIn + shipOut
+  const cost = price + parts + shipIn + shipOut
   const profit = salePrice > 0 ? salePrice - cost : null
   const roi = profit !== null && cost > 0 ? (profit / cost) * 100 : null
 
@@ -43,7 +76,7 @@ function ROIModal({ item, onClose }: { item: EbayItem; onClose: () => void }) {
         <div className="flex items-center justify-between">
           <h3 className="text-base font-bold text-text-primary flex items-center gap-2">
             <Calculator className="h-4 w-4 text-accent" />
-            {t('ebay.roiCalculator')}
+            {t(`${ns}.roiCalculator`)}
           </h3>
           <button onClick={onClose} className="text-text-muted hover:text-text-primary text-lg leading-none">×</button>
         </div>
@@ -52,11 +85,11 @@ function ROIModal({ item, onClose }: { item: EbayItem; onClose: () => void }) {
 
         <div className="space-y-3">
           {[
-            { label: t('ebay.purchasePrice'), value: purchase, readOnly: true },
-            { label: t('ebay.partsCost'), value: parts, onChange: setParts },
-            { label: t('ebay.shippingIn'), value: shipIn, onChange: setShipIn },
-            { label: t('ebay.shippingOut'), value: shipOut, onChange: setShipOut },
-            { label: t('ebay.salePrice'), value: salePrice, onChange: setSalePrice },
+            { label: t(`${ns}.purchasePrice`), value: price, readOnly: true },
+            { label: t(`${ns}.partsCost`), value: parts, onChange: setParts },
+            { label: t(`${ns}.shippingIn`), value: shipIn, onChange: setShipIn },
+            { label: t(`${ns}.shippingOut`), value: shipOut, onChange: setShipOut },
+            { label: t(`${ns}.salePrice`), value: salePrice, onChange: setSalePrice },
           ].map(({ label, value, readOnly, onChange }) => (
             <div key={label} className="flex items-center justify-between gap-3">
               <span className="text-xs text-text-muted w-40 shrink-0">{label}</span>
@@ -89,7 +122,7 @@ function ROIModal({ item, onClose }: { item: EbayItem; onClose: () => void }) {
               'flex items-center justify-between rounded-lg px-3 py-2 text-sm font-bold',
               profit >= 0 ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'
             )}>
-              <span>{profit >= 0 ? t('ebay.profit') : t('ebay.loss')}: £{Math.abs(profit).toFixed(2)}</span>
+              <span>{profit >= 0 ? t(`${ns}.profit`) : t(`${ns}.loss`)}: £{Math.abs(profit).toFixed(2)}</span>
               {roi !== null && <span>ROI {roi.toFixed(1)}%</span>}
             </div>
           )}
@@ -98,6 +131,8 @@ function ROIModal({ item, onClose }: { item: EbayItem; onClose: () => void }) {
     </div>
   )
 }
+
+// ─── eBay Card ────────────────────────────────────────────────────────────────
 
 function EbayCard({ item, onImport }: { item: EbayItem; onImport: (item: EbayItem) => void }) {
   const { t } = useTranslation()
@@ -112,7 +147,7 @@ function EbayCard({ item, onImport }: { item: EbayItem; onImport: (item: EbayIte
 
   return (
     <>
-      {showROI && <ROIModal item={item} onClose={() => setShowROI(false)} />}
+      {showROI && <ROIModal item={item} ns="ebay" onClose={() => setShowROI(false)} />}
       <Card className="overflow-hidden group hover:border-accent/30 transition-colors">
         <div className="aspect-video bg-surface overflow-hidden">
           <img
@@ -198,7 +233,118 @@ function EbayCard({ item, onImport }: { item: EbayItem; onImport: (item: EbayIte
   )
 }
 
-export function EbaySearch() {
+// ─── Back Market Card ──────────────────────────────────────────────────────────
+
+const GRADE_COLOURS: Record<string, string> = {
+  Premium: 'bg-purple-500/20 text-purple-400',
+  Excellent: 'bg-success/20 text-success',
+  Good: 'bg-blue-500/20 text-blue-400',
+  Fair: 'bg-orange-500/20 text-orange-400',
+}
+
+function BackMarketCard({
+  item,
+  onImport,
+}: {
+  item: BackMarketItem
+  onImport: (item: BackMarketItem) => void
+}) {
+  const { t } = useTranslation()
+  const [showROI, setShowROI] = useState(false)
+  const [imported, setImported] = useState(false)
+
+  async function handleImport() {
+    await onImport(item)
+    setImported(true)
+    setTimeout(() => setImported(false), 2500)
+  }
+
+  const gradeColour = GRADE_COLOURS[item.grade] ?? 'bg-surface text-text-muted'
+
+  return (
+    <>
+      {showROI && <ROIModal item={item} ns="backmarket" onClose={() => setShowROI(false)} />}
+      <Card className="overflow-hidden group hover:border-green-500/30 transition-colors">
+        <div className="aspect-video bg-surface overflow-hidden">
+          <img
+            src={item.imageUrl}
+            alt={item.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/300x200/1a1d27/22c55e?text=No+Image' }}
+          />
+        </div>
+        <CardContent className="p-4 space-y-3">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-text-primary line-clamp-2 leading-snug">{item.title}</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', gradeColour)}>
+                {item.grade}
+              </span>
+              <span className="text-xs text-text-muted">{t('backmarket.refurbished')}</span>
+            </div>
+          </div>
+
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="text-xl font-bold text-text-primary">£{item.price.toFixed(2)}</p>
+              <p className="text-xs text-text-muted">
+                {item.shippingCost === 0 ? t('backmarket.freeShipping') : `+ £${item.shippingCost?.toFixed(2)} ${t('backmarket.shipping')}`}
+              </p>
+            </div>
+            {item.reviewCount > 0 && (
+              <div className="flex items-center gap-1 text-xs text-text-muted">
+                <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                <span>{item.reviewRating.toFixed(1)}</span>
+                <span>({item.reviewCount})</span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1 text-xs text-text-muted">
+            <Tag className="h-3 w-3" />
+            <span className="truncate">{item.seller}</span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-1.5 pt-1">
+            <a
+              href={item.itemWebUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-1 rounded-lg border border-border px-2 py-1.5 text-xs text-text-muted hover:bg-surface hover:text-text-primary transition-colors"
+            >
+              <ExternalLink className="h-3 w-3" />
+              BM
+            </a>
+            <button
+              onClick={() => setShowROI(true)}
+              className="flex items-center justify-center gap-1 rounded-lg border border-border px-2 py-1.5 text-xs text-text-muted hover:bg-surface hover:text-green-400 transition-colors"
+            >
+              <Calculator className="h-3 w-3" />
+              ROI
+            </button>
+            <button
+              onClick={handleImport}
+              disabled={imported}
+              className={cn(
+                'flex items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors',
+                imported
+                  ? 'bg-success/20 text-success border border-success/30'
+                  : 'bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30'
+              )}
+            >
+              <ShoppingBag className="h-3 w-3" />
+              {imported ? '✓' : t('common.import')}
+            </button>
+          </div>
+        </CardContent>
+      </Card>
+    </>
+  )
+}
+
+// ─── eBay Tab ──────────────────────────────────────────────────────────────────
+
+function EbayTab({ onImportMsg }: { onImportMsg: (msg: string) => void }) {
   const { t } = useTranslation()
   const { user } = useAuth()
   const [query, setQuery] = useState('')
@@ -210,7 +356,6 @@ export function EbaySearch() {
   const [isMock, setIsMock] = useState(false)
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
-  const [importMsg, setImportMsg] = useState('')
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault()
@@ -238,19 +383,11 @@ export function EbaySearch() {
       purchase_price: item.price,
       notes: `eBay listing: ${item.itemWebUrl}\nSeller: ${item.seller} (${item.sellerFeedbackScore})\nCondition: ${item.condition}`,
     })
-    setImportMsg(t('ebay.importSuccess'))
-    setTimeout(() => setImportMsg(''), 3000)
+    onImportMsg(t('ebay.importSuccess'))
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-text-primary">{t('ebay.title')}</h1>
-          <p className="text-text-muted text-sm mt-0.5">{t('ebay.subtitle')}</p>
-        </div>
-      </div>
-
+    <div className="space-y-4">
       {isMock && (
         <div className="flex items-start gap-3 rounded-xl bg-orange-500/10 border border-orange-500/20 px-4 py-3">
           <AlertCircle className="h-4 w-4 text-orange-400 shrink-0 mt-0.5" />
@@ -261,13 +398,6 @@ export function EbaySearch() {
         </div>
       )}
 
-      {importMsg && (
-        <div className="rounded-xl bg-success/10 border border-success/20 px-4 py-3 text-sm text-success">
-          ✓ {importMsg}
-        </div>
-      )}
-
-      {/* Search form */}
       <form onSubmit={handleSearch} className="space-y-3">
         <div className="flex gap-2">
           <div className="relative flex-1">
@@ -293,7 +423,6 @@ export function EbaySearch() {
           </button>
         </div>
 
-        {/* Filters */}
         <div className="grid grid-cols-3 gap-3">
           <div>
             <label className="text-xs text-text-muted font-medium mb-1 block">{t('ebay.maxPrice')}</label>
@@ -325,7 +454,7 @@ export function EbaySearch() {
               onChange={e => setCategory(e.target.value)}
               className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
             >
-              {CATEGORIES.map(c => (
+              {EBAY_CATEGORIES.map(c => (
                 <option key={c.value} value={c.value}>{t(c.labelKey)}</option>
               ))}
             </select>
@@ -333,18 +462,14 @@ export function EbaySearch() {
         </div>
       </form>
 
-      {/* Results */}
       {searched && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-text-muted">
-              {t('ebay.results', { count: total || results.length })}
-              {isMock && (
-                <span className="ml-2 text-xs bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full">{t('ebay.demoMode')}</span>
-              )}
-            </p>
-          </div>
-
+          <p className="text-sm text-text-muted">
+            {t('ebay.results', { count: total || results.length })}
+            {isMock && (
+              <span className="ml-2 text-xs bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full">{t('ebay.demoMode')}</span>
+            )}
+          </p>
           {results.length === 0 ? (
             <p className="text-text-muted text-sm py-8 text-center">{t('ebay.noResults')}</p>
           ) : (
@@ -355,6 +480,215 @@ export function EbaySearch() {
             </div>
           )}
         </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Back Market Tab ───────────────────────────────────────────────────────────
+
+function BackMarketTab({ onImportMsg }: { onImportMsg: (msg: string) => void }) {
+  const { t } = useTranslation()
+  const { user } = useAuth()
+  const [query, setQuery] = useState('')
+  const [maxPrice, setMaxPrice] = useState('')
+  const [grade, setGrade] = useState('')
+  const [category, setCategory] = useState('')
+  const [results, setResults] = useState<BackMarketItem[]>([])
+  const [total, setTotal] = useState(0)
+  const [isMock, setIsMock] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [searched, setSearched] = useState(false)
+
+  async function handleSearch(e: React.FormEvent) {
+    e.preventDefault()
+    if (!query.trim()) return
+    setLoading(true)
+    setSearched(false)
+    try {
+      const res = await searchBackMarketListings(query.trim(), maxPrice ? parseFloat(maxPrice) : undefined, grade || undefined, category || undefined)
+      setResults(res.items)
+      setTotal(res.total)
+      setIsMock(res.mock ?? false)
+      setSearched(true)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleImport(item: BackMarketItem) {
+    if (!user) return
+    await supabase.from('projects').insert({
+      user_id: user.id,
+      equipment: item.title.substring(0, 120),
+      defect_description: `Purchased from Back Market: ${item.grade}`,
+      status: 'intake',
+      purchase_price: item.price,
+      notes: `Back Market listing: ${item.itemWebUrl}\nSeller: ${item.seller}\nGrade: ${item.grade}\nRating: ${item.reviewRating}/5 (${item.reviewCount} reviews)`,
+    })
+    onImportMsg(t('backmarket.importSuccess'))
+  }
+
+  return (
+    <div className="space-y-4">
+      {isMock && (
+        <div className="flex items-start gap-3 rounded-xl bg-green-500/10 border border-green-500/20 px-4 py-3">
+          <AlertCircle className="h-4 w-4 text-green-400 shrink-0 mt-0.5" />
+          <div className="space-y-0.5">
+            <p className="text-sm font-semibold text-green-400">{t('backmarket.keysRequired')}</p>
+            <p className="text-xs text-green-300/80">{t('backmarket.keysDesc')}</p>
+          </div>
+        </div>
+      )}
+
+      <form onSubmit={handleSearch} className="space-y-3">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+            <input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder={t('backmarket.searchPlaceholder')}
+              className="w-full rounded-xl bg-surface border border-border pl-10 pr-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-green-500/50"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={loading || !query.trim()}
+            className="rounded-xl bg-green-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-green-600 disabled:opacity-50 transition-colors flex items-center gap-2"
+          >
+            {loading ? (
+              <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+            ) : (
+              <Search className="h-4 w-4" />
+            )}
+            {loading ? t('backmarket.searching') : t('backmarket.search')}
+          </button>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className="text-xs text-text-muted font-medium mb-1 block">{t('backmarket.maxPrice')}</label>
+            <input
+              type="number"
+              min="0"
+              value={maxPrice}
+              onChange={e => setMaxPrice(e.target.value)}
+              placeholder="e.g. 500"
+              className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-green-500/50"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-text-muted font-medium mb-1 block">{t('backmarket.grade')}</label>
+            <select
+              value={grade}
+              onChange={e => setGrade(e.target.value)}
+              className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-green-500/50"
+            >
+              {BM_GRADES.map(g => (
+                <option key={g.value} value={g.value}>{t(g.labelKey)}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-text-muted font-medium mb-1 block">{t('backmarket.category')}</label>
+            <select
+              value={category}
+              onChange={e => setCategory(e.target.value)}
+              className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-green-500/50"
+            >
+              {BM_CATEGORIES.map(c => (
+                <option key={c.value} value={c.value}>{t(c.labelKey)}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </form>
+
+      {searched && (
+        <div className="space-y-4">
+          <p className="text-sm text-text-muted">
+            {t('backmarket.results', { count: total || results.length })}
+            {isMock && (
+              <span className="ml-2 text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">{t('backmarket.demoMode')}</span>
+            )}
+          </p>
+          {results.length === 0 ? (
+            <p className="text-text-muted text-sm py-8 text-center">{t('backmarket.noResults')}</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {results.map(item => (
+                <BackMarketCard key={item.id} item={item} onImport={handleImport} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+type TabId = 'ebay' | 'backmarket'
+
+export function EbaySearch() {
+  const { t } = useTranslation()
+  const [activeTab, setActiveTab] = useState<TabId>('ebay')
+  const [importMsg, setImportMsg] = useState('')
+
+  function handleImportMsg(msg: string) {
+    setImportMsg(msg)
+    setTimeout(() => setImportMsg(''), 3000)
+  }
+
+  const tabs: { id: TabId; label: string; emoji: string }[] = [
+    { id: 'ebay', label: 'eBay UK', emoji: '🛒' },
+    { id: 'backmarket', label: 'Back Market UK', emoji: '♻️' },
+  ]
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div>
+        <h1 className="text-2xl font-bold text-text-primary">
+          {activeTab === 'ebay' ? t('ebay.title') : t('backmarket.title')}
+        </h1>
+        <p className="text-text-muted text-sm mt-0.5">
+          {activeTab === 'ebay' ? t('ebay.subtitle') : t('backmarket.subtitle')}
+        </p>
+      </div>
+
+      {/* Tab switcher */}
+      <div className="flex gap-1 rounded-xl bg-surface border border-border p-1 w-fit">
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={cn(
+              'flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors',
+              activeTab === tab.id
+                ? tab.id === 'ebay'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'bg-green-500 text-white shadow-sm'
+                : 'text-text-muted hover:text-text-primary'
+            )}
+          >
+            <span>{tab.emoji}</span>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {importMsg && (
+        <div className="rounded-xl bg-success/10 border border-success/20 px-4 py-3 text-sm text-success">
+          ✓ {importMsg}
+        </div>
+      )}
+
+      {activeTab === 'ebay' ? (
+        <EbayTab onImportMsg={handleImportMsg} />
+      ) : (
+        <BackMarketTab onImportMsg={handleImportMsg} />
       )}
     </div>
   )

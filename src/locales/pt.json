@@ -9,7 +9,7 @@
     "reports": "Relatórios",
     "analytics": "Analytics",
     "map": "Mapa",
-    "ebay": "eBay UK"
+    "ebay": "eBay / Back Market"
   },
   "admin": {
     "menu": "Admin",
@@ -54,6 +54,7 @@
     "noData": "Sem dados encontrados",
     "back": "Voltar",
     "view": "Ver",
+    "viewDetails": "Ver Detalhes",
     "download": "Descarregar",
     "upload": "Carregar",
     "open": "Abrir",
@@ -62,7 +63,10 @@
     "refresh": "Actualizar",
     "export": "Exportar",
     "import": "Importar",
-    "of": "de"
+    "print": "Imprimir",
+    "of": "de",
+    "createdAt": "Criado",
+    "updatedAt": "Actualizado"
   },
   "settings": {
     "title": "Configurações",
@@ -79,6 +83,7 @@
       "title": "Informação da Empresa",
       "logo": "Logo",
       "uploadHint": "Clica para fazer upload",
+      "uploadLogo": "Carregar Logo",
       "uploadFormats": "PNG, JPG, SVG, WebP",
       "removeLogo": "Remover logo",
       "name": "Nome da empresa",
@@ -87,6 +92,7 @@
     },
     "appearance": {
       "title": "Tema e Cores",
+      "theme": "Tema",
       "presets": "Temas prontos",
       "primaryColor": "Cor primária",
       "accentColor": "Cor de destaque",
@@ -107,6 +113,7 @@
       "dangerZone": "Zona de Perigo",
       "dangerDesc": "Estas acções são irreversíveis. Procede com cuidado.",
       "deleteAll": "Apagar todos os dados",
+      "deleteAllData": "Apagar Todos os Dados",
       "deleteConfirm": "Tens a certeza? Isto apaga TODOS os teus dados permanentemente."
     },
     "security": {
@@ -160,7 +167,15 @@
     "projectsStatus": "Projectos por Estado",
     "quickStats": "Estatísticas Rápidas",
     "welcome": "Bom dia",
-    "weekSummary": "Resumo semanal"
+    "weekSummary": "Resumo semanal",
+    "investedMonth": "Investido (mês)",
+    "soldMonth": "Vendido (mês)",
+    "netProfit": "Lucro Líquido",
+    "partsArriving": "Peças a Chegar",
+    "checklists": "Checklists",
+    "calibrations": "Calibrações",
+    "readyToSell": "Prontos para Vender",
+    "noProjects": "Ainda sem projectos"
   },
   "projects": {
     "title": "Projectos",
@@ -173,8 +188,12 @@
       "waiting_parts": "Aguardar Peças",
       "repair": "Em Reparação",
       "testing": "Em Teste",
+      "ready_to_sell": "Pronto para Vender",
+      "sold": "Vendido",
+      "cancelled": "Cancelado",
       "complete": "Concluído"
     },
+    "allStatuses": "Todos os Estados",
     "fields": {
       "equipment": "Equipamento",
       "defect": "Defeito",
@@ -183,9 +202,17 @@
       "created": "Criado",
       "updated": "Actualizado",
       "purchasePrice": "Preço de Compra",
+      "partsCost": "Custo de Peças",
       "partsTotal": "Total de Peças",
+      "shipping": "Envio",
       "salePrice": "Preço de Venda",
-      "notes": "Notas"
+      "salePlatform": "Plataforma de Venda",
+      "notes": "Notas",
+      "ticket": "Ticket",
+      "checklist": "Checklist",
+      "roi": "ROI",
+      "profit": "Lucro",
+      "margin": "Margem"
     }
   },
   "inventory": {
@@ -193,15 +220,25 @@
     "new": "Novo Item",
     "search": "Pesquisar inventário...",
     "lowStock": "Stock Baixo",
+    "lowStockAlert": "Alerta de stock baixo",
     "noItems": "Nenhum item encontrado",
+    "categories": {
+      "parts": "Peças",
+      "consumables": "Consumíveis",
+      "tools": "Ferramentas",
+      "assets": "Activos"
+    },
     "fields": {
       "name": "Nome",
+      "itemName": "Nome do Item",
       "category": "Categoria",
       "quantity": "Qtd",
       "minStock": "Stock Mín.",
       "price": "Preço Unit.",
+      "unitCost": "Custo Unitário",
       "supplier": "Fornecedor",
-      "location": "Localização"
+      "location": "Localização",
+      "calibrationDate": "Data de Calibração"
     }
   },
   "contacts": {
@@ -231,10 +268,13 @@
     },
     "fields": {
       "part": "Peça",
+      "partName": "Nome da Peça",
       "supplier": "Fornecedor",
       "quantity": "Qtd",
       "price": "Preço",
       "status": "Estado",
+      "orderNumber": "Número de Encomenda",
+      "tracking": "Rastreamento",
       "expectedDate": "Data Prevista"
     }
   },
@@ -300,6 +340,50 @@
     "salePrice": "Preço de venda esperado",
     "profit": "Lucro",
     "loss": "Prejuízo"
+  },
+  "backmarket": {
+    "title": "Back Market UK",
+    "subtitle": "Pesquisa dispositivos recondicionados a preços competitivos",
+    "searchPlaceholder": "Pesquisar dispositivos (ex: iPhone 13 Pro)...",
+    "search": "Pesquisar",
+    "searching": "A pesquisar...",
+    "maxPrice": "Preço Máximo (£)",
+    "grade": "Grau",
+    "allGrades": "Todos os graus",
+    "gradePremium": "Premium (como novo)",
+    "gradeExcellent": "Excelente",
+    "gradeGood": "Bom",
+    "gradeFair": "Razoável",
+    "category": "Categoria",
+    "allCategories": "Todas as categorias",
+    "laptops": "Portáteis",
+    "phones": "Smartphones",
+    "tablets": "Tablets",
+    "audio": "Áudio",
+    "cameras": "Câmaras",
+    "consoles": "Jogos",
+    "seller": "Vendedor",
+    "viewOnBackMarket": "Ver no Back Market",
+    "importProject": "Importar como Projecto",
+    "calculateROI": "Calcular ROI",
+    "noResults": "Sem resultados. Tenta outros termos de pesquisa.",
+    "keysRequired": "Chave API Back Market Necessária",
+    "keysDesc": "Adiciona VITE_BACKMARKET_API_KEY ao .env.local para activar a pesquisa real. A mostrar dados de demonstração.",
+    "importSuccess": "Projecto criado a partir do anúncio Back Market!",
+    "shipping": "Envio",
+    "freeShipping": "Envio grátis",
+    "results": "{{count}} resultados",
+    "demoMode": "Modo Demo",
+    "roiCalculator": "Calculadora ROI",
+    "purchasePrice": "Preço de compra (Back Market)",
+    "partsCost": "Custo de peças (estimativa)",
+    "shippingIn": "Frete de entrada",
+    "shippingOut": "Frete de saída",
+    "salePrice": "Preço de venda esperado",
+    "profit": "Lucro",
+    "loss": "Prejuízo",
+    "reviews": "avaliações",
+    "refurbished": "Recondicionado"
   },
   "login": {
     "welcome": "Bem-vindo ao",

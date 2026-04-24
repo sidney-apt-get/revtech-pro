@@ -9,7 +9,7 @@
     "reports": "Reports",
     "analytics": "Analytics",
     "map": "Map",
-    "ebay": "eBay UK"
+    "ebay": "eBay / Back Market"
   },
   "admin": {
     "menu": "Admin",
@@ -54,6 +54,7 @@
     "noData": "No data found",
     "back": "Back",
     "view": "View",
+    "viewDetails": "View Details",
     "download": "Download",
     "upload": "Upload",
     "open": "Open",
@@ -62,7 +63,10 @@
     "refresh": "Refresh",
     "export": "Export",
     "import": "Import",
-    "of": "of"
+    "print": "Print",
+    "of": "of",
+    "createdAt": "Created",
+    "updatedAt": "Updated"
   },
   "settings": {
     "title": "Settings",
@@ -79,6 +83,7 @@
       "title": "Company Information",
       "logo": "Logo",
       "uploadHint": "Click to upload",
+      "uploadLogo": "Upload Logo",
       "uploadFormats": "PNG, JPG, SVG, WebP",
       "removeLogo": "Remove logo",
       "name": "Company name",
@@ -87,6 +92,7 @@
     },
     "appearance": {
       "title": "Theme and Colours",
+      "theme": "Theme",
       "presets": "Ready themes",
       "primaryColor": "Primary colour",
       "accentColor": "Highlight colour",
@@ -107,6 +113,7 @@
       "dangerZone": "Danger Zone",
       "dangerDesc": "These actions are irreversible. Proceed with caution.",
       "deleteAll": "Delete all data",
+      "deleteAllData": "Delete All Data",
       "deleteConfirm": "Are you sure? This permanently deletes ALL your data."
     },
     "security": {
@@ -160,7 +167,15 @@
     "projectsStatus": "Projects by Status",
     "quickStats": "Quick Stats",
     "welcome": "Good morning",
-    "weekSummary": "Weekly summary"
+    "weekSummary": "Weekly summary",
+    "investedMonth": "Invested (month)",
+    "soldMonth": "Sold (month)",
+    "netProfit": "Net Profit",
+    "partsArriving": "Parts Arriving",
+    "checklists": "Checklists",
+    "calibrations": "Calibrations",
+    "readyToSell": "Ready to Sell",
+    "noProjects": "No projects yet"
   },
   "projects": {
     "title": "Projects",
@@ -173,8 +188,12 @@
       "waiting_parts": "Waiting Parts",
       "repair": "In Repair",
       "testing": "Testing",
+      "ready_to_sell": "Ready to Sell",
+      "sold": "Sold",
+      "cancelled": "Cancelled",
       "complete": "Complete"
     },
+    "allStatuses": "All Statuses",
     "fields": {
       "equipment": "Equipment",
       "defect": "Defect",
@@ -183,9 +202,17 @@
       "created": "Created",
       "updated": "Updated",
       "purchasePrice": "Purchase Price",
+      "partsCost": "Parts Cost",
       "partsTotal": "Parts Total",
+      "shipping": "Shipping",
       "salePrice": "Sale Price",
-      "notes": "Notes"
+      "salePlatform": "Sale Platform",
+      "notes": "Notes",
+      "ticket": "Ticket",
+      "checklist": "Checklist",
+      "roi": "ROI",
+      "profit": "Profit",
+      "margin": "Margin"
     }
   },
   "inventory": {
@@ -193,15 +220,25 @@
     "new": "New Item",
     "search": "Search inventory...",
     "lowStock": "Low Stock",
+    "lowStockAlert": "Low stock alert",
     "noItems": "No items found",
+    "categories": {
+      "parts": "Parts",
+      "consumables": "Consumables",
+      "tools": "Tools",
+      "assets": "Assets"
+    },
     "fields": {
       "name": "Name",
+      "itemName": "Item Name",
       "category": "Category",
       "quantity": "Qty",
       "minStock": "Min Stock",
       "price": "Unit Price",
+      "unitCost": "Unit Cost",
       "supplier": "Supplier",
-      "location": "Location"
+      "location": "Location",
+      "calibrationDate": "Calibration Date"
     }
   },
   "contacts": {
@@ -231,10 +268,13 @@
     },
     "fields": {
       "part": "Part",
+      "partName": "Part Name",
       "supplier": "Supplier",
       "quantity": "Qty",
       "price": "Price",
       "status": "Status",
+      "orderNumber": "Order Number",
+      "tracking": "Tracking",
       "expectedDate": "Expected Date"
     }
   },
@@ -300,6 +340,50 @@
     "salePrice": "Expected sale price",
     "profit": "Profit",
     "loss": "Loss"
+  },
+  "backmarket": {
+    "title": "Back Market UK",
+    "subtitle": "Search refurbished devices at competitive prices",
+    "searchPlaceholder": "Search devices (e.g. iPhone 13 Pro)...",
+    "search": "Search",
+    "searching": "Searching...",
+    "maxPrice": "Max Price (£)",
+    "grade": "Grade",
+    "allGrades": "All grades",
+    "gradePremium": "Premium (like new)",
+    "gradeExcellent": "Excellent",
+    "gradeGood": "Good",
+    "gradeFair": "Fair",
+    "category": "Category",
+    "allCategories": "All categories",
+    "laptops": "Laptops",
+    "phones": "Smartphones",
+    "tablets": "Tablets",
+    "audio": "Audio",
+    "cameras": "Cameras",
+    "consoles": "Gaming",
+    "seller": "Seller",
+    "viewOnBackMarket": "View on Back Market",
+    "importProject": "Import as Project",
+    "calculateROI": "Calculate ROI",
+    "noResults": "No results found. Try different search terms.",
+    "keysRequired": "Back Market API Key Required",
+    "keysDesc": "Add VITE_BACKMARKET_API_KEY to .env.local to enable live search. Showing demo data.",
+    "importSuccess": "Project created from Back Market listing!",
+    "shipping": "Shipping",
+    "freeShipping": "Free shipping",
+    "results": "{{count}} results",
+    "demoMode": "Demo Mode",
+    "roiCalculator": "ROI Calculator",
+    "purchasePrice": "Purchase price (Back Market)",
+    "partsCost": "Parts cost (estimate)",
+    "shippingIn": "Shipping in",
+    "shippingOut": "Shipping out",
+    "salePrice": "Expected sale price",
+    "profit": "Profit",
+    "loss": "Loss",
+    "reviews": "reviews",
+    "refurbished": "Refurbished"
   },
   "login": {
     "welcome": "Welcome to",
