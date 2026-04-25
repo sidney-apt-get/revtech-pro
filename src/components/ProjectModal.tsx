@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ROICalculator } from './ROICalculator'
 import { BarcodeScanner } from './BarcodeScanner'
+import { WarrantyModal } from './WarrantyModal'
 import { useCreateProject, useUpdateProject } from '@/hooks/useProjects'
 import type { Project } from '@/lib/supabase'
 import { ALL_STATUSES } from '@/lib/utils'
@@ -50,6 +51,7 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
   const create = useCreateProject()
   const update = useUpdateProject()
   const [showScanner, setShowScanner] = useState(false)
+  const [warrantyProject, setWarrantyProject] = useState<{ id: string; equipment: string } | null>(null)
 
   const { register, handleSubmit, watch, setValue, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
@@ -110,12 +112,20 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
       received_at: project?.received_at ?? new Date().toISOString(),
       sold_at: data.status === 'Vendido' ? (project?.sold_at ?? new Date().toISOString()) : null,
     }
+    const wasVendido = project?.status !== 'Vendido' && data.status === 'Vendido'
+    let savedId = project?.id ?? ''
     if (project) {
       await update.mutateAsync({ id: project.id, ...payload })
+      savedId = project.id
     } else {
-      await create.mutateAsync(payload as Parameters<typeof create.mutateAsync>[0])
+      const created = await create.mutateAsync(payload as Parameters<typeof create.mutateAsync>[0])
+      savedId = (created as { id: string }).id
     }
-    onClose()
+    if (wasVendido && savedId) {
+      setWarrantyProject({ id: savedId, equipment: data.equipment })
+    } else {
+      onClose()
+    }
   }
 
   const F = ({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) => (
@@ -226,6 +236,13 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
         title="Ler número de série"
         onDetected={code => setValue('serial_number', code)}
         onClose={() => setShowScanner(false)}
+      />
+    )}
+    {warrantyProject && (
+      <WarrantyModal
+        projectId={warrantyProject.id}
+        equipmentName={warrantyProject.equipment}
+        onClose={() => { setWarrantyProject(null); onClose() }}
       />
     )}
     </>

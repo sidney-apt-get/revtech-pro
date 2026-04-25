@@ -115,7 +115,8 @@
       "business": "Negócio",
       "account": "Conta",
       "security": "Segurança",
-      "data": "Dados"
+      "data": "Dados",
+      "integrations": "Integrações"
     },
     "company": {
       "title": "Informação da Empresa",

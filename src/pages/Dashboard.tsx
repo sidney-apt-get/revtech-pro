@@ -1,277 +1,370 @@
-import { useTranslation } from 'react-i18next'
 import { useDashboard } from '@/hooks/useDashboard'
 import { useOrders } from '@/hooks/useOrders'
 import { useInventory } from '@/hooks/useInventory'
 import { fmtGBP, fmtDate } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StockAlert } from '@/components/Layout'
-import { ProjectCard } from '@/components/ProjectCard'
-import { TrendingUp, TrendingDown, DollarSign, Activity, ShoppingCart, ClipboardCheck, Wrench } from 'lucide-react'
+import { Link } from 'wouter'
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
+  TrendingUp, TrendingDown, DollarSign, Activity, Clock, Target,
+  ShoppingCart, AlertTriangle, Tag, Wrench, Package, ArrowRight,
+} from 'lucide-react'
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  LineChart, Line, Legend,
 } from 'recharts'
 import { cn } from '@/lib/utils'
-import { addDays, parseISO } from 'date-fns'
+import { addDays, parseISO, format, differenceInDays } from 'date-fns'
+import { enGB, pt } from 'date-fns/locale'
+import { useTranslation } from 'react-i18next'
+import { printLabel } from '@/lib/printLabel'
 
-const STATUS_CHART_COLORS: Record<string, string> = {
-  'Recebido': '#4F8EF7',
-  'Em Diagnóstico': '#F0A500',
-  'Aguardando Peças': '#E07C2D',
-  'Em Manutenção': '#9C6FD6',
-  'Pronto para Venda': '#4CAF82',
-  'Vendido': '#34C678',
-  'Cancelado': '#E05C5C',
-}
-
-function MetricCard({ title, value, sub, icon: Icon, positive }: {
-  title: string; value: string; sub?: string; icon: typeof DollarSign; positive?: boolean
+function KpiCard({ title, value, sub, icon: Icon, color = 'accent', trend }: {
+  title: string
+  value: string
+  sub?: string
+  icon: typeof DollarSign
+  color?: 'accent' | 'success' | 'danger' | 'warning' | 'purple'
+  trend?: 'up' | 'down' | 'neutral'
 }) {
+  const bg: Record<string, string> = {
+    accent: 'bg-accent/15', success: 'bg-success/15', danger: 'bg-danger/15',
+    warning: 'bg-warning/15', purple: 'bg-purple-500/15',
+  }
+  const fg: Record<string, string> = {
+    accent: 'text-accent', success: 'text-success', danger: 'text-danger',
+    warning: 'text-warning', purple: 'text-purple-400',
+  }
   return (
     <Card>
       <CardContent className="p-5">
         <div className="flex items-start justify-between">
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-text-muted uppercase tracking-wider">{title}</p>
-            <p className="text-2xl font-bold text-text-primary">{value}</p>
+          <div className="space-y-1">
+            <p className="text-xs text-text-muted uppercase tracking-wider font-medium">{title}</p>
+            <p className="text-xl font-bold text-text-primary">{value}</p>
             {sub && <p className="text-xs text-text-muted">{sub}</p>}
           </div>
-          <div className={cn(
-            'h-10 w-10 rounded-xl flex items-center justify-center',
-            positive === true ? 'bg-success/15' : positive === false ? 'bg-danger/15' : 'bg-accent/15'
-          )}>
-            <Icon className={cn(
-              'h-5 w-5',
-              positive === true ? 'text-success' : positive === false ? 'text-danger' : 'text-accent'
-            )} />
+          <div className={cn('h-9 w-9 rounded-xl flex items-center justify-center', bg[color])}>
+            <Icon className={cn('h-4 w-4', fg[color])} />
           </div>
         </div>
+        {trend && (
+          <div className={cn('flex items-center gap-1 mt-2 text-xs font-medium',
+            trend === 'up' ? 'text-success' : trend === 'down' ? 'text-danger' : 'text-text-muted')}>
+            {trend === 'up' ? <TrendingUp className="h-3 w-3" /> : trend === 'down' ? <TrendingDown className="h-3 w-3" /> : null}
+          </div>
+        )}
       </CardContent>
     </Card>
   )
 }
 
+const STATUS_SHORT: Record<string, string> = {
+  'Recebido': 'Rec',
+  'Em Diagnóstico': 'Diag',
+  'Aguardando Peças': 'Peças',
+  'Em Manutenção': 'Manut',
+  'Pronto para Venda': 'PpV',
+  'Vendido': 'Vend',
+  'Cancelado': 'Canc',
+}
+const STATUS_COLOR: Record<string, string> = {
+  'Recebido': 'bg-blue-500/15 text-blue-400 border-blue-500/20',
+  'Em Diagnóstico': 'bg-yellow-500/15 text-yellow-400 border-yellow-500/20',
+  'Aguardando Peças': 'bg-orange-500/15 text-orange-400 border-orange-500/20',
+  'Em Manutenção': 'bg-purple-500/15 text-purple-400 border-purple-500/20',
+  'Pronto para Venda': 'bg-success/15 text-success border-success/20',
+  'Vendido': 'bg-success/10 text-success border-success/10',
+  'Cancelado': 'bg-danger/10 text-danger border-danger/10',
+}
+
 export function Dashboard() {
-  const { t } = useTranslation()
-  const { totalInvested, totalRevenue, netProfit, activeCount, readyToSell, lowStock, byStatus, recentProjects } = useDashboard()
+  const { t, i18n } = useTranslation()
+  const locale = i18n.language === 'pt' ? pt : enGB
+  const {
+    totalInvested, totalRevenue, netProfit, avgMargin,
+    activeCount, avgRepairDays, successRate, stockValue,
+    byStatus, readyToSell, overdue, recentActivity, lowStock,
+    monthlyProfit, weeklyFlow,
+  } = useDashboard()
   const { data: orders = [] } = useOrders()
   const { data: inventory = [] } = useInventory()
 
   const inTransitOrders = orders.filter(o => ['Encomendado', 'Em Trânsito'].includes(o.status))
   const toolsToCalibrate = inventory.filter(i => {
     if (!i.calibration_date || i.category !== 'Ferramentas') return false
-    const calibDate = parseISO(i.calibration_date)
-    const in30Days = addDays(new Date(), 30)
-    return calibDate <= in30Days
+    return parseISO(i.calibration_date) <= addDays(new Date(), 30)
   })
+
+  const chartData = monthlyProfit.map(m => ({
+    month: format(m.monthDate, 'MMM', { locale }),
+    [t('analytics.revenue')]: m.revenue,
+    [t('analytics.profit')]: m.profit,
+  }))
+  const weekData = weeklyFlow.map(w => ({
+    week: format(w.weekStart, 'dd/MM'),
+    Criados: w.created,
+    Vendidos: w.sold,
+  }))
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-text-primary">Dashboard</h1>
-        <p className="text-text-muted text-sm mt-0.5">{t('dashboard.subtitle')}</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-text-primary">Dashboard</h1>
+          <p className="text-text-muted text-sm mt-0.5">{t('dashboard.subtitle')}</p>
+        </div>
       </div>
 
       <StockAlert count={lowStock.length} />
 
-      {/* Metrics */}
+      {/* FILA 1 — Financial KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <MetricCard title={t('dashboard.investedMonth')} value={fmtGBP(totalInvested)} icon={DollarSign} />
-        <MetricCard title={t('dashboard.soldMonth')} value={fmtGBP(totalRevenue)} icon={TrendingUp} positive />
-        <MetricCard
+        <KpiCard title={t('dashboard.investedMonth')} value={fmtGBP(totalInvested)} icon={DollarSign} color="accent" />
+        <KpiCard title={t('dashboard.soldMonth')} value={fmtGBP(totalRevenue)} icon={TrendingUp} color="success" />
+        <KpiCard
           title={t('dashboard.netProfit')}
           value={fmtGBP(netProfit)}
           icon={netProfit >= 0 ? TrendingUp : TrendingDown}
-          positive={netProfit >= 0}
+          color={netProfit >= 0 ? 'success' : 'danger'}
         />
-        <MetricCard title={t('dashboard.activeProjects')} value={String(activeCount)} icon={Activity} />
+        <KpiCard title={t('reports.margin')} value={`${avgMargin.toFixed(1)}%`} icon={Target} color="purple" />
       </div>
 
-      {/* New widgets row */}
+      {/* FILA 2 — Operational KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <KpiCard title={t('dashboard.activeProjects')} value={String(activeCount)} icon={Activity} color="accent" />
+        <KpiCard title={t('dashboard.avgRepairTime')} value={`${avgRepairDays}d`} icon={Clock} color="warning" />
+        <KpiCard title={t('dashboard.successRate')} value={`${successRate}%`} icon={Target} color="success" />
+        <KpiCard title={t('dashboard.stockValue')} value={fmtGBP(stockValue)} icon={Package} color="purple" />
+      </div>
+
+      {/* FILA 3 — Widgets */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Parts arriving */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <ShoppingCart className="h-4 w-4 text-orange-400" />
-                {t('dashboard.partsArriving')}
-              </CardTitle>
-              <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full border',
-                inTransitOrders.length > 0 ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-surface text-text-muted border-border')}>
-                {inTransitOrders.length}
-              </span>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {inTransitOrders.length === 0 ? (
-              <p className="text-xs text-text-muted py-2">{t('dashboard.noPendingOrders')}</p>
-            ) : (
-              <div className="space-y-2">
-                {inTransitOrders.slice(0, 3).map(o => (
-                  <div key={o.id} className="flex items-center justify-between">
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium text-text-primary truncate">{o.part_name}</p>
-                      <p className="text-xs text-text-muted">{o.supplier}</p>
-                    </div>
-                    <span className={cn('text-xs px-1.5 py-0.5 rounded font-medium shrink-0 ml-2',
-                      o.status === 'Em Trânsito' ? 'bg-orange-500/15 text-orange-400' : 'bg-blue-500/15 text-blue-400')}>
-                      {t(`orderStatusMap.${o.status}`, { defaultValue: o.status })}
-                    </span>
-                  </div>
-                ))}
-                {inTransitOrders.length > 3 && (
-                  <p className="text-xs text-text-muted">{t('dashboard.moreItems', { count: inTransitOrders.length - 3 })}</p>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
-        {/* Checklists */}
+        {/* Pipeline mini-kanban */}
         <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <ClipboardCheck className="h-4 w-4 text-purple-400" />
-                {t('dashboard.checklists')}
-              </CardTitle>
-            </div>
-          </CardHeader>
+          <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Wrench className="h-4 w-4 text-accent" />Pipeline</CardTitle></CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between rounded-lg bg-surface px-3 py-2 border border-border">
-                <p className="text-xs text-text-muted">{t('dashboard.receptionPending')}</p>
-                <span className="text-xs font-bold text-text-primary">
-                  {recentProjects.filter(p => !['Vendido', 'Cancelado'].includes(p.status)).length}
-                </span>
-              </div>
-              <div className="flex items-center justify-between rounded-lg bg-surface px-3 py-2 border border-border">
-                <p className="text-xs text-text-muted">{t('dashboard.readyDelivery')}</p>
-                <span className="text-xs font-bold text-success">{readyToSell.length}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Calibrations */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Wrench className="h-4 w-4 text-yellow-400" />
-                {t('dashboard.calibrations')}
-              </CardTitle>
-              {toolsToCalibrate.length > 0 && (
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full border bg-warning/10 text-warning border-warning/20">
-                  {toolsToCalibrate.length}
-                </span>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            {toolsToCalibrate.length === 0 ? (
-              <p className="text-xs text-text-muted py-2">{t('dashboard.noCalibrations')}</p>
-            ) : (
-              <div className="space-y-2">
-                {toolsToCalibrate.slice(0, 3).map(tool => (
-                  <div key={tool.id} className="flex items-center justify-between">
-                    <p className="text-xs font-medium text-text-primary truncate">{tool.item_name}</p>
-                    <p className="text-xs text-warning shrink-0 ml-2">{fmtDate(tool.calibration_date)}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Bar chart */}
-        <Card>
-          <CardHeader><CardTitle className="text-base">{t('dashboard.projectsStatus')}</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={byStatus} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2E3141" vertical={false} />
-                <XAxis dataKey="status" tick={{ fontSize: 9, fill: '#9AA0AC' }} angle={-30} textAnchor="end" height={45} />
-                <YAxis tick={{ fontSize: 11, fill: '#9AA0AC' }} allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{ background: '#252836', border: '1px solid #2E3141', borderRadius: 8, fontSize: 12 }}
-                  labelStyle={{ color: '#E8EAED' }}
-                  cursor={{ fill: 'rgba(79,142,247,0.05)' }}
-                />
-                <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={40}>
-                  {byStatus.map((entry) => (
-                    <Cell key={entry.status} fill={STATUS_CHART_COLORS[entry.status] ?? '#4F8EF7'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Ready to sell */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">{t('dashboard.readyToSell')}</CardTitle>
-              <span className="text-xs text-success font-semibold bg-success/10 px-2 py-0.5 rounded-full border border-success/20">
-                {readyToSell.length} items
-              </span>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {readyToSell.length === 0 ? (
-              <p className="text-sm text-text-muted text-center py-6">{t('dashboard.noReadyProjects')}</p>
-            ) : (
-              readyToSell.slice(0, 4).map(p => (
-                <div key={p.id} className="flex items-center justify-between rounded-lg bg-surface px-3 py-2.5 border border-border">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-text-primary truncate">{p.equipment}</p>
-                    <p className="text-xs text-text-muted">{fmtGBP(p.cost)} custo</p>
-                  </div>
-                  <div className="text-right shrink-0 ml-3">
-                    <p className={cn('text-sm font-bold', p.profit >= 0 ? 'text-success' : 'text-danger')}>
-                      {fmtGBP(p.profit)}
-                    </p>
-                    <p className="text-xs text-text-muted">ROI {p.roi.toFixed(0)}%</p>
-                  </div>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Stock alerts */}
-      {lowStock.length > 0 && (
-        <Card>
-          <CardHeader><CardTitle className="text-base text-warning">⚠ {t('dashboard.stockLow', { count: lowStock.length })}</CardTitle></CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {lowStock.slice(0, 5).map(item => (
-                <div key={item.id} className="flex items-center justify-between rounded-lg bg-warning/5 border border-warning/20 px-3 py-2">
-                  <div>
-                    <p className="text-sm font-medium text-text-primary">{item.item_name}</p>
-                    <p className="text-xs text-text-muted">{t(`categoryMap.${item.category}`, { defaultValue: item.category })} · {item.location || '—'}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-warning">{item.quantity} / {item.min_stock}</p>
-                    <p className="text-xs text-text-muted">{t('dashboard.actualMin')}</p>
+            <div className="space-y-1.5">
+              {byStatus.filter(s => !['Vendido', 'Cancelado'].includes(s.status)).map(s => (
+                <div key={s.status} className={cn('flex items-center justify-between rounded-lg border px-2.5 py-1.5 text-xs', STATUS_COLOR[s.status] ?? 'bg-surface border-border text-text-muted')}>
+                  <span className="font-medium">{STATUS_SHORT[s.status] ?? s.status}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold">{s.count}</span>
+                    {s.value > 0 && <span className="opacity-70">{fmtGBP(s.value)}</span>}
                   </div>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
-      )}
 
-      {/* Recent projects */}
-      <div>
-        <h2 className="text-base font-semibold text-text-primary mb-3">{t('dashboard.recentProjects')}</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {recentProjects.map(p => <ProjectCard key={p.id} project={p} />)}
-        </div>
+        {/* Alertas */}
+        <Card>
+          <CardHeader><CardTitle className="text-sm flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-warning" />{t('dashboard.alerts')}</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {lowStock.length > 0 && (
+              <Link href="/inventory">
+                <div className="flex items-center justify-between rounded-lg bg-warning/5 border border-warning/20 px-3 py-2 cursor-pointer hover:bg-warning/10 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <Package className="h-3.5 w-3.5 text-warning" />
+                    <span className="text-xs text-warning font-medium">{t('inventory.stockAlert', { count: lowStock.length })}</span>
+                  </div>
+                  <ArrowRight className="h-3 w-3 text-warning" />
+                </div>
+              </Link>
+            )}
+            {inTransitOrders.length > 0 && (
+              <Link href="/orders">
+                <div className="flex items-center justify-between rounded-lg bg-orange-500/5 border border-orange-500/20 px-3 py-2 cursor-pointer hover:bg-orange-500/10 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <ShoppingCart className="h-3.5 w-3.5 text-orange-400" />
+                    <span className="text-xs text-orange-400 font-medium">{t('notifications.inTransit_other', { count: inTransitOrders.length })}</span>
+                  </div>
+                  <ArrowRight className="h-3 w-3 text-orange-400" />
+                </div>
+              </Link>
+            )}
+            {toolsToCalibrate.length > 0 && (
+              <Link href="/inventory">
+                <div className="flex items-center justify-between rounded-lg bg-yellow-500/5 border border-yellow-500/20 px-3 py-2 cursor-pointer hover:bg-yellow-500/10 transition-colors">
+                  <div className="flex items-center gap-2">
+                    <Wrench className="h-3.5 w-3.5 text-yellow-400" />
+                    <span className="text-xs text-yellow-400 font-medium">{toolsToCalibrate.length} ferramentas p/ calibrar</span>
+                  </div>
+                  <ArrowRight className="h-3 w-3 text-yellow-400" />
+                </div>
+              </Link>
+            )}
+            {lowStock.length === 0 && inTransitOrders.length === 0 && toolsToCalibrate.length === 0 && (
+              <p className="text-xs text-text-muted text-center py-3">Sem alertas activos</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Actividade recente */}
+        <Card>
+          <CardHeader><CardTitle className="text-sm">Actividade Recente</CardTitle></CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {recentActivity.map(a => (
+                <div key={a.id} className="flex items-start gap-2">
+                  <div className="h-1.5 w-1.5 rounded-full bg-accent mt-1.5 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-text-primary truncate">
+                      {a.ticket && <span className="text-accent/70 mr-1">#{a.ticket}</span>}
+                      {a.equipment}
+                    </p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className={cn('text-xs px-1.5 py-0.5 rounded border', STATUS_COLOR[a.status] ?? 'bg-surface border-border text-text-muted')}>
+                        {t(`statusMap.${a.status}`, { defaultValue: a.status })}
+                      </span>
+                      <span className="text-xs text-text-muted">{fmtDate(a.date)}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {recentActivity.length === 0 && (
+                <p className="text-xs text-text-muted text-center py-3">Sem actividade</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* FILA 4 — Gráficos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader><CardTitle className="text-sm">Lucro por Mês (últimos 6 meses)</CardTitle></CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#2E3141" vertical={false} />
+                <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#9AA0AC' }} />
+                <YAxis tick={{ fontSize: 10, fill: '#9AA0AC' }} />
+                <Tooltip contentStyle={{ background: '#252836', border: '1px solid #2E3141', borderRadius: 8, fontSize: 12 }} labelStyle={{ color: '#E8EAED' }} cursor={{ fill: 'rgba(79,142,247,0.05)' }} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Bar dataKey={t('analytics.revenue')} fill="#4F8EF7" radius={[3, 3, 0, 0]} maxBarSize={28} />
+                <Bar dataKey={t('analytics.profit')} fill="#4CAF82" radius={[3, 3, 0, 0]} maxBarSize={28} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle className="text-sm">Criados vs Vendidos (últimas 8 semanas)</CardTitle></CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={weekData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#2E3141" vertical={false} />
+                <XAxis dataKey="week" tick={{ fontSize: 9, fill: '#9AA0AC' }} />
+                <YAxis tick={{ fontSize: 10, fill: '#9AA0AC' }} allowDecimals={false} />
+                <Tooltip contentStyle={{ background: '#252836', border: '1px solid #2E3141', borderRadius: 8, fontSize: 12 }} labelStyle={{ color: '#E8EAED' }} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Line type="monotone" dataKey="Criados" stroke="#4F8EF7" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="Vendidos" stroke="#4CAF82" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* FILA 5 — Tabelas */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {/* Prontos para Vender */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Tag className="h-4 w-4 text-success" />
+                {t('dashboard.readyToSell')}
+              </CardTitle>
+              <Link href="/labels">
+                <span className="text-xs text-accent hover:underline cursor-pointer flex items-center gap-1">
+                  Etiquetas <ArrowRight className="h-3 w-3" />
+                </span>
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {readyToSell.length === 0 ? (
+              <p className="text-xs text-text-muted py-4 text-center">{t('dashboard.noReadyProjects')}</p>
+            ) : (
+              <div className="space-y-2">
+                {readyToSell.slice(0, 6).map(p => (
+                  <div key={p.id} className="flex items-center justify-between rounded-lg bg-surface px-3 py-2 border border-border">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-text-primary truncate">
+                        {p.ticket_number && <span className="text-accent/70 mr-1">#{p.ticket_number}</span>}
+                        {p.equipment}
+                      </p>
+                      <p className="text-xs text-text-muted">{fmtGBP(p.cost)} custo · ROI {p.roi.toFixed(0)}%</p>
+                    </div>
+                    <div className="flex items-center gap-2 ml-2 shrink-0">
+                      <p className={cn('text-sm font-bold', p.profit >= 0 ? 'text-success' : 'text-danger')}>
+                        {fmtGBP(p.profit)}
+                      </p>
+                      <button
+                        onClick={() => printLabel(p)}
+                        title="Imprimir etiqueta"
+                        className="p-1 rounded hover:bg-accent/10 text-text-muted hover:text-success transition-colors"
+                      >
+                        <Tag className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {readyToSell.length > 6 && (
+                  <p className="text-xs text-text-muted text-center">+ {readyToSell.length - 6} mais</p>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Em atraso */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Clock className="h-4 w-4 text-warning" />
+                Em Atraso (&gt;14 dias)
+              </CardTitle>
+              {overdue.length > 0 && (
+                <span className="text-xs bg-warning/10 text-warning border border-warning/20 px-2 py-0.5 rounded-full font-semibold">
+                  {overdue.length}
+                </span>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {overdue.length === 0 ? (
+              <p className="text-xs text-text-muted py-4 text-center">Sem projectos em atraso</p>
+            ) : (
+              <div className="space-y-2">
+                {overdue.slice(0, 6).map(p => {
+                  const days = differenceInDays(new Date(), new Date(p.updated_at ?? p.received_at))
+                  return (
+                    <div key={p.id} className="flex items-center justify-between rounded-lg bg-warning/5 border border-warning/15 px-3 py-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-text-primary truncate">
+                          {p.ticket_number && <span className="text-accent/70 mr-1">#{p.ticket_number}</span>}
+                          {p.equipment}
+                        </p>
+                        <p className="text-xs text-text-muted">{t(`statusMap.${p.status}`, { defaultValue: p.status })}</p>
+                      </div>
+                      <span className={cn('text-xs font-bold shrink-0 ml-2', days > 30 ? 'text-danger' : 'text-warning')}>
+                        {days}d
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

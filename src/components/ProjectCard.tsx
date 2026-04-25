@@ -7,54 +7,15 @@ import { cn } from '@/lib/utils'
 import { TicketPrint } from './TicketPrint'
 import { ChecklistModal } from './ChecklistModal'
 import { CexPriceWidget } from './CexPriceWidget'
+import { printLabel } from '@/lib/printLabel'
+import { TimeTracker } from './TimeTracker'
+import { useProjects } from '@/hooks/useProjects'
+import { useLocation } from 'wouter'
 
 interface ProjectCardProps {
   project: Project
   onClick?: () => void
   compact?: boolean
-}
-
-function printLabel(project: Project) {
-  const win = window.open('', '_blank', 'width=900,height=600')
-  if (!win) return
-  win.document.write(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>Etiqueta</title>
-        <style>
-          @page { size: 100mm 60mm; margin: 0; }
-          body { margin: 0; font-family: Arial, sans-serif; }
-          .label { width:100mm;height:60mm;padding:6mm;display:flex;flex-direction:column;justify-content:space-between;box-sizing:border-box; }
-        </style>
-      </head>
-      <body onload="window.print();window.close()">
-        <div class="label">
-          <div style="display:flex;justify-content:space-between">
-            <div>
-              <div style="font-size:7pt;font-weight:bold;color:#1a56db">RevTech PRO</div>
-              ${project.ticket_number ? `<div style="font-size:6pt;color:#666">#${project.ticket_number}</div>` : ''}
-            </div>
-          </div>
-          <div>
-            <div style="font-size:9pt;font-weight:bold">${project.equipment}</div>
-            ${(project.brand || project.model) ? `<div style="font-size:7pt;color:#444">${[project.brand, project.model].filter(Boolean).join(' · ')}</div>` : ''}
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:flex-end">
-            <div>
-              <div style="font-size:16pt;font-weight:bold;color:#1a56db">${fmtGBP(project.sale_price ?? 0)}</div>
-              ${project.sale_platform ? `<div style="font-size:6pt;color:#666">${project.sale_platform}</div>` : ''}
-            </div>
-            <div style="font-size:6pt;color:#888;text-align:right">
-              <div>${new Date().toLocaleDateString('pt-PT')}</div>
-              <div>Testado ✓</div>
-            </div>
-          </div>
-        </div>
-      </body>
-    </html>
-  `)
-  win.document.close()
 }
 
 export function ProjectCard({ project, onClick, compact }: ProjectCardProps) {
@@ -64,6 +25,11 @@ export function ProjectCard({ project, onClick, compact }: ProjectCardProps) {
   const [showTicket, setShowTicket] = useState(false)
   const [showChecklist, setShowChecklist] = useState(false)
   const [showCex, setShowCex] = useState(false)
+  const [, navigate] = useLocation()
+  const { data: allProjects = [] } = useProjects()
+  const serialCount = project.serial_number
+    ? allProjects.filter(p => p.id !== project.id && p.serial_number === project.serial_number).length
+    : 0
 
   return (
     <>
@@ -80,6 +46,15 @@ export function ProjectCard({ project, onClick, compact }: ProjectCardProps) {
             <div className="flex items-center gap-1.5">
               {project.ticket_number && (
                 <span className="text-xs font-mono text-accent/70 shrink-0">{project.ticket_number}</span>
+              )}
+              {serialCount > 0 && (
+                <button
+                  onClick={e => { e.stopPropagation(); navigate(`/serial-history?q=${encodeURIComponent(project.serial_number!)}`) }}
+                  className="text-xs bg-warning/10 text-warning border border-warning/20 px-1.5 py-0.5 rounded font-medium hover:bg-warning/20 transition-colors"
+                  title={`Já esteve cá ${serialCount + 1} vezes`}
+                >
+                  ⚠ {serialCount + 1}×
+                </button>
               )}
             </div>
             <h3 className="font-semibold text-text-primary text-sm truncate">{project.equipment}</h3>
@@ -138,6 +113,13 @@ export function ProjectCard({ project, onClick, compact }: ProjectCardProps) {
               <Wrench className="h-3.5 w-3.5" />
               <span className="truncate">{project.supplier_name}</span>
             </>
+          )}
+
+          {/* Timer (only for active projects) */}
+          {!['Vendido', 'Cancelado'].includes(project.status) && (
+            <div onClick={e => e.stopPropagation()}>
+              <TimeTracker project={project} compact />
+            </div>
           )}
 
           {/* Action buttons */}

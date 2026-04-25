@@ -10,10 +10,14 @@ import {
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns'
 import { enGB, pt } from 'date-fns/locale'
 import { TrendingUp, Clock, DollarSign, Target } from 'lucide-react'
+import { useAllTimeEntries } from '@/hooks/useTimeTracking'
+import { useProjects as useProjectsForTime } from '@/hooks/useProjects'
 
 export function Analytics() {
   const { t, i18n } = useTranslation()
   const { data: projects = [] } = useProjects()
+  const { data: timeEntries = [] } = useAllTimeEntries()
+  const { data: allProjects = [] } = useProjectsForTime()
   const locale = i18n.language === 'pt' ? pt : enGB
 
   const monthlyData = useMemo(() => {
@@ -77,6 +81,34 @@ export function Analytics() {
     labelStyle: { color: '#E8EAED' },
     cursor: { fill: 'rgba(79,142,247,0.05)' },
   }
+
+  const timeByProject = useMemo(() => {
+    const map = new Map<string, number>()
+    timeEntries.filter(e => e.duration_minutes).forEach(e => {
+      map.set(e.project_id, (map.get(e.project_id) ?? 0) + (e.duration_minutes ?? 0))
+    })
+    return Array.from(map.entries()).map(([projectId, totalMin]) => {
+      const p = allProjects.find(x => x.id === projectId)
+      return {
+        projectId,
+        equipment: p?.equipment ?? 'Projecto removido',
+        ticket: p?.ticket_number,
+        status: p?.status ?? '—',
+        totalMin,
+        totalHours: (totalMin / 60).toFixed(1),
+      }
+    }).sort((a, b) => b.totalMin - a.totalMin).slice(0, 10)
+  }, [timeEntries, allProjects])
+
+  const timeByStatus = useMemo(() => {
+    const map = new Map<string, number>()
+    timeEntries.filter(e => e.duration_minutes).forEach(e => {
+      const p = allProjects.find(x => x.id === e.project_id)
+      const status = p?.status ?? 'Desconhecido'
+      map.set(status, (map.get(status) ?? 0) + (e.duration_minutes ?? 0))
+    })
+    return Array.from(map.entries()).map(([status, min]) => ({ status, horas: +(min / 60).toFixed(1) }))
+  }, [timeEntries, allProjects])
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -152,6 +184,57 @@ export function Analytics() {
           )}
         </CardContent>
       </Card>
+
+      {/* ── Tempo por Projecto ─────────────────────────────────── */}
+      {timeByProject.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-base font-semibold text-text-primary flex items-center gap-2">
+            <Clock className="h-4 w-4 text-accent" /> Tempo por Projecto
+          </h2>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader><CardTitle className="text-sm">Horas por Projecto (Top 10)</CardTitle></CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {timeByProject.map(row => (
+                    <div key={row.projectId} className="flex items-center justify-between rounded-lg bg-surface border border-border px-3 py-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-text-primary truncate">
+                          {row.ticket && <span className="text-accent/70 mr-1">#{row.ticket}</span>}
+                          {row.equipment}
+                        </p>
+                        <p className="text-xs text-text-muted">{row.status}</p>
+                      </div>
+                      <div className="text-right shrink-0 ml-2">
+                        <p className="text-sm font-bold text-accent">{row.totalHours}h</p>
+                        <p className="text-xs text-text-muted">{row.totalMin}min</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {timeByStatus.length > 0 && (
+              <Card>
+                <CardHeader><CardTitle className="text-sm">Horas por Estado (onde passa mais tempo)</CardTitle></CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={timeByStatus} layout="vertical" margin={{ left: 0, right: 10 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#2E3141" horizontal={false} />
+                      <XAxis type="number" tick={{ fontSize: 10, fill: '#9AA0AC' }} unit="h" />
+                      <YAxis dataKey="status" type="category" tick={{ fontSize: 9, fill: '#9AA0AC' }} width={100} />
+                      <Tooltip {...tooltipStyle} formatter={(v: number) => [`${v}h`, 'Horas']} />
+                      <Bar dataKey="horas" fill="#4F8EF7" radius={[0, 4, 4, 0]} maxBarSize={20} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

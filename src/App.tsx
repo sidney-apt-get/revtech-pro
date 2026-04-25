@@ -18,6 +18,8 @@ import { Settings } from '@/pages/Settings'
 import { UserManagement } from '@/pages/UserManagement'
 import { EbaySearch } from '@/pages/EbaySearch'
 import { Labels } from '@/pages/Labels'
+import { SerialHistory } from '@/pages/SerialHistory'
+import { Warranties } from '@/pages/Warranties'
 import AuthCallback from '@/pages/AuthCallback'
 import { SettingsProvider } from '@/contexts/SettingsContext'
 import { RoleProvider } from '@/contexts/RoleContext'
@@ -104,6 +106,12 @@ export default function App() {
           </Route>
           <Route path="/labels">
             <Protected><Labels /></Protected>
+          </Route>
+          <Route path="/serial-history">
+            <Protected><SerialHistory /></Protected>
+          </Route>
+          <Route path="/warranties">
+            <Protected><Warranties /></Protected>
           </Route>
           {/* Admin-only routes — require isAdmin + PIN */}
           <Route path="/settings">

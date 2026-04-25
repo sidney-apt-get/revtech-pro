@@ -158,3 +158,28 @@ export type AppSettings = {
   created_at: string
   updated_at: string
 }
+
+export type TimeEntry = {
+  id: string
+  user_id: string
+  project_id: string
+  started_at: string
+  ended_at: string | null
+  duration_minutes: number | null
+  notes: string | null
+  created_at: string
+}
+
+export type Warranty = {
+  id: string
+  user_id: string
+  project_id: string
+  warranty_months: number
+  starts_at: string
+  expires_at: string
+  terms: string | null
+  status: 'active' | 'expired' | 'claimed'
+  claim_description: string | null
+  claimed_at: string | null
+  created_at: string
+}

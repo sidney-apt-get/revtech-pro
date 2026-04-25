@@ -1,11 +1,11 @@
-import { type ReactNode, useState } from 'react'
+import { type ReactNode, useState, useEffect } from 'react'
 import { Link, useLocation } from 'wouter'
 import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard, Wrench, Package, Users,
   BarChart3, Map, LogOut, Menu, X, AlertTriangle,
   ShoppingCart, Database, FileText, Settings, Bell,
-  Shield, ChevronDown, ChevronUp, UserCog, ShoppingBag, Tag,
+  Shield, ChevronDown, ChevronUp, UserCog, ShoppingBag, Tag, History, ShieldCheck,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
@@ -80,7 +80,7 @@ function AdminMenu({ onNavigate }: { onNavigate?: () => void }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [location] = useLocation()
-  const isAdminRoute = location === '/settings' || location.startsWith('/admin') || location === '/labels'
+  const isAdminRoute = location === '/settings' || location.startsWith('/admin') || location === '/labels' || location === '/serial-history' || location === '/warranties'
 
   return (
     <div>
@@ -126,6 +126,34 @@ function AdminMenu({ onNavigate }: { onNavigate?: () => void }) {
             >
               <Tag className="h-3.5 w-3.5" />
               {t('admin.labels')}
+            </span>
+          </Link>
+          <Link href="/serial-history">
+            <span
+              onClick={() => { setOpen(false); onNavigate?.() }}
+              className={cn(
+                'flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium cursor-pointer transition-colors',
+                location === '/serial-history'
+                  ? 'text-accent bg-accent/10'
+                  : 'text-text-muted hover:text-text-primary hover:bg-surface'
+              )}
+            >
+              <History className="h-3.5 w-3.5" />
+              Histórico Serial
+            </span>
+          </Link>
+          <Link href="/warranties">
+            <span
+              onClick={() => { setOpen(false); onNavigate?.() }}
+              className={cn(
+                'flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium cursor-pointer transition-colors',
+                location === '/warranties'
+                  ? 'text-accent bg-accent/10'
+                  : 'text-text-muted hover:text-text-primary hover:bg-surface'
+              )}
+            >
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Garantias
             </span>
           </Link>
           <Link href="/admin/users">
@@ -219,6 +247,13 @@ export function Layout({ children }: LayoutProps) {
   const lowStockCount = useLowStockCount()
   const inTransitCount = useInTransitCount()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [bottomCollapsed, setBottomCollapsed] = useState(() =>
+    localStorage.getItem('sidebar_bottom_collapsed') === '1'
+  )
+
+  useEffect(() => {
+    localStorage.setItem('sidebar_bottom_collapsed', bottomCollapsed ? '1' : '0')
+  }, [bottomCollapsed])
 
   const avatar = user?.user_metadata?.avatar_url
   const name = user?.user_metadata?.full_name ?? user?.email ?? ''
@@ -263,50 +298,75 @@ export function Layout({ children }: LayoutProps) {
         ))}
       </nav>
 
-      {/* User + Admin + Logout */}
-      <div className="border-t border-border p-3 space-y-2">
-        {/* Language selector */}
-        <div className="px-1">
-          <LanguageSelector />
-        </div>
-
-        <div className="flex items-center gap-3 px-2 py-1.5">
-          {avatar ? (
-            <img src={avatar} alt={name} className="h-8 w-8 rounded-full object-cover ring-2 ring-border" />
-          ) : (
-            <div className="h-8 w-8 rounded-full bg-accent/20 flex items-center justify-center text-accent text-xs font-bold">
-              {name.charAt(0).toUpperCase()}
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1">
-              <p className="text-xs font-semibold text-text-primary truncate">{name}</p>
-              {role && (
-                <span className={cn(
-                  'text-xs px-1.5 py-0.5 rounded font-medium shrink-0',
-                  role === 'admin' ? 'bg-accent/20 text-accent' :
-                  role === 'technician' ? 'bg-yellow-500/20 text-yellow-400' :
-                  'bg-surface text-text-muted'
-                )}>
-                  {roleLabel}
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-text-muted truncate">{user?.email}</p>
-          </div>
-          <NotificationBell stockCount={lowStockCount} ordersCount={inTransitCount} />
-        </div>
-
-        {/* Admin submenu (admin only) */}
-        {isAdmin && <AdminMenu onNavigate={() => setMobileOpen(false)} />}
-
+      {/* User + Admin + Logout — collapsible */}
+      <div className="border-t border-border">
+        {/* Collapse toggle */}
         <button
-          onClick={handleLogout}
-          className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-muted hover:bg-surface hover:text-danger transition-colors"
+          onClick={() => setBottomCollapsed(c => !c)}
+          className="w-full flex items-center justify-center py-1.5 text-text-muted hover:text-text-primary hover:bg-surface/50 transition-colors"
+          title={bottomCollapsed ? 'Expandir' : 'Recolher'}
         >
-          <LogOut className="h-4 w-4" />
-          {t('auth.logout')}
+          {bottomCollapsed ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
         </button>
+
+        {bottomCollapsed ? (
+          /* Collapsed state: avatar + language icon + notifications */
+          <div className="flex items-center justify-around px-3 pb-3">
+            {avatar ? (
+              <img src={avatar} alt={name} title={name} className="h-8 w-8 rounded-full object-cover ring-2 ring-border" />
+            ) : (
+              <div className="h-8 w-8 rounded-full bg-accent/20 flex items-center justify-center text-accent text-xs font-bold" title={name}>
+                {name.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <LanguageSelector compact />
+            <NotificationBell stockCount={lowStockCount} ordersCount={inTransitCount} />
+          </div>
+        ) : (
+          /* Expanded state */
+          <div className="p-3 space-y-2">
+            <div className="px-1">
+              <LanguageSelector />
+            </div>
+
+            <div className="flex items-center gap-3 px-2 py-1.5">
+              {avatar ? (
+                <img src={avatar} alt={name} className="h-8 w-8 rounded-full object-cover ring-2 ring-border" />
+              ) : (
+                <div className="h-8 w-8 rounded-full bg-accent/20 flex items-center justify-center text-accent text-xs font-bold">
+                  {name.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1">
+                  <p className="text-xs font-semibold text-text-primary truncate">{name}</p>
+                  {role && (
+                    <span className={cn(
+                      'text-xs px-1.5 py-0.5 rounded font-medium shrink-0',
+                      role === 'admin' ? 'bg-accent/20 text-accent' :
+                      role === 'technician' ? 'bg-yellow-500/20 text-yellow-400' :
+                      'bg-surface text-text-muted'
+                    )}>
+                      {roleLabel}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-text-muted truncate">{user?.email}</p>
+              </div>
+              <NotificationBell stockCount={lowStockCount} ordersCount={inTransitCount} />
+            </div>
+
+            {isAdmin && <AdminMenu onNavigate={() => setMobileOpen(false)} />}
+
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-muted hover:bg-surface hover:text-danger transition-colors"
+            >
+              <LogOut className="h-4 w-4" />
+              {t('auth.logout')}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

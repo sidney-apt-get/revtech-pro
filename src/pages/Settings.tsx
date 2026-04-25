@@ -4,7 +4,8 @@ import { useSettings } from '@/contexts/SettingsContext'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
-import { Upload, Save, LogOut, Palette, Building2, Briefcase, User, AlertTriangle, Lock, Database, Download, RotateCcw, CloudUpload, HardDrive } from 'lucide-react'
+import { Upload, Save, LogOut, Palette, Building2, Briefcase, User, AlertTriangle, Lock, Database, Download, RotateCcw, CloudUpload, HardDrive, Link2, Link2Off } from 'lucide-react'
+import { initiateXeroAuth, isXeroConnected, clearXeroTokens } from '@/lib/xero'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   backupToGoogleDrive,
@@ -22,12 +23,13 @@ const THEME_PRESETS = [
 ]
 
 const TABS = [
-  { id: 'company',    labelKey: 'settings.tabs.company',    icon: Building2 },
-  { id: 'appearance', labelKey: 'settings.tabs.appearance', icon: Palette },
-  { id: 'business',   labelKey: 'settings.tabs.business',   icon: Briefcase },
-  { id: 'account',    labelKey: 'settings.tabs.account',    icon: User },
-  { id: 'security',   labelKey: 'settings.tabs.security',   icon: Lock },
-  { id: 'data',       labelKey: 'settings.tabs.data',       icon: Database },
+  { id: 'company',      labelKey: 'settings.tabs.company',      icon: Building2 },
+  { id: 'appearance',   labelKey: 'settings.tabs.appearance',   icon: Palette },
+  { id: 'business',     labelKey: 'settings.tabs.business',     icon: Briefcase },
+  { id: 'account',      labelKey: 'settings.tabs.account',      icon: User },
+  { id: 'security',     labelKey: 'settings.tabs.security',     icon: Lock },
+  { id: 'data',         labelKey: 'settings.tabs.data',         icon: Database },
+  { id: 'integrations', labelKey: 'settings.tabs.integrations', icon: Link2 },
 ] as const
 
 type Tab = typeof TABS[number]['id']
@@ -655,6 +657,60 @@ export function Settings() {
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ── Integrations tab ─────────────────────────────────────── */}
+      {activeTab === 'integrations' && (
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Link2 className="h-4 w-4 text-accent" />
+                Xero — Contabilidade UK
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-text-muted">
+                Liga o RevTech PRO ao Xero para exportar vendas e compras automaticamente para a tua contabilidade.
+                O Xero é o sistema de contabilidade mais usado por pequenas empresas no Reino Unido.
+              </p>
+
+              {isXeroConnected() ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-success text-sm font-medium">
+                    <Link2 className="h-4 w-4" />
+                    Ligado ao Xero
+                  </div>
+                  <button
+                    onClick={() => { clearXeroTokens(); window.location.reload() }}
+                    className="flex items-center gap-2 text-sm text-danger hover:bg-danger/10 rounded-lg px-3 py-2 transition-colors border border-danger/30"
+                  >
+                    <Link2Off className="h-4 w-4" />
+                    Desligar do Xero
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={initiateXeroAuth}
+                  className="flex items-center gap-2 rounded-lg bg-[#13B5EA] text-white px-4 py-2 text-sm font-semibold hover:bg-[#0ea5d4] transition-colors"
+                >
+                  <Link2 className="h-4 w-4" />
+                  Ligar ao Xero
+                </button>
+              )}
+
+              <div className="rounded-lg bg-surface border border-border p-3 space-y-2">
+                <p className="text-xs font-semibold text-text-primary">Passos para activar:</p>
+                <ol className="text-xs text-text-muted space-y-1 list-decimal list-inside">
+                  <li>Cria uma conta gratuita em xero.com (30 dias de trial)</li>
+                  <li>Em developer.xero.com, cria uma App OAuth 2.0</li>
+                  <li>Adiciona <code className="bg-surface border border-border px-1 rounded">VITE_XERO_CLIENT_ID</code> ao .env.local</li>
+                  <li>Clica em "Ligar ao Xero" acima</li>
+                </ol>
+              </div>
             </CardContent>
           </Card>
         </div>
