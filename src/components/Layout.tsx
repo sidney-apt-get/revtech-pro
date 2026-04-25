@@ -247,13 +247,13 @@ export function Layout({ children }: LayoutProps) {
   const lowStockCount = useLowStockCount()
   const inTransitCount = useInTransitCount()
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [bottomCollapsed, setBottomCollapsed] = useState(() =>
-    localStorage.getItem('sidebar_bottom_collapsed') === '1'
+  const [bottomExpanded, setBottomExpanded] = useState(() =>
+    localStorage.getItem('sidebar_bottom_expanded') !== '0'
   )
 
   useEffect(() => {
-    localStorage.setItem('sidebar_bottom_collapsed', bottomCollapsed ? '1' : '0')
-  }, [bottomCollapsed])
+    localStorage.setItem('sidebar_bottom_expanded', bottomExpanded ? '1' : '0')
+  }, [bottomExpanded])
 
   const avatar = user?.user_metadata?.avatar_url
   const name = user?.user_metadata?.full_name ?? user?.email ?? ''
@@ -300,30 +300,11 @@ export function Layout({ children }: LayoutProps) {
 
       {/* User + Admin + Logout — collapsible */}
       <div className="border-t border-border">
-        {/* Collapse toggle */}
-        <button
-          onClick={() => setBottomCollapsed(c => !c)}
-          className="w-full flex items-center justify-center py-1.5 text-text-muted hover:text-text-primary hover:bg-surface/50 transition-colors"
-          title={bottomCollapsed ? 'Expandir' : 'Recolher'}
-        >
-          {bottomCollapsed ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-        </button>
-
-        {bottomCollapsed ? (
-          /* Collapsed state: avatar + language icon + notifications */
-          <div className="flex items-center justify-around px-3 pb-3">
-            {avatar ? (
-              <img src={avatar} alt={name} title={name} className="h-8 w-8 rounded-full object-cover ring-2 ring-border" />
-            ) : (
-              <div className="h-8 w-8 rounded-full bg-accent/20 flex items-center justify-center text-accent text-xs font-bold" title={name}>
-                {name.charAt(0).toUpperCase()}
-              </div>
-            )}
-            <LanguageSelector compact />
-            <NotificationBell stockCount={lowStockCount} ordersCount={inTransitCount} />
-          </div>
-        ) : (
-          /* Expanded state */
+        {/* Collapsible content — slides up when collapsed */}
+        <div className={cn(
+          'overflow-hidden transition-all duration-300 ease-in-out',
+          bottomExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
+        )}>
           <div className="p-3 space-y-2">
             <div className="px-1">
               <LanguageSelector />
@@ -366,7 +347,16 @@ export function Layout({ children }: LayoutProps) {
               {t('auth.logout')}
             </button>
           </div>
-        )}
+        </div>
+
+        {/* Toggle button — always visible at the very bottom */}
+        <button
+          onClick={() => setBottomExpanded(e => !e)}
+          className="w-full flex items-center justify-center py-1.5 text-text-muted hover:text-text-primary hover:bg-surface/50 transition-colors"
+          title={bottomExpanded ? 'Recolher' : 'Expandir'}
+        >
+          {bottomExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
+        </button>
       </div>
     </div>
   )
