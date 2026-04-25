@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { type Project } from '@/lib/supabase'
 import { calcROI, fmtGBP, fmtDate, STATUS_COLORS, STATUS_DOT } from '@/lib/utils'
-import { Wrench, Calendar, TrendingUp, TrendingDown, ClipboardCheck, Ticket, Tag, ShoppingBag } from 'lucide-react'
+import { Wrench, Calendar, TrendingUp, TrendingDown, ClipboardCheck, Ticket, Tag, ShoppingBag, ImageIcon, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TicketPrint } from './TicketPrint'
 import { ChecklistModal } from './ChecklistModal'
@@ -10,6 +10,7 @@ import { CexPriceWidget } from './CexPriceWidget'
 import { printLabel } from '@/lib/printLabel'
 import { TimeTracker } from './TimeTracker'
 import { useProjects } from '@/hooks/useProjects'
+import { useAllPhotoMeta } from '@/hooks/useProjectPhotos'
 import { useLocation } from 'wouter'
 
 interface ProjectCardProps {
@@ -27,6 +28,9 @@ export function ProjectCard({ project, onClick, compact }: ProjectCardProps) {
   const [showCex, setShowCex] = useState(false)
   const [, navigate] = useLocation()
   const { data: allProjects = [] } = useProjects()
+  const { data: photoMeta } = useAllPhotoMeta()
+  const photoCount = photoMeta?.counts[project.id] ?? 0
+  const latestPhoto = photoMeta?.latest[project.id]
   const serialCount = project.serial_number
     ? allProjects.filter(p => p.id !== project.id && p.serial_number === project.serial_number).length
     : 0
@@ -42,25 +46,40 @@ export function ProjectCard({ project, onClick, compact }: ProjectCardProps) {
       >
         {/* Header */}
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              {project.ticket_number && (
-                <span className="text-xs font-mono text-accent/70 shrink-0">{project.ticket_number}</span>
-              )}
-              {serialCount > 0 && (
-                <button
-                  onClick={e => { e.stopPropagation(); navigate(`/serial-history?q=${encodeURIComponent(project.serial_number!)}`) }}
-                  className="text-xs bg-warning/10 text-warning border border-warning/20 px-1.5 py-0.5 rounded font-medium hover:bg-warning/20 transition-colors"
-                  title={`Já esteve cá ${serialCount + 1} vezes`}
-                >
-                  ⚠ {serialCount + 1}×
-                </button>
+          <div className="flex gap-2.5 min-w-0">
+            {latestPhoto && (
+              <img
+                src={latestPhoto}
+                alt=""
+                className="h-10 w-10 rounded-lg object-cover border border-border shrink-0"
+              />
+            )}
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                {project.ticket_number && (
+                  <span className="text-xs font-mono text-accent/70 shrink-0">{project.ticket_number}</span>
+                )}
+                {serialCount > 0 && (
+                  <button
+                    onClick={e => { e.stopPropagation(); navigate(`/serial-history?q=${encodeURIComponent(project.serial_number!)}`) }}
+                    className="text-xs bg-warning/10 text-warning border border-warning/20 px-1.5 py-0.5 rounded font-medium hover:bg-warning/20 transition-colors"
+                    title={`Já esteve cá ${serialCount + 1} vezes`}
+                  >
+                    ⚠ {serialCount + 1}×
+                  </button>
+                )}
+                {photoCount > 0 && (
+                  <span className="flex items-center gap-0.5 text-[10px] text-text-muted">
+                    <ImageIcon className="h-3 w-3" />
+                    {photoCount}
+                  </span>
+                )}
+              </div>
+              <h3 className="font-semibold text-text-primary text-sm truncate">{project.equipment}</h3>
+              {(project.brand || project.model) && (
+                <p className="text-xs text-text-muted truncate">{[project.brand, project.model].filter(Boolean).join(' · ')}</p>
               )}
             </div>
-            <h3 className="font-semibold text-text-primary text-sm truncate">{project.equipment}</h3>
-            {(project.brand || project.model) && (
-              <p className="text-xs text-text-muted truncate">{[project.brand, project.model].filter(Boolean).join(' · ')}</p>
-            )}
           </div>
           <span className={cn('shrink-0 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium', STATUS_COLORS[project.status])}>
             <span className={cn('h-1.5 w-1.5 rounded-full', STATUS_DOT[project.status])} />
@@ -124,6 +143,13 @@ export function ProjectCard({ project, onClick, compact }: ProjectCardProps) {
 
           {/* Action buttons */}
           <div className="ml-auto flex items-center gap-1" onClick={e => e.stopPropagation()}>
+            <button
+              title="Ver detalhes e fotos"
+              onClick={() => navigate(`/projects/${project.id}`)}
+              className="p-1 rounded hover:bg-surface hover:text-accent transition-colors"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+            </button>
             <button
               title={t('checklist.title')}
               onClick={() => setShowChecklist(true)}

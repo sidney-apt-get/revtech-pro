@@ -31,10 +31,26 @@ export type Project = {
   sale_platform: string | null
   status: ProjectStatus
   notes: string | null
+  obs_recepcao: string | null
+  obs_diagnostico: string | null
+  obs_reparacao: string | null
+  obs_conclusao: string | null
   received_at: string
   sold_at: string | null
   created_at: string
   updated_at: string
+}
+
+export type ProjectPhase = 'recepcao' | 'diagnostico' | 'reparacao' | 'concluido' | 'entrega'
+
+export type ProjectPhoto = {
+  id: string
+  project_id: string
+  user_id: string
+  phase: ProjectPhase
+  photo_url: string
+  caption: string | null
+  created_at: string
 }
 
 export type ProjectStatus =

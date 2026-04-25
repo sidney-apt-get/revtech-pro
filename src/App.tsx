@@ -20,6 +20,7 @@ import { EbaySearch } from '@/pages/EbaySearch'
 import { Labels } from '@/pages/Labels'
 import { SerialHistory } from '@/pages/SerialHistory'
 import { Warranties } from '@/pages/Warranties'
+import { ProjectDetails } from '@/pages/ProjectDetails'
 import AuthCallback from '@/pages/AuthCallback'
 import { SettingsProvider } from '@/contexts/SettingsContext'
 import { RoleProvider } from '@/contexts/RoleContext'
@@ -79,6 +80,9 @@ export default function App() {
           </Route>
           <Route path="/projects">
             <Protected><Projects /></Protected>
+          </Route>
+          <Route path="/projects/:id">
+            <Protected><ProjectDetails /></Protected>
           </Route>
           <Route path="/inventory">
             <Protected><Inventory /></Protected>

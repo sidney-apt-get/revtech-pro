@@ -15,6 +15,7 @@ import type { InventoryItem } from '@/lib/supabase'
 import { fmtGBP, fmtDate } from '@/lib/utils'
 import { Plus, Pencil, Trash2, AlertTriangle, Wrench, Package, Beaker, Building, ScanLine } from 'lucide-react'
 import { BarcodeScanner } from '@/components/BarcodeScanner'
+import { lookupBarcode } from '@/lib/productLookup'
 
 const categories = ['Peças', 'Consumíveis', 'Ferramentas', 'Patrimônio'] as const
 type Category = typeof categories[number]
@@ -97,7 +98,7 @@ export function Inventory() {
     defaultValues: { category: 'Peças', quantity: 0, min_stock: 5, unit_cost: 0 },
   })
 
-  function handleScanDetected(code: string) {
+  async function handleScanDetected(code: string) {
     const match = inventory.find(i =>
       i.item_name.toLowerCase().includes(code.toLowerCase()) ||
       (i.supplier ?? '').toLowerCase().includes(code.toLowerCase())
@@ -105,9 +106,19 @@ export function Inventory() {
     if (match) {
       setActiveTab(match.category as Category)
       openEdit(match)
-    } else {
-      openNew(activeTab)
-      setValue('item_name', code)
+      return
+    }
+    openNew(activeTab)
+    setValue('item_name', code)
+    const info = await lookupBarcode(code)
+    if (info) {
+      if (info.name) setValue('item_name', info.name)
+      if (info.brand) setValue('supplier', info.brand)
+      // Focus quantity field after filling name
+      setTimeout(() => {
+        const qtyInput = document.querySelector<HTMLInputElement>('input[name="quantity"]')
+        qtyInput?.focus()
+      }, 100)
     }
   }
 

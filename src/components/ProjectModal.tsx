@@ -16,7 +16,8 @@ import { WarrantyModal } from './WarrantyModal'
 import { useCreateProject, useUpdateProject } from '@/hooks/useProjects'
 import type { Project } from '@/lib/supabase'
 import { ALL_STATUSES } from '@/lib/utils'
-import { ScanLine } from 'lucide-react'
+import { lookupBarcode } from '@/lib/productLookup'
+import { ScanLine, Loader2 } from 'lucide-react'
 
 const schema = z.object({
   equipment: z.string().min(1, 'Obrigatório'),
@@ -51,7 +52,10 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
   const create = useCreateProject()
   const update = useUpdateProject()
   const [showScanner, setShowScanner] = useState(false)
+  const [scanTarget, setScanTarget] = useState<'serial' | 'equipment'>('serial')
   const [warrantyProject, setWarrantyProject] = useState<{ id: string; equipment: string } | null>(null)
+  const [lookupLoading, setLookupLoading] = useState(false)
+  const [productImage, setProductImage] = useState<string | null>(null)
 
   const { register, handleSubmit, watch, setValue, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
@@ -86,8 +90,26 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
       })
     } else {
       reset({ status: 'Recebido', purchase_price: 0, parts_cost: 0, shipping_in: 0, shipping_out: 0 })
+      setProductImage(null)
     }
   }, [project, reset, open])
+
+  async function handleEquipmentScan(code: string) {
+    setShowScanner(false)
+    setValue('serial_number', code)
+    setLookupLoading(true)
+    try {
+      const info = await lookupBarcode(code)
+      if (info) {
+        if (info.name) setValue('equipment', info.name)
+        if (info.brand) setValue('brand', info.brand)
+        if (info.model) setValue('model', info.model)
+        if (info.imageUrl) setProductImage(info.imageUrl)
+      }
+    } finally {
+      setLookupLoading(false)
+    }
+  }
 
   const watched = watch(['purchase_price', 'parts_cost', 'shipping_in', 'shipping_out', 'sale_price'])
 
@@ -147,7 +169,25 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <F label="Equipamento *" error={errors.equipment?.message}>
-                <Input {...register('equipment')} placeholder="ex: MacBook Pro 2019" />
+                <div className="flex gap-1.5 items-start">
+                  <div className="flex-1">
+                    <Input {...register('equipment')} placeholder="ex: MacBook Pro 2019" />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setScanTarget('equipment'); setShowScanner(true) }}
+                    title="Escanear código de barras para preencher automaticamente"
+                    className="shrink-0 px-2 h-9 rounded-lg border border-border bg-surface text-text-muted hover:text-accent hover:border-accent/40 transition-colors flex items-center"
+                  >
+                    {lookupLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanLine className="h-4 w-4" />}
+                  </button>
+                  {productImage && (
+                    <img src={productImage} alt="Produto" className="h-9 w-9 rounded-lg object-cover border border-border shrink-0" />
+                  )}
+                </div>
+                {lookupLoading && (
+                  <p className="text-xs text-accent mt-1">A consultar base de dados de produtos...</p>
+                )}
               </F>
             </div>
             <F label="Marca"><Input {...register('brand')} placeholder="Apple" /></F>
@@ -233,8 +273,8 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
 
     {showScanner && (
       <BarcodeScanner
-        title="Ler número de série"
-        onDetected={code => setValue('serial_number', code)}
+        title={scanTarget === 'equipment' ? 'Escanear produto (EAN/QR)' : 'Ler número de série'}
+        onDetected={scanTarget === 'equipment' ? handleEquipmentScan : code => { setValue('serial_number', code); setShowScanner(false) }}
         onClose={() => setShowScanner(false)}
       />
     )}
