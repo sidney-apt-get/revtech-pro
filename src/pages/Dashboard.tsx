@@ -1,13 +1,15 @@
 import { useDashboard } from '@/hooks/useDashboard'
 import { useOrders } from '@/hooks/useOrders'
 import { useInventory } from '@/hooks/useInventory'
-import { fmtGBP, fmtDate } from '@/lib/utils'
+import { useExpenses, useFinancialGoals } from '@/hooks/useFinances'
+import { useProjects } from '@/hooks/useProjects'
+import { fmtGBP, fmtDate, calcROI } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StockAlert } from '@/components/Layout'
 import { Link } from 'wouter'
 import {
   TrendingUp, TrendingDown, DollarSign, Activity, Clock, Target,
-  ShoppingCart, AlertTriangle, Tag, Wrench, Package, ArrowRight,
+  ShoppingCart, AlertTriangle, Tag, Wrench, Package, ArrowRight, PoundSterling,
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -89,6 +91,22 @@ export function Dashboard() {
   } = useDashboard()
   const { data: orders = [] } = useOrders()
   const { data: inventory = [] } = useInventory()
+  const { data: projects = [] } = useProjects()
+  const { data: expenses = [] } = useExpenses()
+  const { data: goals = [] } = useFinancialGoals()
+
+  const now = new Date()
+  const currentMonth = now.getMonth() + 1
+  const currentYear = now.getFullYear()
+  const currentGoal = goals.find(g => g.month === currentMonth && g.year === currentYear)
+  const monthlyExpenses = expenses
+    .filter(e => { const d = parseISO(e.date); return d.getMonth() + 1 === currentMonth && d.getFullYear() === currentYear })
+    .reduce((s, e) => s + e.amount, 0)
+  const readyStock = projects.filter(p => p.status === 'Pronto para Venda')
+  const stockPotential = readyStock.reduce((s, p) => {
+    const { cost } = calcROI(p)
+    return s + (p.sale_price ?? cost * 1.4)
+  }, 0)
 
   const inTransitOrders = orders.filter(o => ['Encomendado', 'Em Trânsito'].includes(o.status))
   const toolsToCalibrate = inventory.filter(i => {
@@ -232,6 +250,61 @@ export function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Widget Saúde Financeira */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <PoundSterling className="h-4 w-4 text-accent" />
+              Saúde Financeira
+            </CardTitle>
+            <Link href="/finances">
+              <span className="text-xs text-accent hover:underline cursor-pointer flex items-center gap-1">
+                Ver detalhes <ArrowRight className="h-3 w-3" />
+              </span>
+            </Link>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <p className="text-xs text-text-muted">Receita este mês</p>
+              <p className="text-lg font-bold text-success">{fmtGBP(totalRevenue)}</p>
+              {currentGoal?.revenue_target && currentGoal.revenue_target > 0 && (
+                <>
+                  <div className="flex justify-between text-xs text-text-muted">
+                    <span>Meta: {fmtGBP(currentGoal.revenue_target)}</span>
+                    <span className={totalRevenue >= currentGoal.revenue_target ? 'text-success' : 'text-text-muted'}>
+                      {Math.min(100, Math.round((totalRevenue / currentGoal.revenue_target) * 100))}%
+                    </span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-surface border border-border overflow-hidden">
+                    <div className="h-full rounded-full bg-success transition-all" style={{ width: `${Math.min(100, (totalRevenue / currentGoal.revenue_target) * 100)}%` }} />
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs text-text-muted">Despesas este mês</p>
+              <p className={cn('text-lg font-bold', currentGoal?.expenses_budget && monthlyExpenses > currentGoal.expenses_budget ? 'text-danger' : 'text-text-primary')}>
+                {fmtGBP(monthlyExpenses)}
+              </p>
+              {currentGoal?.expenses_budget && currentGoal.expenses_budget > 0 && (
+                <p className="text-xs text-text-muted">Orçamento: {fmtGBP(currentGoal.expenses_budget)}</p>
+              )}
+              {monthlyExpenses === 0 && (
+                <p className="text-xs text-text-muted">Nenhuma despesa registada</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs text-text-muted">Potencial do stock</p>
+              <p className="text-lg font-bold text-accent">{fmtGBP(stockPotential)}</p>
+              <p className="text-xs text-text-muted">{readyStock.length} equipamento{readyStock.length !== 1 ? 's' : ''} pronto{readyStock.length !== 1 ? 's' : ''} para venda</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* FILA 4 — Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

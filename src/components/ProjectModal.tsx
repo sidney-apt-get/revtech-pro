@@ -17,7 +17,23 @@ import { useCreateProject, useUpdateProject } from '@/hooks/useProjects'
 import type { Project } from '@/lib/supabase'
 import { ALL_STATUSES } from '@/lib/utils'
 import { lookupBarcode } from '@/lib/productLookup'
-import { ScanLine, Loader2 } from 'lucide-react'
+import { ScanLine, Loader2, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react'
+
+const STORAGE_OPTIONS = [16, 32, 64, 128, 256, 512, 1024]
+const RAM_OPTIONS = [1, 2, 3, 4, 6, 8, 12, 16]
+const CONDITION_GRADES = ['A', 'B', 'C', 'D', 'Para peças'] as const
+const IMEI_REGEX = /^\d{15}$/
+
+function luhnValid(n: string): boolean {
+  if (!IMEI_REGEX.test(n)) return false
+  let sum = 0, alt = false
+  for (let i = n.length - 1; i >= 0; i--) {
+    let d = parseInt(n[i])
+    if (alt) { d *= 2; if (d > 9) d -= 9 }
+    sum += d; alt = !alt
+  }
+  return sum % 10 === 0
+}
 
 const schema = z.object({
   equipment: z.string().min(1, 'Obrigatório'),
@@ -36,6 +52,16 @@ const schema = z.object({
   sale_platform: z.string().optional(),
   status: z.enum(['Recebido','Em Diagnóstico','Aguardando Peças','Em Manutenção','Pronto para Venda','Vendido','Cancelado']).default('Recebido'),
   notes: z.string().optional(),
+  imei: z.string().optional(),
+  imei2: z.string().optional(),
+  battery_capacity_original: z.coerce.number().int().positive().optional().nullable(),
+  battery_capacity_current: z.coerce.number().int().positive().optional().nullable(),
+  battery_health_percent: z.coerce.number().int().min(0).max(100).optional().nullable(),
+  battery_cycles: z.coerce.number().int().min(0).optional().nullable(),
+  device_color: z.string().optional(),
+  storage_gb: z.coerce.number().int().positive().optional().nullable(),
+  ram_gb: z.coerce.number().int().positive().optional().nullable(),
+  condition_grade: z.enum(['A','B','C','D','Para peças']).optional().nullable(),
 })
 
 type FormData = z.infer<typeof schema>
@@ -56,6 +82,7 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
   const [warrantyProject, setWarrantyProject] = useState<{ id: string; equipment: string } | null>(null)
   const [lookupLoading, setLookupLoading] = useState(false)
   const [productImage, setProductImage] = useState<string | null>(null)
+  const [deviceOpen, setDeviceOpen] = useState(false)
 
   const { register, handleSubmit, watch, setValue, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
@@ -87,10 +114,23 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
         sale_platform: project.sale_platform ?? '',
         status: project.status,
         notes: project.notes ?? '',
+        imei: project.imei ?? '',
+        imei2: project.imei2 ?? '',
+        battery_capacity_original: project.battery_capacity_original ?? undefined,
+        battery_capacity_current: project.battery_capacity_current ?? undefined,
+        battery_health_percent: project.battery_health_percent ?? undefined,
+        battery_cycles: project.battery_cycles ?? undefined,
+        device_color: project.device_color ?? '',
+        storage_gb: project.storage_gb ?? undefined,
+        ram_gb: project.ram_gb ?? undefined,
+        condition_grade: project.condition_grade ?? undefined,
       })
+      const hasDevice = !!(project.imei || project.battery_health_percent || project.condition_grade)
+      setDeviceOpen(hasDevice)
     } else {
       reset({ status: 'Recebido', purchase_price: 0, parts_cost: 0, shipping_in: 0, shipping_out: 0 })
       setProductImage(null)
+      setDeviceOpen(false)
     }
   }, [project, reset, open])
 
@@ -112,6 +152,12 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
   }
 
   const watched = watch(['purchase_price', 'parts_cost', 'shipping_in', 'shipping_out', 'sale_price'])
+  const [watchedCapOrig, watchedCapCur] = watch(['battery_capacity_original', 'battery_capacity_current'])
+
+  // Auto-calculate battery health when both capacities are filled
+  const calcHealth = watchedCapOrig && watchedCapCur && watchedCapOrig > 0
+    ? Math.min(100, Math.round((watchedCapCur / watchedCapOrig) * 100))
+    : null
 
   async function onSubmit(data: FormData) {
     const payload = {
@@ -133,6 +179,16 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
       notes: data.notes || null,
       received_at: project?.received_at ?? new Date().toISOString(),
       sold_at: data.status === 'Vendido' ? (project?.sold_at ?? new Date().toISOString()) : null,
+      imei: data.imei || null,
+      imei2: data.imei2 || null,
+      battery_capacity_original: data.battery_capacity_original ?? null,
+      battery_capacity_current: data.battery_capacity_current ?? null,
+      battery_health_percent: calcHealth ?? data.battery_health_percent ?? null,
+      battery_cycles: data.battery_cycles ?? null,
+      device_color: data.device_color || null,
+      storage_gb: data.storage_gb ?? null,
+      ram_gb: data.ram_gb ?? null,
+      condition_grade: data.condition_grade ?? null,
     }
     const wasVendido = project?.status !== 'Vendido' && data.status === 'Vendido'
     let savedId = project?.id ?? ''
@@ -255,6 +311,132 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
               shippingOut={watched[3] || 0}
               salePrice={watched[4] ?? null}
             />
+          </div>
+
+          {/* Device details — collapsible */}
+          <div className="border border-border rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setDeviceOpen(o => !o)}
+              className="w-full flex items-center justify-between px-4 py-2.5 bg-surface text-sm font-semibold text-text-muted hover:text-text-primary transition-colors"
+            >
+              <span>Detalhes do Dispositivo</span>
+              {deviceOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </button>
+            {deviceOpen && (
+              <div className="p-4 space-y-4">
+                {/* IMEI */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>IMEI 1</Label>
+                    <div className="flex gap-1.5">
+                      <Input {...register('imei')} placeholder="15 dígitos" maxLength={15} className="flex-1 font-mono text-xs" />
+                      {watch('imei') && watch('imei')!.length === 15 && (
+                        <a
+                          href={`https://www.imei.info/?imei=${watch('imei')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Verificar IMEI"
+                          className="px-2 rounded-lg border border-border bg-surface text-text-muted hover:text-accent hover:border-accent/40 transition-colors flex items-center"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      )}
+                    </div>
+                    {watch('imei') && watch('imei')!.length > 0 && watch('imei')!.length < 15 && (
+                      <p className="text-[10px] text-warning">IMEI deve ter 15 dígitos</p>
+                    )}
+                    {watch('imei') && watch('imei')!.length === 15 && !luhnValid(watch('imei')!) && (
+                      <p className="text-[10px] text-danger">IMEI inválido (falha Luhn)</p>
+                    )}
+                    {watch('imei') && luhnValid(watch('imei')!) && (
+                      <p className="text-[10px] text-success">✓ IMEI válido</p>
+                    )}
+                  </div>
+                  <F label="IMEI 2 (Dual SIM)">
+                    <Input {...register('imei2')} placeholder="Opcional" maxLength={15} className="font-mono text-xs" />
+                  </F>
+                </div>
+
+                {/* Battery */}
+                <div className="grid grid-cols-2 gap-3">
+                  <F label="Capacidade original (mAh)">
+                    <Input type="number" {...register('battery_capacity_original')} placeholder="ex: 3227" />
+                  </F>
+                  <F label="Capacidade actual (mAh)">
+                    <Input type="number" {...register('battery_capacity_current')} placeholder="ex: 2900" />
+                  </F>
+                </div>
+
+                {/* Battery health bar + input */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label>Saúde da bateria (%)</Label>
+                    {calcHealth != null && (
+                      <span className="text-xs text-text-muted">Calculado: <span className={calcHealth >= 80 ? 'text-success' : calcHealth >= 60 ? 'text-warning' : 'text-danger'}>{calcHealth}%</span></span>
+                    )}
+                  </div>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    {...register('battery_health_percent')}
+                    value={calcHealth != null ? calcHealth : (watch('battery_health_percent') ?? '')}
+                    onChange={e => setValue('battery_health_percent', parseInt(e.target.value) || undefined)}
+                    placeholder="0–100"
+                  />
+                  {(() => {
+                    const h = calcHealth ?? watch('battery_health_percent')
+                    if (!h) return null
+                    const color = h >= 80 ? 'bg-success' : h >= 60 ? 'bg-warning' : 'bg-danger'
+                    return (
+                      <div className="h-2 rounded-full bg-surface border border-border overflow-hidden">
+                        <div className={`h-full rounded-full ${color} transition-all`} style={{ width: `${Math.min(100, h)}%` }} />
+                      </div>
+                    )
+                  })()}
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <F label="Ciclos de carga">
+                    <Input type="number" {...register('battery_cycles')} placeholder="ex: 312" />
+                  </F>
+                  <F label="Cor do dispositivo">
+                    <Input {...register('device_color')} placeholder="ex: Space Grey" />
+                  </F>
+                  <div className="space-y-1.5">
+                    <Label>Condição</Label>
+                    <Select value={watch('condition_grade') ?? ''} onValueChange={v => setValue('condition_grade', v as FormData['condition_grade'])}>
+                      <SelectTrigger><SelectValue placeholder="Grau..." /></SelectTrigger>
+                      <SelectContent>
+                        {CONDITION_GRADES.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Armazenamento (GB)</Label>
+                    <Select value={watch('storage_gb')?.toString() ?? ''} onValueChange={v => setValue('storage_gb', parseInt(v))}>
+                      <SelectTrigger><SelectValue placeholder="Selecciona..." /></SelectTrigger>
+                      <SelectContent>
+                        {STORAGE_OPTIONS.map(s => <SelectItem key={s} value={String(s)}>{s >= 1024 ? '1TB' : `${s}GB`}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>RAM (GB)</Label>
+                    <Select value={watch('ram_gb')?.toString() ?? ''} onValueChange={v => setValue('ram_gb', parseInt(v))}>
+                      <SelectTrigger><SelectValue placeholder="Selecciona..." /></SelectTrigger>
+                      <SelectContent>
+                        {RAM_OPTIONS.map(r => <SelectItem key={r} value={String(r)}>{r}GB</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <F label="Notas">

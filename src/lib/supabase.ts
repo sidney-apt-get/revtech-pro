@@ -35,10 +35,44 @@ export type Project = {
   obs_diagnostico: string | null
   obs_reparacao: string | null
   obs_conclusao: string | null
+  imei: string | null
+  imei2: string | null
+  battery_capacity_original: number | null
+  battery_capacity_current: number | null
+  battery_health_percent: number | null
+  battery_cycles: number | null
+  device_color: string | null
+  storage_gb: number | null
+  ram_gb: number | null
+  condition_grade: 'A' | 'B' | 'C' | 'D' | 'Para peças' | null
   received_at: string
   sold_at: string | null
   created_at: string
   updated_at: string
+}
+
+export type Expense = {
+  id: string
+  user_id: string
+  category: 'Ferramentas' | 'Consumíveis' | 'Envios' | 'Subscrições' | 'Electricidade' | 'Internet' | 'Outros'
+  description: string
+  amount: number
+  date: string
+  receipt_url: string | null
+  is_recurring: boolean
+  recurring_day: number | null
+  created_at: string
+}
+
+export type FinancialGoal = {
+  id: string
+  user_id: string
+  month: number
+  year: number
+  revenue_target: number
+  profit_target: number
+  expenses_budget: number
+  created_at: string
 }
 
 export type ProjectPhase = 'recepcao' | 'diagnostico' | 'reparacao' | 'concluido' | 'entrega'

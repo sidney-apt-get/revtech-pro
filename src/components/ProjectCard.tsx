@@ -2,14 +2,16 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { type Project } from '@/lib/supabase'
 import { calcROI, fmtGBP, fmtDate, STATUS_COLORS, STATUS_DOT } from '@/lib/utils'
-import { Wrench, Calendar, TrendingUp, TrendingDown, ClipboardCheck, Ticket, Tag, ShoppingBag, ImageIcon, ExternalLink } from 'lucide-react'
+import { Wrench, Calendar, TrendingUp, TrendingDown, ClipboardCheck, Ticket, Tag, ShoppingBag, ImageIcon, ExternalLink, DollarSign } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TicketPrint } from './TicketPrint'
 import { ChecklistModal } from './ChecklistModal'
 import { CexPriceWidget } from './CexPriceWidget'
+import { PriceComparator } from './PriceComparator'
 import { printLabel } from '@/lib/printLabel'
 import { TimeTracker } from './TimeTracker'
 import { useProjects } from '@/hooks/useProjects'
+import { useUpdateProject } from '@/hooks/useProjects'
 import { useAllPhotoMeta } from '@/hooks/useProjectPhotos'
 import { useLocation } from 'wouter'
 
@@ -26,6 +28,8 @@ export function ProjectCard({ project, onClick, compact }: ProjectCardProps) {
   const [showTicket, setShowTicket] = useState(false)
   const [showChecklist, setShowChecklist] = useState(false)
   const [showCex, setShowCex] = useState(false)
+  const [showComparator, setShowComparator] = useState(false)
+  const updateProject = useUpdateProject()
   const [, navigate] = useLocation()
   const { data: allProjects = [] } = useProjects()
   const { data: photoMeta } = useAllPhotoMeta()
@@ -89,6 +93,42 @@ export function ProjectCard({ project, onClick, compact }: ProjectCardProps) {
 
         {/* Defect */}
         <p className="text-xs text-text-muted line-clamp-2">{project.defect_description}</p>
+
+        {/* Device badges */}
+        {!compact && (project.condition_grade || project.battery_health_percent != null || project.imei) && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {project.condition_grade && (
+              <span className={cn('text-[10px] font-bold border px-1.5 py-0.5 rounded', {
+                'bg-success/10 text-success border-success/20': project.condition_grade === 'A',
+                'bg-blue-500/10 text-blue-400 border-blue-500/20': project.condition_grade === 'B',
+                'bg-orange-500/10 text-orange-400 border-orange-500/20': project.condition_grade === 'C',
+                'bg-danger/10 text-danger border-danger/20': project.condition_grade === 'D',
+                'bg-surface text-text-muted border-border': project.condition_grade === 'Para peças',
+              })}>
+                {project.condition_grade === 'Para peças' ? 'Peças' : `Grau ${project.condition_grade}`}
+              </span>
+            )}
+            {project.battery_health_percent != null && (
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] text-text-muted">Bat</span>
+                <div className="w-12 h-1.5 rounded-full bg-surface border border-border overflow-hidden">
+                  <div
+                    className={cn('h-full rounded-full', project.battery_health_percent >= 80 ? 'bg-success' : project.battery_health_percent >= 60 ? 'bg-warning' : 'bg-danger')}
+                    style={{ width: `${project.battery_health_percent}%` }}
+                  />
+                </div>
+                <span className={cn('text-[10px] font-medium', project.battery_health_percent >= 80 ? 'text-success' : project.battery_health_percent >= 60 ? 'text-warning' : 'text-danger')}>
+                  {project.battery_health_percent}%
+                </span>
+              </div>
+            )}
+            {project.imei && (
+              <span className="text-[10px] font-mono text-text-muted border border-border px-1.5 py-0.5 rounded">
+                {project.imei.slice(0, 4)}{'*'.repeat(project.imei.length - 4)}
+              </span>
+            )}
+          </div>
+        )}
 
         {!compact && (
           <>
@@ -167,6 +207,13 @@ export function ProjectCard({ project, onClick, compact }: ProjectCardProps) {
             {project.status === 'Pronto para Venda' && (
               <>
                 <button
+                  title="Comparar preços de venda"
+                  onClick={() => setShowComparator(true)}
+                  className="p-1 rounded hover:bg-surface hover:text-accent transition-colors"
+                >
+                  <DollarSign className="h-3.5 w-3.5" />
+                </button>
+                <button
                   title={t('labels.print')}
                   onClick={() => printLabel(project)}
                   className="p-1 rounded hover:bg-surface hover:text-success transition-colors"
@@ -196,6 +243,16 @@ export function ProjectCard({ project, onClick, compact }: ProjectCardProps) {
         <CexPriceWidget
           query={`${project.brand ?? ''} ${project.model ?? ''} ${project.equipment}`.trim()}
           onClose={() => setShowCex(false)}
+        />
+      )}
+      {showComparator && (
+        <PriceComparator
+          project={project}
+          onClose={() => setShowComparator(false)}
+          onSelectPrice={(price, platform) => {
+            updateProject.mutate({ id: project.id, sale_price: price, sale_platform: platform })
+            setShowComparator(false)
+          }}
         />
       )}
     </>

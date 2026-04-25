@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS project_photos (
 
 ALTER TABLE project_photos ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "users_own_photos" ON project_photos;
 CREATE POLICY "users_own_photos" ON project_photos
   FOR ALL USING (auth.uid() = user_id);
 
@@ -37,18 +38,21 @@ INSERT INTO storage.buckets (id, name, public)
   ON CONFLICT (id) DO NOTHING;
 
 -- RLS para o storage: pasta raiz = user_id
-CREATE POLICY IF NOT EXISTS "users_upload_photos"
+DROP POLICY IF EXISTS "users_upload_photos" ON storage.objects;
+CREATE POLICY "users_upload_photos"
   ON storage.objects FOR INSERT
   WITH CHECK (
     bucket_id = 'project-photos'
     AND auth.uid()::text = (storage.foldername(name))[1]
   );
 
-CREATE POLICY IF NOT EXISTS "public_read_photos"
+DROP POLICY IF EXISTS "public_read_photos" ON storage.objects;
+CREATE POLICY "public_read_photos"
   ON storage.objects FOR SELECT
   USING (bucket_id = 'project-photos');
 
-CREATE POLICY IF NOT EXISTS "users_delete_own_photos"
+DROP POLICY IF EXISTS "users_delete_own_photos" ON storage.objects;
+CREATE POLICY "users_delete_own_photos"
   ON storage.objects FOR DELETE
   USING (
     bucket_id = 'project-photos'
