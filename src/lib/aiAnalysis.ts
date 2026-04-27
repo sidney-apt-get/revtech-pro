@@ -28,71 +28,22 @@ export interface BarcodeResult {
   specs?: Record<string, string>
 }
 
-const GEMINI_PROMPT = `Analyse this image of an electronic device or component.
-Identify the product and return ONLY valid JSON with this exact structure (no text outside JSON):
-{
-  "category_slug": "(one of: audio-amplifier, audio-turntable, mobile-iphone, mobile-android-flagship, mobile-ipad, laptop-windows, laptop-macbook-pro, laptop-macbook-air, desktop-imac, desktop-windows-tower, console-playstation, console-xbox, console-nintendo-home, console-nintendo-portable, console-controller, desktop-cpu, desktop-gpu, laptop-ram, laptop-ssd, peripheral-monitor, audio-tubes, audio-capacitors, audio-belt, audio-needle, laptop-battery, laptop-screen, laptop-motherboard, desktop-motherboard, desktop-psu, console-optical, console-fan, mobile-screen, mobile-battery, mobile-motherboard, mobile-camera, mobile-charging-port, consumable-solder, consumable-thermal, tool-soldering, tool-multimeter, tool-oscilloscope, tool-hotair, generic-equipment, generic-part)",
-  "confidence": 0-100,
-  "brand": "string",
-  "model": "string",
-  "year_manufactured": number or null,
-  "color": "string or null",
-  "storage_gb": number or null,
-  "ram_gb": number or null,
-  "battery_mah": number or null,
-  "power_watts": number or null,
-  "screen_size_inches": number or null,
-  "cpu_model": "string or null",
-  "gpu_model": "string or null",
-  "serial_number": "string or null (only if visible on label)",
-  "imei": "string or null (only if visible)",
-  "visible_damage": ["array of visible damage descriptions"],
-  "suggested_defect": "string or null",
-  "condition_grade": "A, B, C, or D",
-  "notes": "string"
-}`
+import { supabase } from '@/lib/supabase'
 
 export async function analyzeWithGemini(
   imageBase64: string,
   mimeType: string = 'image/jpeg'
 ): Promise<GeminiResult | null> {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY
-  if (!apiKey) {
-    console.warn('VITE_GEMINI_API_KEY not set')
-    return null
-  }
-
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { inlineData: { mimeType, data: imageBase64 } },
-              { text: GEMINI_PROMPT },
-            ],
-          }],
-          generationConfig: {
-            temperature: 0.1,
-            maxOutputTokens: 1024,
-          },
-        }),
-      }
-    )
-
-    if (!response.ok) throw new Error(`Gemini error: ${response.status}`)
-
-    const data = await response.json()
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
-
-    // Extract JSON from response
-    const jsonMatch = text.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) return null
-
-    return JSON.parse(jsonMatch[0]) as GeminiResult
+    const { data, error } = await supabase.functions.invoke('ai-analyze', {
+      body: { imageBase64, mimeType },
+    })
+    if (error) throw error
+    if (!data || data.error) {
+      console.error('Edge function error:', data?.error ?? 'unknown')
+      return null
+    }
+    return data as GeminiResult
   } catch (err) {
     console.error('Gemini analysis failed:', err)
     return null
