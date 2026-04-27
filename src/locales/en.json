@@ -10,7 +10,8 @@
     "analytics": "Analytics",
     "map": "Map & Platforms",
     "ebay": "eBay / Back Market",
-    "finances": "Finances"
+    "finances": "Finances",
+    "lots": "Purchase Lots"
   },
   "admin": {
     "menu": "Admin",
@@ -313,7 +314,24 @@
     "stockAlert_one": "{{count}} item below minimum stock",
     "stockAlert_other": "{{count}} items below minimum stock",
     "supplier": "Supplier",
-    "scan": "Scan Barcode"
+    "scan": "Scan Barcode",
+    "cannibalized": "Reclaimed part",
+    "reclaimed": "Reclaimed",
+    "lotItem": "Lot item",
+    "context": {
+      "new": "New / Purchased",
+      "cannibalized": "Reclaimed from project",
+      "lot": "From lot"
+    },
+    "contextFields": {
+      "itemContext": "Item origin",
+      "cannibalizationReason": "Reason for reclaiming",
+      "cannibalizationReasonPlaceholder": "Why was this part removed?",
+      "conditionTested": "Condition tested / verified",
+      "lot": "Purchase lot",
+      "selectLot": "Select a lot...",
+      "itemNamePlaceholder": "e.g. Thermal paste Arctic MX-4"
+    }
   },
   "contacts": {
     "title": "Contacts",
@@ -587,5 +605,96 @@
     "noResults": "Not found on CeX",
     "viewOnCex": "View on CeX",
     "error": "Error fetching CeX price"
+  },
+  "ai": {
+    "sectionTitle": "AI & Category",
+    "photographDevice": "Photograph",
+    "qrTitle": "QR Code for Phone",
+    "qrDesc": "Scan with your phone to take a photo of the device",
+    "expiresIn": "Expires in",
+    "orUploadLocal": "Or upload from this device:",
+    "uploadFromDevice": "Upload Image",
+    "analyzing": "Analysing image...",
+    "analyzingDesc": "Gemini AI is identifying the device",
+    "analysisComplete": "Analysis complete!",
+    "analysisFailed": "Analysis failed",
+    "retry": "Retry",
+    "newPhoto": "New photo",
+    "detectedCategory": "Detected category",
+    "changeCategory": "Change category",
+    "selectCategory": "Select category",
+    "noCategory": "No category",
+    "specificFields": "Specific fields",
+    "highConfidence": "High confidence",
+    "verifyData": "Verify data",
+    "verifyManually": "Verify manually",
+    "waitingPhoto": "Waiting for photo...",
+    "photoReceived": "Photo received!"
+  },
+  "history": {
+    "title": "Item Passport",
+    "noEvents": "No history yet",
+    "events": {
+      "item_created": "Item created",
+      "photo_added": "Photo added",
+      "field_updated": "Field updated",
+      "status_changed": "Status changed",
+      "used_in_project": "Used in project",
+      "sold": "Sold",
+      "cannibalized_from": "Reclaimed from project",
+      "time_tracked": "Time tracked",
+      "lot_assigned": "Assigned to lot",
+      "ai_analyzed": "AI analysis",
+      "note_added": "Note added"
+    }
+  },
+  "lots": {
+    "title": "Purchase Lots",
+    "new": "New Lot",
+    "newLot": "New lot",
+    "editLot": "Edit lot",
+    "noLots": "No lots registered",
+    "createFirst": "Create first lot",
+    "unnamed": "Unnamed lot",
+    "total_one": "{{count}} lot",
+    "total_other": "{{count}} lots",
+    "purchasePrice": "Purchase price",
+    "date": "Date",
+    "estimatedItems": "Est. items",
+    "perItem": "per item",
+    "status": {
+      "untriaged": "Untriaged",
+      "in_progress": "In Progress",
+      "completed": "Completed"
+    },
+    "fields": {
+      "lotNumber": "Lot number",
+      "supplier": "Source",
+      "purchasePrice": "Purchase price (£) *",
+      "purchaseDate": "Date",
+      "estimatedItems": "Estimated items",
+      "status": "Status",
+      "description": "Description",
+      "descriptionPlaceholder": "What's in the lot...",
+      "notes": "Notes"
+    }
+  },
+  "finances": {
+    "title": "Finances",
+    "revenue": "Revenue",
+    "directCosts": "Direct costs",
+    "netProfit": "Net profit",
+    "margin": "Margin %",
+    "taxEstimate": "Tax estimate (reference)",
+    "on": "on",
+    "consultAccountant": "Consult an accountant for real values.",
+    "top5Items": "Top 5 most profitable items",
+    "periods": {
+      "today": "Today",
+      "week": "This week",
+      "month": "This month",
+      "year": "This year",
+      "custom": "Custom"
+    }
   }
 }

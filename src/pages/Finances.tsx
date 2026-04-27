@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useProjects } from '@/hooks/useProjects'
 import { useExpenses, useCreateExpense, useDeleteExpense, useFinancialGoals, useUpsertGoal } from '@/hooks/useFinances'
 import { calcROI, fmtGBP } from '@/lib/utils'
@@ -21,8 +22,11 @@ import { cn } from '@/lib/utils'
 import {
   format, startOfMonth, endOfMonth, subMonths, parseISO,
   getMonth, getYear, differenceInDays,
+  startOfWeek, endOfWeek, startOfYear, endOfYear, startOfDay, endOfDay,
 } from 'date-fns'
 import { pt } from 'date-fns/locale'
+
+type Period = 'today' | 'week' | 'month' | 'year' | 'custom'
 
 const EXPENSE_CATEGORIES = ['Ferramentas', 'Consumíveis', 'Envios', 'Subscrições', 'Electricidade', 'Internet', 'Outros'] as const
 const PIE_COLORS = ['#4F8EF7', '#4CAF82', '#F7C948', '#F7834F', '#A78BFA', '#F472B6', '#94A3B8']
@@ -41,6 +45,7 @@ function BudgetBar({ value, target, color = 'accent' }: { value: number; target:
 }
 
 export function Finances() {
+  const { t } = useTranslation()
   const { data: projects = [], isLoading: loadingProjects } = useProjects()
   const { data: expenses = [], isLoading: loadingExpenses } = useExpenses()
   const { data: goals = [] } = useFinancialGoals()
@@ -51,6 +56,46 @@ export function Finances() {
   const now = new Date()
   const currentMonth = getMonth(now) + 1
   const currentYear = getYear(now)
+
+  const [period, setPeriod] = useState<Period>('month')
+  const [customStart, setCustomStart] = useState(format(startOfMonth(now), 'yyyy-MM-dd'))
+  const [customEnd, setCustomEnd] = useState(format(endOfMonth(now), 'yyyy-MM-dd'))
+
+  const periodRange = useMemo(() => {
+    switch (period) {
+      case 'today': return { start: startOfDay(now), end: endOfDay(now) }
+      case 'week':  return { start: startOfWeek(now, { weekStartsOn: 1 }), end: endOfWeek(now, { weekStartsOn: 1 }) }
+      case 'month': return { start: startOfMonth(now), end: endOfMonth(now) }
+      case 'year':  return { start: startOfYear(now), end: endOfYear(now) }
+      case 'custom': return { start: new Date(customStart), end: new Date(customEnd + 'T23:59:59') }
+      default:      return { start: startOfMonth(now), end: endOfMonth(now) }
+    }
+  }, [period, customStart, customEnd])
+
+  const periodStats = useMemo(() => {
+    const { start, end } = periodRange
+    const soldProjects = projects.filter(p =>
+      p.status === 'Vendido' && p.sold_at &&
+      parseISO(p.sold_at) >= start && parseISO(p.sold_at) <= end
+    )
+    const revenue = soldProjects.reduce((s, p) => s + (p.sale_price ?? 0), 0)
+    const directCosts = soldProjects.reduce((s, p) => s + calcROI(p).cost, 0)
+    const operationalExpenses = expenses
+      .filter(e => { const d = parseISO(e.date); return d >= start && d <= end })
+      .reduce((s, e) => s + e.amount, 0)
+    const grossProfit = revenue - directCosts
+    const netProfit = grossProfit - operationalExpenses
+    const margin = revenue > 0 ? (netProfit / revenue) * 100 : 0
+    const taxEstimate = netProfit > 0 ? netProfit * 0.20 : 0
+
+    // Top 5 most profitable items
+    const top5 = soldProjects
+      .map(p => ({ name: p.equipment, profit: calcROI(p).profit }))
+      .sort((a, b) => b.profit - a.profit)
+      .slice(0, 5)
+
+    return { revenue, directCosts, operationalExpenses, grossProfit, netProfit, margin, taxEstimate, soldProjects, top5 }
+  }, [projects, expenses, periodRange])
 
   const [expenseModal, setExpenseModal] = useState(false)
   const [expForm, setExpForm] = useState({
@@ -171,15 +216,94 @@ export function Finances() {
     return <div className="text-text-muted animate-pulse p-4">A carregar...</div>
   }
 
+  const PERIODS: Array<{ key: Period; label: string }> = [
+    { key: 'today', label: t('finances.periods.today') },
+    { key: 'week',  label: t('finances.periods.week') },
+    { key: 'month', label: t('finances.periods.month') },
+    { key: 'year',  label: t('finances.periods.year') },
+    { key: 'custom',label: t('finances.periods.custom') },
+  ]
+
   return (
     <div className="space-y-4 animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold text-text-primary flex items-center gap-2">
           <PoundSterling className="h-6 w-6 text-accent" />
-          Finanças
+          {t('finances.title')}
         </h1>
         <p className="text-text-muted text-sm mt-0.5">{format(now, 'MMMM yyyy', { locale: pt })}</p>
       </div>
+
+      {/* Period selector */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {PERIODS.map(p => (
+          <button
+            key={p.key}
+            onClick={() => setPeriod(p.key)}
+            className={cn(
+              'rounded-full px-3 py-1 text-xs font-medium border transition-colors',
+              period === p.key ? 'bg-accent text-white border-accent' : 'border-border text-text-muted hover:text-text-primary hover:border-accent/40'
+            )}
+          >
+            {p.label}
+          </button>
+        ))}
+        {period === 'custom' && (
+          <div className="flex items-center gap-2">
+            <Input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="h-7 text-xs w-36" />
+            <span className="text-text-muted text-xs">—</span>
+            <Input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="h-7 text-xs w-36" />
+          </div>
+        )}
+      </div>
+
+      {/* Period KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: t('finances.revenue'), value: periodStats.revenue, color: 'text-success', icon: TrendingUp },
+          { label: t('finances.directCosts'), value: periodStats.directCosts, color: 'text-danger', icon: TrendingDown },
+          { label: t('finances.netProfit'), value: periodStats.netProfit, color: periodStats.netProfit >= 0 ? 'text-success' : 'text-danger', icon: PoundSterling },
+          { label: t('finances.margin'), value: null, pct: periodStats.margin, color: 'text-accent', icon: Target },
+        ].map(k => (
+          <Card key={k.label}>
+            <CardContent className="p-4">
+              <p className="text-xs text-text-muted">{k.label}</p>
+              <p className={cn('text-lg font-bold mt-1', k.color)}>
+                {k.pct !== undefined ? `${k.pct.toFixed(1)}%` : fmtGBP(k.value!)}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Top 5 */}
+      {periodStats.top5.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle className="text-sm">{t('finances.top5Items')}</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {periodStats.top5.map((item, i) => (
+              <div key={i} className="flex items-center justify-between text-xs">
+                <span className="text-text-muted truncate flex-1 mr-2">{i + 1}. {item.name}</span>
+                <span className={cn('font-semibold shrink-0', item.profit >= 0 ? 'text-success' : 'text-danger')}>
+                  {fmtGBP(item.profit)}
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Tax estimate */}
+      {periodStats.netProfit > 0 && (
+        <div className="rounded-xl border border-warning/20 bg-warning/5 px-4 py-3 flex items-start gap-2">
+          <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+          <p className="text-xs text-warning">
+            <span className="font-semibold">{t('finances.taxEstimate')}:</span>{' '}
+            20% {t('finances.on')} {fmtGBP(periodStats.netProfit)} ≈ <span className="font-bold">{fmtGBP(periodStats.taxEstimate)}</span>.
+            {' '}{t('finances.consultAccountant')}
+          </p>
+        </div>
+      )}
 
       <Tabs defaultValue="resumo">
         <TabsList className="flex-wrap h-auto">

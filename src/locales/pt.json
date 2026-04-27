@@ -10,7 +10,8 @@
     "analytics": "Analytics",
     "map": "Mapa",
     "ebay": "eBay / Back Market",
-    "finances": "Finanças"
+    "finances": "Finanças",
+    "lots": "Lotes de Compra"
   },
   "admin": {
     "menu": "Admin",
@@ -313,7 +314,24 @@
     "stockAlert_one": "{{count}} item abaixo do stock mínimo",
     "stockAlert_other": "{{count}} itens abaixo do stock mínimo",
     "supplier": "Fornecedor",
-    "scan": "Ler Código de Barras"
+    "scan": "Ler Código de Barras",
+    "cannibalized": "Peça reaproveitada",
+    "reclaimed": "Reaproveitada",
+    "lotItem": "Item de lote",
+    "context": {
+      "new": "Nova / Comprada",
+      "cannibalized": "Reaproveitada de projecto",
+      "lot": "De lote"
+    },
+    "contextFields": {
+      "itemContext": "Origem do item",
+      "cannibalizationReason": "Motivo do reaproveitamento",
+      "cannibalizationReasonPlaceholder": "Porque foi esta peça retirada?",
+      "conditionTested": "Condição testada / verificada",
+      "lot": "Lote de compra",
+      "selectLot": "Seleccionar lote...",
+      "itemNamePlaceholder": "ex: Pasta térmica Arctic MX-4"
+    }
   },
   "contacts": {
     "title": "Contactos",
@@ -587,5 +605,96 @@
     "noResults": "Não encontrado no CeX",
     "viewOnCex": "Ver no CeX",
     "error": "Erro ao pesquisar CeX"
+  },
+  "ai": {
+    "sectionTitle": "IA & Categoria",
+    "photographDevice": "Fotografar",
+    "qrTitle": "QR Code para Telemóvel",
+    "qrDesc": "Escaneia com o telemóvel para tirar foto ao equipamento",
+    "expiresIn": "Expira em",
+    "orUploadLocal": "Ou carrega deste dispositivo:",
+    "uploadFromDevice": "Carregar Imagem",
+    "analyzing": "A analisar imagem...",
+    "analyzingDesc": "O Gemini IA está a identificar o dispositivo",
+    "analysisComplete": "Análise completa!",
+    "analysisFailed": "Análise falhou",
+    "retry": "Tentar novamente",
+    "newPhoto": "Nova foto",
+    "detectedCategory": "Categoria detectada",
+    "changeCategory": "Mudar categoria",
+    "selectCategory": "Seleccionar categoria",
+    "noCategory": "Sem categoria",
+    "specificFields": "Campos específicos",
+    "highConfidence": "Alta confiança",
+    "verifyData": "Verificar dados",
+    "verifyManually": "Verificar manualmente",
+    "waitingPhoto": "Aguardando foto...",
+    "photoReceived": "Foto recebida!"
+  },
+  "history": {
+    "title": "Passaporte do Item",
+    "noEvents": "Sem histórico ainda",
+    "events": {
+      "item_created": "Item criado",
+      "photo_added": "Foto adicionada",
+      "field_updated": "Campo actualizado",
+      "status_changed": "Estado alterado",
+      "used_in_project": "Usado em projecto",
+      "sold": "Vendido",
+      "cannibalized_from": "Reaproveitado de projecto",
+      "time_tracked": "Tempo registado",
+      "lot_assigned": "Atribuído a lote",
+      "ai_analyzed": "Análise IA",
+      "note_added": "Nota adicionada"
+    }
+  },
+  "lots": {
+    "title": "Lotes de Compra",
+    "new": "Novo Lote",
+    "newLot": "Novo lote",
+    "editLot": "Editar lote",
+    "noLots": "Sem lotes registados",
+    "createFirst": "Criar primeiro lote",
+    "unnamed": "Lote sem nome",
+    "total_one": "{{count}} lote",
+    "total_other": "{{count}} lotes",
+    "purchasePrice": "Preço de compra",
+    "date": "Data",
+    "estimatedItems": "Items estimados",
+    "perItem": "por item",
+    "status": {
+      "untriaged": "Não Triado",
+      "in_progress": "Em Progresso",
+      "completed": "Concluído"
+    },
+    "fields": {
+      "lotNumber": "Número do lote",
+      "supplier": "Origem",
+      "purchasePrice": "Preço de compra (£) *",
+      "purchaseDate": "Data",
+      "estimatedItems": "Items estimados",
+      "status": "Estado",
+      "description": "Descrição",
+      "descriptionPlaceholder": "O que contém o lote...",
+      "notes": "Notas"
+    }
+  },
+  "finances": {
+    "title": "Finanças",
+    "revenue": "Receita",
+    "directCosts": "Custos directos",
+    "netProfit": "Lucro líquido",
+    "margin": "Margem %",
+    "taxEstimate": "Estimativa de imposto (referência)",
+    "on": "sobre",
+    "consultAccountant": "Consulta um contabilista para valores reais.",
+    "top5Items": "Top 5 itens mais lucrativos",
+    "periods": {
+      "today": "Hoje",
+      "week": "Esta semana",
+      "month": "Este mês",
+      "year": "Este ano",
+      "custom": "Personalizado"
+    }
   }
 }

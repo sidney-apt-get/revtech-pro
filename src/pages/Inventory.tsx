@@ -4,6 +4,8 @@ import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useInventory, useCreateInventoryItem, useUpdateInventoryItem, useDeleteInventoryItem } from '@/hooks/useInventory'
+import { useLots } from '@/hooks/useSmartCatalog'
+import { SmartFormSection } from '@/components/SmartForm'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -31,6 +33,11 @@ const schema = z.object({
   notes: z.string().optional(),
   calibration_date: z.string().optional(),
   next_maintenance: z.string().optional(),
+  item_context: z.enum(['new', 'cannibalized', 'lot']).default('new'),
+  lot_id: z.string().optional(),
+  source_project_id: z.string().optional(),
+  cannibalization_reason: z.string().optional(),
+  condition_tested: z.boolean().default(false),
 })
 
 type FormData = z.infer<typeof schema>
@@ -42,6 +49,28 @@ const CATEGORY_ICONS: Record<Category, typeof Package> = {
   'Patrimônio': Building,
 }
 
+function ContextBadge({ item }: { item: InventoryItem }) {
+  const { t } = useTranslation()
+  if (item.item_context === 'cannibalized') {
+    return (
+      <span
+        title={item.cannibalization_reason ?? t('inventory.cannibalized')}
+        className="ml-1 text-[10px] font-semibold text-orange-400 bg-orange-400/10 border border-orange-400/20 px-1.5 py-0.5 rounded-full cursor-help"
+      >
+        ♻️ {t('inventory.reclaimed')}
+      </span>
+    )
+  }
+  if (item.item_context === 'lot' && item.lot_id) {
+    return (
+      <span className="ml-1 text-[10px] font-semibold text-blue-400 bg-blue-400/10 border border-blue-400/20 px-1.5 py-0.5 rounded-full">
+        📦 {t('inventory.lotItem')}
+      </span>
+    )
+  }
+  return null
+}
+
 function ItemRow({ item, onEdit, onDelete }: { item: InventoryItem; onEdit: () => void; onDelete: () => void }) {
   const { t } = useTranslation()
   const low = item.quantity < item.min_stock
@@ -49,9 +78,15 @@ function ItemRow({ item, onEdit, onDelete }: { item: InventoryItem; onEdit: () =
   return (
     <tr className={`border-b border-border hover:bg-surface/50 transition-colors ${low ? 'bg-warning/3' : ''}`}>
       <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {low && <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0" />}
           <span className="text-sm font-medium text-text-primary">{item.item_name}</span>
+          <ContextBadge item={item} />
+          {item.category_slug && (
+            <span className="text-[10px] text-text-muted border border-border px-1 rounded">
+              {item.category_slug}
+            </span>
+          )}
         </div>
         {item.supplier && <p className="text-xs text-text-muted mt-0.5">{t('inventory.supplier')}: {item.supplier}</p>}
       </td>
@@ -84,6 +119,7 @@ function ItemRow({ item, onEdit, onDelete }: { item: InventoryItem; onEdit: () =
 export function Inventory() {
   const { t } = useTranslation()
   const { data: inventory = [], isLoading } = useInventory()
+  const { data: lots = [] } = useLots()
   const create = useCreateInventoryItem()
   const update = useUpdateInventoryItem()
   const remove = useDeleteInventoryItem()
@@ -93,10 +129,16 @@ export function Inventory() {
   const [editing, setEditing] = useState<InventoryItem | null>(null)
   const [scannerOpen, setScannerOpen] = useState(false)
 
+  // SmartForm state
+  const [categorySlug, setCategorySlug] = useState<string | null>(null)
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>({})
+
   const { register, handleSubmit, watch, setValue, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
-    defaultValues: { category: 'Peças', quantity: 0, min_stock: 5, unit_cost: 0 },
+    defaultValues: { category: 'Peças', quantity: 0, min_stock: 5, unit_cost: 0, item_context: 'new', condition_tested: false },
   })
+
+  const watchedContext = watch('item_context')
 
   async function handleScanDetected(code: string) {
     const match = inventory.find(i =>
@@ -114,22 +156,21 @@ export function Inventory() {
     if (info) {
       if (info.name) setValue('item_name', info.name)
       if (info.brand) setValue('supplier', info.brand)
-      // Focus quantity field after filling name
-      setTimeout(() => {
-        const qtyInput = document.querySelector<HTMLInputElement>('input[name="quantity"]')
-        qtyInput?.focus()
-      }, 100)
     }
   }
 
   function openNew(cat: Category) {
     setEditing(null)
-    reset({ category: cat, quantity: 0, min_stock: 5, unit_cost: 0 })
+    setCategorySlug(null)
+    setFieldValues({})
+    reset({ category: cat, quantity: 0, min_stock: 5, unit_cost: 0, item_context: 'new', condition_tested: false })
     setModalOpen(true)
   }
 
   function openEdit(item: InventoryItem) {
     setEditing(item)
+    setCategorySlug(item.category_slug ?? null)
+    setFieldValues({})
     reset({
       item_name: item.item_name,
       category: item.category,
@@ -141,6 +182,11 @@ export function Inventory() {
       notes: item.notes ?? '',
       calibration_date: item.calibration_date ?? '',
       next_maintenance: item.next_maintenance ?? '',
+      item_context: item.item_context ?? 'new',
+      lot_id: item.lot_id ?? '',
+      source_project_id: item.source_project_id ?? '',
+      cannibalization_reason: item.cannibalization_reason ?? '',
+      condition_tested: item.condition_tested ?? false,
     })
     setModalOpen(true)
   }
@@ -157,6 +203,12 @@ export function Inventory() {
       notes: data.notes || null,
       calibration_date: data.calibration_date || null,
       next_maintenance: data.next_maintenance || null,
+      item_context: data.item_context,
+      lot_id: data.lot_id || null,
+      source_project_id: data.source_project_id || null,
+      cannibalization_reason: data.cannibalization_reason || null,
+      condition_tested: data.condition_tested,
+      category_slug: categorySlug,
     }
     if (editing) {
       await update.mutateAsync({ id: editing.id, ...payload })
@@ -247,16 +299,32 @@ export function Inventory() {
       </Tabs>
 
       <Dialog open={modalOpen} onOpenChange={(o) => !o && setModalOpen(false)}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? t('inventory.editItem') : t('inventory.newItem')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="p-6 pt-4 space-y-4">
+            {/* Smart AI Section */}
+            <SmartFormSection
+              context="inventory"
+              initialCategorySlug={categorySlug}
+              initialFieldValues={fieldValues}
+              onCategoryChange={setCategorySlug}
+              onFieldValuesChange={setFieldValues}
+              onAiResult={(result) => {
+                if (result.brand && result.model) {
+                  setValue('item_name', `${result.brand} ${result.model}`.trim())
+                }
+                if (result.brand) setValue('supplier', result.brand)
+              }}
+            />
+
             <div className="space-y-1.5">
               <Label>{t('inventory.fields.itemName')} *</Label>
-              <Input {...register('item_name')} placeholder="ex: Pasta térmica Arctic MX-4" />
+              <Input {...register('item_name')} placeholder={t('inventory.contextFields.itemNamePlaceholder')} />
               {errors.item_name && <p className="text-xs text-danger">{t('common.required')}</p>}
             </div>
+
             <div className="space-y-1.5">
               <Label>{t('inventory.fields.category')}</Label>
               <Select value={watch('category')} onValueChange={(v) => setValue('category', v as Category)}>
@@ -268,6 +336,49 @@ export function Inventory() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Item context */}
+            <div className="space-y-1.5">
+              <Label>{t('inventory.contextFields.itemContext')}</Label>
+              <Select value={watchedContext} onValueChange={v => setValue('item_context', v as 'new' | 'cannibalized' | 'lot')}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="new">{t('inventory.context.new')}</SelectItem>
+                  <SelectItem value="cannibalized">♻️ {t('inventory.context.cannibalized')}</SelectItem>
+                  <SelectItem value="lot">📦 {t('inventory.context.lot')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {watchedContext === 'cannibalized' && (
+              <div className="rounded-xl border border-orange-500/20 bg-orange-500/5 p-3 space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">{t('inventory.contextFields.cannibalizationReason')}</Label>
+                  <Input {...register('cannibalization_reason')} placeholder={t('inventory.contextFields.cannibalizationReasonPlaceholder')} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" id="condition_tested" {...register('condition_tested')} className="rounded" />
+                  <Label htmlFor="condition_tested" className="text-sm cursor-pointer">{t('inventory.contextFields.conditionTested')}</Label>
+                </div>
+              </div>
+            )}
+
+            {watchedContext === 'lot' && lots.length > 0 && (
+              <div className="space-y-1.5">
+                <Label>{t('inventory.contextFields.lot')}</Label>
+                <Select value={watch('lot_id') ?? ''} onValueChange={v => setValue('lot_id', v)}>
+                  <SelectTrigger><SelectValue placeholder={t('inventory.contextFields.selectLot')} /></SelectTrigger>
+                  <SelectContent>
+                    {lots.map(l => (
+                      <SelectItem key={l.id} value={l.id}>
+                        📦 {l.lot_number ? `#${l.lot_number}` : t('lots.unnamed')} — {l.supplier ?? ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <Label>{t('inventory.fields.quantityLabel')}</Label>
@@ -282,6 +393,7 @@ export function Inventory() {
                 <Input type="number" step="0.01" {...register('unit_cost')} />
               </div>
             </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>{t('inventory.fields.location')}</Label>
@@ -292,6 +404,7 @@ export function Inventory() {
                 <Input {...register('supplier')} placeholder={t('inventory.fields.supplierPlaceholder')} />
               </div>
             </div>
+
             {isToolOrAsset && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
@@ -304,10 +417,12 @@ export function Inventory() {
                 </div>
               </div>
             )}
+
             <div className="space-y-1.5">
               <Label>{t('inventory.fields.notes')}</Label>
               <Textarea {...register('notes')} rows={2} />
             </div>
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>{t('common.cancel')}</Button>
               <Button type="submit" disabled={isSubmitting}>

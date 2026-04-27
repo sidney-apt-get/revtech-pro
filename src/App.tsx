@@ -22,6 +22,8 @@ import { SerialHistory } from '@/pages/SerialHistory'
 import { Warranties } from '@/pages/Warranties'
 import { ProjectDetails } from '@/pages/ProjectDetails'
 import { Finances } from '@/pages/Finances'
+import { Lots } from '@/pages/Lots'
+import MobileCamera from '@/pages/MobileCamera'
 import AuthCallback from '@/pages/AuthCallback'
 import { SettingsProvider } from '@/contexts/SettingsContext'
 import { RoleProvider } from '@/contexts/RoleContext'
@@ -76,6 +78,7 @@ export default function App() {
             <Public><Login /></Public>
           </Route>
           <Route path="/auth/callback" component={AuthCallback} />
+          <Route path="/camera/:token" component={MobileCamera} />
           <Route path="/dashboard">
             <Protected><Dashboard /></Protected>
           </Route>
@@ -120,6 +123,9 @@ export default function App() {
           </Route>
           <Route path="/warranties">
             <Protected><Warranties /></Protected>
+          </Route>
+          <Route path="/lots">
+            <Protected><Lots /></Protected>
           </Route>
           {/* Admin-only routes — require isAdmin + PIN */}
           <Route path="/settings">

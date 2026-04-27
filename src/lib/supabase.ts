@@ -111,6 +111,15 @@ export type InventoryItem = {
   next_maintenance: string | null
   created_at: string
   updated_at: string
+  // Added by migration 014
+  item_context?: 'new' | 'cannibalized' | 'lot'
+  lot_id?: string | null
+  source_project_id?: string | null
+  cannibalization_reason?: string | null
+  condition_tested?: boolean
+  category_slug?: string | null
+  ai_confidence?: number | null
+  photos?: string[]
 }
 
 export type Contact = {
@@ -217,6 +226,79 @@ export type TimeEntry = {
   ended_at: string | null
   duration_minutes: number | null
   notes: string | null
+  created_at: string
+}
+
+export type Category = {
+  id: string
+  slug: string
+  parent_slug: string | null
+  name_pt: string
+  name_en: string
+  icon: string | null
+  context: 'project' | 'inventory' | 'both' | null
+  sort_order: number
+}
+
+export type CategoryField = {
+  id: string
+  category_slug: string
+  field_key: string
+  label_pt: string
+  label_en: string
+  field_type: 'text' | 'number' | 'select' | 'boolean' | 'date' | 'range' | 'multiselect' | 'textarea'
+  options_pt: string[] | null
+  options_en: string[] | null
+  unit: string | null
+  is_required: boolean
+  sort_order: number
+}
+
+export type ItemFieldValue = {
+  id: string
+  item_id: string
+  item_type: 'project' | 'inventory'
+  field_key: string
+  value: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type ItemHistory = {
+  id: string
+  item_id: string
+  item_type: 'project' | 'inventory' | 'expense' | 'lot'
+  event_type: string
+  event_data: Record<string, unknown>
+  notes: string | null
+  user_id: string | null
+  created_at: string
+}
+
+export type Lot = {
+  id: string
+  user_id: string
+  lot_number: string | null
+  supplier: string | null
+  purchase_price: number
+  purchase_date: string
+  description: string | null
+  estimated_items: number | null
+  status: 'untriaged' | 'in_progress' | 'completed'
+  notes: string | null
+  created_at: string
+}
+
+export type CameraSession = {
+  id: string
+  user_id: string
+  session_token: string
+  context: 'project' | 'inventory'
+  item_id: string | null
+  status: 'waiting' | 'photo_taken' | 'processed' | 'expired'
+  photo_url: string | null
+  ai_result: Record<string, unknown> | null
+  expires_at: string
   created_at: string
 }
 
