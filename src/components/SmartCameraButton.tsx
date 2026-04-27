@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import QRCode from 'qrcode'
+import { QRCodeSVG } from 'qrcode.react'
 import { supabase } from '@/lib/supabase'
 import { analyzeWithGemini, type GeminiResult } from '@/lib/aiAnalysis'
 import { Button } from '@/components/ui/button'
@@ -20,7 +20,7 @@ function generateToken(): string {
 export function SmartCameraButton({ context, onResult, className }: SmartCameraButtonProps) {
   const { t } = useTranslation()
   const [modalOpen, setModalOpen] = useState(false)
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+  const [sessionUrl, setSessionUrl] = useState<string | null>(null)
   const [status, setStatus] = useState<'idle' | 'waiting' | 'analyzing' | 'done' | 'error'>('idle')
   const [timeLeft, setTimeLeft] = useState(600)
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
@@ -42,14 +42,13 @@ export function SmartCameraButton({ context, onResult, className }: SmartCameraB
     cleanup()
     setModalOpen(false)
     setStatus('idle')
-    setQrDataUrl(null)
+    setSessionUrl(null)
     setTimeLeft(600)
   }, [cleanup])
 
   const processPhoto = useCallback(async (photoUrl: string) => {
     setStatus('analyzing')
     try {
-      // Fetch photo as base64
       const resp = await fetch(photoUrl)
       const blob = await resp.blob()
       const reader = new FileReader()
@@ -76,24 +75,28 @@ export function SmartCameraButton({ context, onResult, className }: SmartCameraB
   const startSession = useCallback(async () => {
     const token = generateToken()
     setStatus('waiting')
+    setSessionUrl(null)
     setTimeLeft(600)
+
+    const url = `${window.location.origin}/camera/${token}`
+    console.log('Session token:', token)
+    console.log('QR URL:', url)
 
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      await supabase.from('camera_sessions').insert({
+      const { error } = await supabase.from('camera_sessions').insert({
         session_token: token,
         context,
         user_id: user!.id,
       })
+      if (error) console.error('camera_sessions insert error:', error)
     } catch (err) {
       console.error('Session create error:', err)
     }
 
-    const url = `${window.location.origin}/camera/${token}`
-    const dataUrl = await QRCode.toDataURL(url, { width: 256, margin: 2, color: { dark: '#000', light: '#fff' } })
-    setQrDataUrl(dataUrl)
+    // Set URL immediately — QRCodeSVG renders synchronously
+    setSessionUrl(url)
 
-    // Subscribe to realtime updates
     const ch = supabase
       .channel(`camera-${token}`)
       .on(
@@ -110,7 +113,6 @@ export function SmartCameraButton({ context, onResult, className }: SmartCameraB
       .subscribe()
     channelRef.current = ch
 
-    // Countdown timer
     timerRef.current = setInterval(() => {
       setTimeLeft(t => {
         if (t <= 1) {
@@ -168,7 +170,10 @@ export function SmartCameraButton({ context, onResult, className }: SmartCameraB
       </Button>
 
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+        <div
+          className="fixed inset-0 flex items-center justify-center bg-black/70 p-4"
+          style={{ zIndex: 9999 }}
+        >
           <div className="relative w-full max-w-sm rounded-2xl bg-card border border-border p-6 shadow-2xl">
             <button
               onClick={handleClose}
@@ -181,14 +186,32 @@ export function SmartCameraButton({ context, onResult, className }: SmartCameraB
               <div className="text-center space-y-4">
                 <h3 className="font-semibold text-text-primary">{t('ai.qrTitle')}</h3>
                 <p className="text-xs text-text-muted">{t('ai.qrDesc')}</p>
-                {qrDataUrl && (
-                  <div className="flex justify-center">
-                    <img src={qrDataUrl} alt="QR Code" className="w-48 h-48 rounded-xl border border-border" />
-                  </div>
-                )}
+
+                <div className="flex justify-center">
+                  {sessionUrl ? (
+                    <div className="p-3 bg-white rounded-xl border border-border">
+                      <QRCodeSVG
+                        value={sessionUrl}
+                        size={192}
+                        bgColor="#ffffff"
+                        fgColor="#000000"
+                        level="M"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-48 h-48 flex items-center justify-center rounded-xl border border-border bg-surface">
+                      <Loader2 className="h-8 w-8 animate-spin text-accent" />
+                    </div>
+                  )}
+                </div>
+
                 <p className="text-xs text-text-muted">
-                  {t('ai.expiresIn')} <span className={cn('font-mono font-bold', timeLeft < 60 ? 'text-danger' : 'text-accent')}>{fmt(timeLeft)}</span>
+                  {t('ai.expiresIn')}{' '}
+                  <span className={cn('font-mono font-bold', timeLeft < 60 ? 'text-danger' : 'text-accent')}>
+                    {fmt(timeLeft)}
+                  </span>
                 </p>
+
                 <div className="border-t border-border pt-3">
                   <p className="text-xs text-text-muted mb-2">{t('ai.orUploadLocal')}</p>
                   <Button
@@ -236,7 +259,7 @@ export function SmartCameraButton({ context, onResult, className }: SmartCameraB
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => { setStatus('waiting'); startSession() }}
+                  onClick={() => startSession()}
                   className="gap-1.5"
                 >
                   <RefreshCw className="h-3.5 w-3.5" />
