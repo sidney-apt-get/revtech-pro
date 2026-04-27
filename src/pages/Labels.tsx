@@ -102,11 +102,11 @@ export function Labels() {
           {readyProjects.length > 0 && (
             selected.size === readyProjects.length ? (
               <button onClick={clearAll} className="text-xs text-text-muted hover:text-text-primary transition-colors">
-                Desseleccionar tudo
+                {t('labels.deselectAll')}
               </button>
             ) : (
               <button onClick={selectAll} className="text-xs text-text-muted hover:text-text-primary transition-colors">
-                Seleccionar tudo
+                {t('labels.selectAll')}
               </button>
             )
           )}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { type Role } from '@/contexts/RoleContext'
 import { fmtDate } from '@/lib/utils'
@@ -17,13 +18,20 @@ interface UserRow {
   created_at: string
 }
 
-const ROLE_LABELS: Record<Role, { label: string; icon: typeof Shield; color: string }> = {
-  admin:      { label: 'Admin',       icon: Shield, color: 'text-accent bg-accent/15 border-accent/30' },
-  technician: { label: 'Técnico',     icon: Wrench, color: 'text-yellow-400 bg-yellow-500/15 border-yellow-500/30' },
-  viewer:     { label: 'Visualizador',icon: Eye,    color: 'text-text-muted bg-surface border-border' },
+const ROLE_COLORS: Record<Role, { icon: typeof Shield; color: string }> = {
+  admin:      { icon: Shield, color: 'text-accent bg-accent/15 border-accent/30' },
+  technician: { icon: Wrench, color: 'text-yellow-400 bg-yellow-500/15 border-yellow-500/30' },
+  viewer:     { icon: Eye,    color: 'text-text-muted bg-surface border-border' },
 }
 
 export function UserManagement() {
+  const { t } = useTranslation()
+
+  const ROLE_LABELS: Record<Role, { label: string; icon: typeof Shield; color: string }> = {
+    admin:      { label: t('roles.admin'),      ...ROLE_COLORS.admin },
+    technician: { label: t('roles.technician'), ...ROLE_COLORS.technician },
+    viewer:     { label: t('roles.viewer'),     ...ROLE_COLORS.viewer },
+  }
   const [users, setUsers] = useState<UserRow[]>([])
   const [loading, setLoading] = useState(true)
   const [pendingRoles, setPendingRoles] = useState<Record<string, Role>>({})
@@ -76,10 +84,10 @@ export function UserManagement() {
         <div>
           <h1 className="text-2xl font-bold text-text-primary flex items-center gap-2">
             <Shield className="h-6 w-6 text-accent" />
-            Gestão de Utilizadores
+            {t('admin.userManagement')}
           </h1>
           <p className="text-text-muted text-sm mt-0.5">
-            {users.length} utilizador{users.length !== 1 ? 'es' : ''} registado{users.length !== 1 ? 's' : ''}
+            {t('admin.userCount', { count: users.length })}
           </p>
         </div>
         {hasPending && (
@@ -89,7 +97,7 @@ export function UserManagement() {
             className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent/90 transition-colors disabled:opacity-50"
           >
             <Save className="h-4 w-4" />
-            {saving ? 'A guardar...' : saved ? '✓ Guardado!' : `Guardar ${Object.keys(pendingRoles).length} alteração${Object.keys(pendingRoles).length !== 1 ? 'ões' : ''}`}
+            {saving ? t('admin.saving') : saved ? t('admin.saved') : t('admin.saveChanges', { count: Object.keys(pendingRoles).length })}
           </button>
         )}
       </div>
@@ -99,18 +107,18 @@ export function UserManagement() {
         {(Object.entries(ROLE_LABELS) as [Role, typeof ROLE_LABELS[Role]][]).map(([r, { label, icon: Icon, color }]) => (
           <div key={r} className={cn('flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium', color)}>
             <Icon className="h-3.5 w-3.5" />
-            {label} — {r === 'admin' ? 'acesso total + configurações' : r === 'technician' ? 'projectos, inventário, encomendas' : 'dashboard + analytics (só leitura)'}
+            {label} — {t(`admin.roleAccess.${r}`)}
           </div>
         ))}
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-text-muted">A carregar utilizadores...</div>
+        <div className="text-center py-12 text-text-muted">{t('admin.loading')}</div>
       ) : users.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Users className="h-10 w-10 text-text-muted opacity-30 mx-auto mb-3" />
-            <p className="text-sm text-text-muted">Nenhum utilizador registado ainda.</p>
+            <p className="text-sm text-text-muted">{t('admin.noUsers')}</p>
           </CardContent>
         </Card>
       ) : (
@@ -140,8 +148,8 @@ export function UserManagement() {
                       </p>
                       <p className="text-xs text-text-muted truncate">{user.email}</p>
                       <p className="text-xs text-text-muted">
-                        Último acesso: {user.last_seen ? fmtDate(user.last_seen) : '—'}
-                        {' · '}Registado: {fmtDate(user.created_at)}
+                        {t('admin.lastSeen')}: {user.last_seen ? fmtDate(user.last_seen) : '—'}
+                        {' · '}{t('admin.registered')}: {fmtDate(user.created_at)}
                       </p>
                     </div>
 
@@ -158,9 +166,9 @@ export function UserManagement() {
                       onChange={e => setRole(user.user_id, e.target.value as Role)}
                       className="rounded-lg bg-surface border border-border px-2 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50 shrink-0"
                     >
-                      <option value="admin">Admin</option>
-                      <option value="technician">Técnico</option>
-                      <option value="viewer">Visualizador</option>
+                      <option value="admin">{t('roles.admin')}</option>
+                      <option value="technician">{t('roles.technician')}</option>
+                      <option value="viewer">{t('roles.viewer')}</option>
                     </select>
                   </div>
                 </CardContent>
@@ -178,7 +186,7 @@ export function UserManagement() {
             className="flex items-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white shadow-2xl hover:bg-accent/90 transition-colors disabled:opacity-50"
           >
             <Save className="h-4 w-4" />
-            {saving ? 'A guardar...' : `Guardar ${Object.keys(pendingRoles).length} alteração${Object.keys(pendingRoles).length !== 1 ? 'ões' : ''}`}
+            {saving ? t('admin.saving') : t('admin.saveChanges', { count: Object.keys(pendingRoles).length })}
           </button>
         </div>
       )}

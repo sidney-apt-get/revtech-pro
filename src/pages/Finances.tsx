@@ -213,7 +213,7 @@ export function Finances() {
   }
 
   if (loadingProjects || loadingExpenses) {
-    return <div className="text-text-muted animate-pulse p-4">A carregar...</div>
+    return <div className="text-text-muted animate-pulse p-4">{t('common.loading')}</div>
   }
 
   const PERIODS: Array<{ key: Period; label: string }> = [
@@ -307,10 +307,10 @@ export function Finances() {
 
       <Tabs defaultValue="resumo">
         <TabsList className="flex-wrap h-auto">
-          <TabsTrigger value="resumo">Resumo</TabsTrigger>
-          <TabsTrigger value="despesas">Despesas</TabsTrigger>
-          <TabsTrigger value="metas">Metas</TabsTrigger>
-          <TabsTrigger value="projecoes">Projecções</TabsTrigger>
+          <TabsTrigger value="resumo">{t('finances.tabs.summary')}</TabsTrigger>
+          <TabsTrigger value="despesas">{t('finances.tabs.expenses')}</TabsTrigger>
+          <TabsTrigger value="metas">{t('finances.tabs.goals')}</TabsTrigger>
+          <TabsTrigger value="projecoes">{t('finances.tabs.projections')}</TabsTrigger>
         </TabsList>
 
         {/* ABA 1 — RESUMO */}
@@ -318,10 +318,10 @@ export function Finances() {
           {/* KPI Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { label: 'Receita mês', value: current.revenue, diff: revDiff, icon: TrendingUp, color: 'text-success' },
-              { label: 'Despesas mês', value: current.otherExpenses, diff: expDiff, icon: TrendingDown, color: 'text-danger', invert: true },
-              { label: 'Lucro líquido', value: current.profit, diff: profDiff, icon: PoundSterling, color: current.profit >= 0 ? 'text-success' : 'text-danger' },
-              { label: 'Margem %', value: current.revenue > 0 ? (current.profit / current.revenue) * 100 : 0, diff: 0, icon: Target, color: 'text-accent', isPercent: true },
+              { label: t('finances.revenueMonth'), value: current.revenue, diff: revDiff, icon: TrendingUp, color: 'text-success' },
+              { label: t('finances.expensesMonth'), value: current.otherExpenses, diff: expDiff, icon: TrendingDown, color: 'text-danger', invert: true },
+              { label: t('finances.netProfitMonth'), value: current.profit, diff: profDiff, icon: PoundSterling, color: current.profit >= 0 ? 'text-success' : 'text-danger' },
+              { label: t('finances.marginPct'), value: current.revenue > 0 ? (current.profit / current.revenue) * 100 : 0, diff: 0, icon: Target, color: 'text-accent', isPercent: true },
             ].map(k => (
               <Card key={k.label}>
                 <CardContent className="p-4">
@@ -333,7 +333,7 @@ export function Finances() {
                     <div className={cn('flex items-center gap-0.5 text-[10px] mt-1 font-medium',
                       (k.invert ? k.diff < 0 : k.diff > 0) ? 'text-success' : 'text-danger')}>
                       {k.diff > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
-                      {Math.abs(k.diff).toFixed(1)}% vs mês anterior
+                      {Math.abs(k.diff).toFixed(1)}% {t('finances.vsPrevMonth')}
                     </div>
                   )}
                 </CardContent>
@@ -344,7 +344,7 @@ export function Finances() {
           {/* Progress vs goal */}
           {currentGoal && (
             <Card>
-              <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Target className="h-4 w-4 text-accent" />Progresso vs Meta ({format(now, 'MMMM', { locale: pt })})</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Target className="h-4 w-4 text-accent" />{t('finances.progressVsGoal')} ({format(now, 'MMMM', { locale: pt })})</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 {currentGoal.revenue_target > 0 && (
                   <div>

@@ -141,7 +141,7 @@ function AdminMenu({ onNavigate }: { onNavigate?: () => void }) {
               )}
             >
               <History className="h-3.5 w-3.5" />
-              Histórico Serial
+              {t('admin.serialHistory')}
             </span>
           </Link>
           <Link href="/warranties">
@@ -155,7 +155,7 @@ function AdminMenu({ onNavigate }: { onNavigate?: () => void }) {
               )}
             >
               <ShieldCheck className="h-3.5 w-3.5" />
-              Garantias
+              {t('admin.warranties')}
             </span>
           </Link>
           <Link href="/admin/users">
@@ -355,7 +355,7 @@ export function Layout({ children }: LayoutProps) {
         <button
           onClick={() => setBottomExpanded(e => !e)}
           className="w-full flex items-center justify-center py-1.5 text-text-muted hover:text-text-primary hover:bg-surface/50 transition-colors"
-          title={bottomExpanded ? 'Recolher' : 'Expandir'}
+          title={bottomExpanded ? t('common.collapse') : t('common.expand')}
         >
           {bottomExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
         </button>

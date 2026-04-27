@@ -17,7 +17,24 @@
     "menu": "Admin",
     "settings": "Settings",
     "userManagement": "User Management",
-    "labels": "Price Labels"
+    "labels": "Price Labels",
+    "serialHistory": "Serial History",
+    "warranties": "Warranties",
+    "userCount_one": "{{count}} registered user",
+    "userCount_other": "{{count}} registered users",
+    "loading": "Loading users...",
+    "noUsers": "No registered users yet.",
+    "lastSeen": "Last seen",
+    "registered": "Registered",
+    "saveChanges_one": "Save {{count}} change",
+    "saveChanges_other": "Save {{count}} changes",
+    "saving": "Saving...",
+    "saved": "✓ Saved!",
+    "roleAccess": {
+      "admin": "full access + settings",
+      "technician": "projects, inventory, orders",
+      "viewer": "dashboard + analytics (read-only)"
+    }
   },
   "notifications": {
     "title": "Notifications",
@@ -74,7 +91,9 @@
     "createdAt": "Created",
     "updatedAt": "Updated",
     "required": "Required",
-    "noProject": "No project"
+    "noProject": "No project",
+    "collapse": "Collapse",
+    "expand": "Expand"
   },
   "statusMap": {
     "Recebido": "Received",
@@ -228,7 +247,32 @@
     "stockLow_one": "{{count}} item below minimum stock",
     "stockLow_other": "{{count}} items below minimum stock",
     "actualMin": "actual / minimum",
-    "moreItems": "+{{count}} more"
+    "moreItems": "+{{count}} more",
+    "alerts": "Alerts",
+    "avgRepairTime": "Avg. Repair Time",
+    "successRate": "Success Rate",
+    "stockValue": "Stock Value",
+    "financialHealth": "Financial Health",
+    "revenueMonth": "Revenue this month",
+    "expensesMonth": "Expenses this month",
+    "target": "Target",
+    "budget": "Budget",
+    "noExpenses": "No expenses recorded",
+    "stockPotential": "Stock potential",
+    "readyForSaleCount_one": "{{count}} item ready for sale",
+    "readyForSaleCount_other": "{{count}} items ready for sale",
+    "monthlyChart": "Monthly Profit (last 6 months)",
+    "weeklyChart": "Created vs Sold (last 8 weeks)",
+    "pipeline": "Pipeline",
+    "created": "Created",
+    "soldLabel": "Sold",
+    "toolsToCalibrate_one": "{{count}} tool due for calibration",
+    "toolsToCalibrate_other": "{{count}} tools due for calibration",
+    "noAlerts": "No active alerts",
+    "noActivity": "No recent activity",
+    "overdue": "Overdue (>14 days)",
+    "noOverdue": "No overdue projects",
+    "costRoi": "cost · ROI"
   },
   "projects": {
     "title": "Projects",
@@ -593,7 +637,9 @@
     "print": "Print Label",
     "printBatch": "Batch Print",
     "saleDate": "Prepared",
-    "platform": "Platform"
+    "platform": "Platform",
+    "selectAll": "Select all",
+    "deselectAll": "Deselect all"
   },
   "cex": {
     "search": "Search CeX Price",
@@ -695,6 +741,75 @@
       "month": "This month",
       "year": "This year",
       "custom": "Custom"
-    }
+    },
+    "tabs": {
+      "summary": "Summary",
+      "expenses": "Expenses",
+      "goals": "Goals",
+      "projections": "Projections"
+    },
+    "revenueMonth": "Revenue (month)",
+    "expensesMonth": "Expenses (month)",
+    "netProfitMonth": "Net profit (month)",
+    "marginPct": "Margin %",
+    "vsPrevMonth": "vs previous month",
+    "progressVsGoal": "Progress vs Target"
+  },
+  "warranties": {
+    "title": "Warranty Management",
+    "subtitle": "Track active warranties and claims",
+    "kpi": {
+      "active": "Active",
+      "expiringSoon": "Expiring (30d)",
+      "claimed": "Claimed",
+      "expired": "Expired"
+    },
+    "expiringAlert_one": "{{count}} warranty expiring in the next 30 days",
+    "expiringAlert_other": "{{count}} warranties expiring in the next 30 days",
+    "noWarranties": "No warranties registered",
+    "autoCreated": "Warranties are created automatically when marking projects as Sold",
+    "months": "{{count}} months",
+    "starts": "Start:",
+    "expires": "Expires:",
+    "claimButton": "Register Claim",
+    "claimDialog": {
+      "title": "Register Warranty Claim",
+      "desc": "Describe the issue reported by the customer:",
+      "placeholder": "e.g. Screen failed again after 2 months...",
+      "register": "Register"
+    },
+    "claimDetail": "Claim: {{description}}",
+    "statusBadge": {
+      "claimed": "Claimed",
+      "expired": "Expired"
+    },
+    "deletedProject": "Project removed"
+  },
+  "serialHistory": {
+    "title": "Serial Number History",
+    "subtitle": "Search the history of any device by serial number, IMEI or barcode",
+    "searchPlaceholder": "e.g. C02X1234, 356938102345673, EAN...",
+    "minChars": "Type at least 2 characters",
+    "notFound": "No device found with \"{{query}}\"",
+    "productIdentified": "Product identified via EAN",
+    "productInShop": "Product identified but has not been in the workshop",
+    "timesInShop": "Passed {{count}}× through the workshop",
+    "entries_one": "{{count}} entry",
+    "entries_other": "{{count}} entries",
+    "totalRevenue": "Total Revenue",
+    "totalCost": "Total Cost",
+    "avgTime": "Avg. Time",
+    "successRate": "Success Rate",
+    "daysInShop_one": "{{count}} day in workshop",
+    "daysInShop_other": "{{count}} days in workshop",
+    "photos_one": "{{count}} photo from this repair",
+    "photos_other": "{{count}} photos from this repair",
+    "scanBarcode": "Scan barcode / QR code",
+    "supplier": "Supplier",
+    "sale": "Sale",
+    "platform": "Platform",
+    "brand": "Brand",
+    "model": "Model",
+    "category": "Category"
   }
 }

@@ -85,8 +85,8 @@ export function SerialHistory() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-bold text-text-primary">Histórico por Número de Série</h1>
-        <p className="text-text-muted text-sm mt-0.5">Pesquisa o historial de qualquer equipamento pelo seu serial, IMEI ou código de barras</p>
+        <h1 className="text-2xl font-bold text-text-primary">{t('serialHistory.title')}</h1>
+        <p className="text-text-muted text-sm mt-0.5">{t('serialHistory.subtitle')}</p>
       </div>
 
       {/* Search */}
@@ -99,7 +99,7 @@ export function SerialHistory() {
                 type="text"
                 value={query}
                 onChange={e => handleSearch(e.target.value)}
-                placeholder="Ex: C02X1234, 356938102345673, EAN..."
+                placeholder={t('serialHistory.searchPlaceholder')}
                 className="w-full rounded-lg bg-surface border border-border pl-9 pr-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/50"
                 autoFocus
               />
@@ -109,14 +109,14 @@ export function SerialHistory() {
             </div>
             <button
               onClick={() => setScannerOpen(true)}
-              title="Escanear código de barras"
+              title={t('serialHistory.scanBarcode')}
               className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm text-text-muted hover:bg-surface hover:text-accent transition-colors"
             >
               <ScanLine className="h-4 w-4" />
             </button>
           </div>
           {query.length > 0 && query.length < 2 && (
-            <p className="text-xs text-text-muted mt-2">Escreve pelo menos 2 caracteres</p>
+            <p className="text-xs text-text-muted mt-2">{t('serialHistory.minChars')}</p>
           )}
         </CardContent>
       </Card>
@@ -141,15 +141,15 @@ export function SerialHistory() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 mb-1">
                   <Star className="h-3.5 w-3.5 text-accent" />
-                  <span className="text-xs text-accent font-medium">Produto identificado via EAN</span>
+                  <span className="text-xs text-accent font-medium">{t('serialHistory.productIdentified')}</span>
                 </div>
                 {productInfo.name && (
                   <p className="font-semibold text-text-primary text-sm">{productInfo.name}</p>
                 )}
                 <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-text-muted">
-                  {productInfo.brand && <span>Marca: <span className="text-text-primary">{productInfo.brand}</span></span>}
-                  {productInfo.model && <span>Modelo: <span className="text-text-primary">{productInfo.model}</span></span>}
-                  {productInfo.category && <span>Categoria: <span className="text-text-primary">{productInfo.category}</span></span>}
+                  {productInfo.brand && <span>{t('serialHistory.brand')}: <span className="text-text-primary">{productInfo.brand}</span></span>}
+                  {productInfo.model && <span>{t('serialHistory.model')}: <span className="text-text-primary">{productInfo.model}</span></span>}
+                  {productInfo.category && <span>{t('serialHistory.category')}: <span className="text-text-primary">{productInfo.category}</span></span>}
                 </div>
                 {productInfo.description && (
                   <p className="text-xs text-text-muted mt-1 line-clamp-2">{productInfo.description}</p>
@@ -165,9 +165,9 @@ export function SerialHistory() {
         <Card>
           <CardContent className="py-12 text-center">
             <Search className="h-10 w-10 text-text-muted mx-auto mb-3 opacity-30" />
-            <p className="text-text-muted text-sm">Nenhum equipamento encontrado com "{query}"</p>
+            <p className="text-text-muted text-sm">{t('serialHistory.notFound', { query })}</p>
             {productInfo && (
-              <p className="text-xs text-text-muted mt-2">Produto identificado mas ainda não esteve na oficina</p>
+              <p className="text-xs text-text-muted mt-2">{t('serialHistory.productInShop')}</p>
             )}
           </CardContent>
         </Card>
@@ -203,11 +203,11 @@ export function SerialHistory() {
                 <div className="flex items-center gap-2 text-xs">
                   {isProblematic && (
                     <span className="bg-warning/10 text-warning border border-warning/20 px-2 py-1 rounded-full font-semibold">
-                      ⚠️ Passou {entries.length}× pela oficina
+                      ⚠️ {t('serialHistory.timesInShop', { count: entries.length })}
                     </span>
                   )}
                   <span className="bg-surface border border-border px-2 py-1 rounded-full text-text-muted">
-                    {entries.length} {entries.length === 1 ? 'entrada' : 'entradas'}
+                    {t('serialHistory.entries', { count: entries.length })}
                   </span>
                 </div>
               </div>
@@ -215,19 +215,19 @@ export function SerialHistory() {
               {/* Summary stats */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
                 <div className="rounded-lg bg-surface border border-border px-3 py-2 text-center">
-                  <p className="text-xs text-text-muted">Receita Total</p>
+                  <p className="text-xs text-text-muted">{t('serialHistory.totalRevenue')}</p>
                   <p className="text-sm font-bold text-success">{fmtGBP(totalRevenue)}</p>
                 </div>
                 <div className="rounded-lg bg-surface border border-border px-3 py-2 text-center">
-                  <p className="text-xs text-text-muted">Custo Total</p>
+                  <p className="text-xs text-text-muted">{t('serialHistory.totalCost')}</p>
                   <p className="text-sm font-bold text-danger">{fmtGBP(totalCost)}</p>
                 </div>
                 <div className="rounded-lg bg-surface border border-border px-3 py-2 text-center">
-                  <p className="text-xs text-text-muted">Tempo Médio</p>
+                  <p className="text-xs text-text-muted">{t('serialHistory.avgTime')}</p>
                   <p className="text-sm font-bold text-text-primary">{avgDays}d</p>
                 </div>
                 <div className="rounded-lg bg-surface border border-border px-3 py-2 text-center">
-                  <p className="text-xs text-text-muted">Taxa de Sucesso</p>
+                  <p className="text-xs text-text-muted">{t('serialHistory.successRate')}</p>
                   <p className={cn('text-sm font-bold', successRate >= 50 ? 'text-success' : 'text-danger')}>
                     {successRate}%
                   </p>
@@ -291,16 +291,16 @@ export function SerialHistory() {
                         <div className="grid grid-cols-2 gap-2 mt-2 text-xs text-text-muted">
                           <div className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            <span>{days} dias na oficina</span>
+                            <span>{t('serialHistory.daysInShop', { count: days })}</span>
                           </div>
                           {p.supplier_name && (
-                            <div>Fornecedor: <span className="text-text-primary">{p.supplier_name}</span></div>
+                            <div>{t('serialHistory.supplier')}: <span className="text-text-primary">{p.supplier_name}</span></div>
                           )}
                           {p.sale_price && (
-                            <div>Venda: <span className="text-success font-medium">{fmtGBP(p.sale_price)}</span></div>
+                            <div>{t('serialHistory.sale')}: <span className="text-success font-medium">{fmtGBP(p.sale_price)}</span></div>
                           )}
                           {p.sale_platform && (
-                            <div>Plataforma: <span className="text-text-primary">{p.sale_platform}</span></div>
+                            <div>{t('serialHistory.platform')}: <span className="text-text-primary">{p.sale_platform}</span></div>
                           )}
                         </div>
 
@@ -308,7 +308,7 @@ export function SerialHistory() {
                         {projectPhotos.length > 0 && (
                           <div className="mt-3 border-t border-border pt-2.5">
                             <p className="text-[10px] text-text-muted mb-1.5">
-                              {projectPhotos.length} foto{projectPhotos.length !== 1 ? 's' : ''} desta reparação
+                              {t('serialHistory.photos', { count: projectPhotos.length })}
                             </p>
                             <div className="flex gap-1.5 flex-wrap">
                               {projectPhotos.slice(0, 6).map(photo => (
@@ -346,7 +346,7 @@ export function SerialHistory() {
 
       {scannerOpen && (
         <BarcodeScanner
-          title="Escanear código de barras / QR"
+          title={t('serialHistory.scanBarcode')}
           onDetected={handleScan}
           onClose={() => setScannerOpen(false)}
         />

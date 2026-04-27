@@ -17,7 +17,24 @@
     "menu": "Admin",
     "settings": "Configurações",
     "userManagement": "Gestão de Utilizadores",
-    "labels": "Etiquetas de Preço"
+    "labels": "Etiquetas de Preço",
+    "serialHistory": "Histórico Serial",
+    "warranties": "Garantias",
+    "userCount_one": "{{count}} utilizador registado",
+    "userCount_other": "{{count}} utilizadores registados",
+    "loading": "A carregar utilizadores...",
+    "noUsers": "Nenhum utilizador registado ainda.",
+    "lastSeen": "Último acesso",
+    "registered": "Registado",
+    "saveChanges_one": "Guardar {{count}} alteração",
+    "saveChanges_other": "Guardar {{count}} alterações",
+    "saving": "A guardar...",
+    "saved": "✓ Guardado!",
+    "roleAccess": {
+      "admin": "acesso total + configurações",
+      "technician": "projectos, inventário, encomendas",
+      "viewer": "dashboard + analytics (só leitura)"
+    }
   },
   "notifications": {
     "title": "Notificações",
@@ -74,7 +91,9 @@
     "createdAt": "Criado",
     "updatedAt": "Actualizado",
     "required": "Obrigatório",
-    "noProject": "Sem projecto"
+    "noProject": "Sem projecto",
+    "collapse": "Recolher",
+    "expand": "Expandir"
   },
   "statusMap": {
     "Recebido": "Recebido",
@@ -228,7 +247,32 @@
     "stockLow_one": "{{count}} item abaixo do stock mínimo",
     "stockLow_other": "{{count}} itens abaixo do stock mínimo",
     "actualMin": "actual / mínimo",
-    "moreItems": "+{{count}} mais"
+    "moreItems": "+{{count}} mais",
+    "alerts": "Alertas",
+    "avgRepairTime": "Tempo Médio de Reparação",
+    "successRate": "Taxa de Sucesso",
+    "stockValue": "Valor do Stock",
+    "financialHealth": "Saúde Financeira",
+    "revenueMonth": "Receita este mês",
+    "expensesMonth": "Despesas este mês",
+    "target": "Meta",
+    "budget": "Orçamento",
+    "noExpenses": "Nenhuma despesa registada",
+    "stockPotential": "Potencial do stock",
+    "readyForSaleCount_one": "{{count}} item pronto para venda",
+    "readyForSaleCount_other": "{{count}} itens prontos para venda",
+    "monthlyChart": "Lucro por Mês (últimos 6 meses)",
+    "weeklyChart": "Criados vs Vendidos (últimas 8 semanas)",
+    "pipeline": "Pipeline",
+    "created": "Criados",
+    "soldLabel": "Vendidos",
+    "toolsToCalibrate_one": "{{count}} ferramenta para calibrar",
+    "toolsToCalibrate_other": "{{count}} ferramentas para calibrar",
+    "noAlerts": "Sem alertas activos",
+    "noActivity": "Sem actividade recente",
+    "overdue": "Em Atraso (>14 dias)",
+    "noOverdue": "Sem projectos em atraso",
+    "costRoi": "custo · ROI"
   },
   "projects": {
     "title": "Projectos",
@@ -297,7 +341,7 @@
       "quantity": "Qtd",
       "minStock": "Stock Mín.",
       "price": "Preço Unit.",
-      "unitCost": "Custo Unitário (€)",
+      "unitCost": "Custo Unitário (£)",
       "supplier": "Fornecedor",
       "location": "Localização",
       "calibrationDate": "Data de Calibração",
@@ -380,8 +424,8 @@
       "partName": "Nome da Peça",
       "supplier": "Fornecedor",
       "quantity": "Qtd",
-      "unitCost": "Custo unitário (€)",
-      "totalCost": "Custo total (€)",
+      "unitCost": "Custo unitário (£)",
+      "totalCost": "Custo total (£)",
       "price": "Preço",
       "status": "Estado",
       "orderNumber": "Número de Encomenda",
@@ -593,7 +637,9 @@
     "print": "Imprimir Etiqueta",
     "printBatch": "Impressão em Lote",
     "saleDate": "Preparado",
-    "platform": "Plataforma"
+    "platform": "Plataforma",
+    "selectAll": "Seleccionar tudo",
+    "deselectAll": "Desseleccionar tudo"
   },
   "cex": {
     "search": "Ver preço CeX",
@@ -695,6 +741,75 @@
       "month": "Este mês",
       "year": "Este ano",
       "custom": "Personalizado"
-    }
+    },
+    "tabs": {
+      "summary": "Resumo",
+      "expenses": "Despesas",
+      "goals": "Metas",
+      "projections": "Projecções"
+    },
+    "revenueMonth": "Receita (mês)",
+    "expensesMonth": "Despesas (mês)",
+    "netProfitMonth": "Lucro líquido (mês)",
+    "marginPct": "Margem %",
+    "vsPrevMonth": "vs mês anterior",
+    "progressVsGoal": "Progresso vs Meta"
+  },
+  "warranties": {
+    "title": "Gestão de Garantias",
+    "subtitle": "Acompanha as garantias activas e reclamações",
+    "kpi": {
+      "active": "Activas",
+      "expiringSoon": "A expirar (30d)",
+      "claimed": "Reclamadas",
+      "expired": "Expiradas"
+    },
+    "expiringAlert_one": "{{count}} garantia a expirar nos próximos 30 dias",
+    "expiringAlert_other": "{{count}} garantias a expirar nos próximos 30 dias",
+    "noWarranties": "Nenhuma garantia registada",
+    "autoCreated": "As garantias são criadas automaticamente ao marcar projectos como Vendido",
+    "months": "{{count}} meses",
+    "starts": "Início:",
+    "expires": "Expira:",
+    "claimButton": "Registar Reclamação",
+    "claimDialog": {
+      "title": "Registar Reclamação de Garantia",
+      "desc": "Descreve o problema reportado pelo cliente:",
+      "placeholder": "ex: Ecrã voltou a falhar após 2 meses...",
+      "register": "Registar"
+    },
+    "claimDetail": "Reclamação: {{description}}",
+    "statusBadge": {
+      "claimed": "Reclamada",
+      "expired": "Expirada"
+    },
+    "deletedProject": "Projecto removido"
+  },
+  "serialHistory": {
+    "title": "Histórico por Número de Série",
+    "subtitle": "Pesquisa o historial de qualquer equipamento pelo seu serial, IMEI ou código de barras",
+    "searchPlaceholder": "Ex: C02X1234, 356938102345673, EAN...",
+    "minChars": "Escreve pelo menos 2 caracteres",
+    "notFound": "Nenhum equipamento encontrado com \"{{query}}\"",
+    "productIdentified": "Produto identificado via EAN",
+    "productInShop": "Produto identificado mas ainda não esteve na oficina",
+    "timesInShop": "Passou {{count}}× pela oficina",
+    "entries_one": "{{count}} entrada",
+    "entries_other": "{{count}} entradas",
+    "totalRevenue": "Receita Total",
+    "totalCost": "Custo Total",
+    "avgTime": "Tempo Médio",
+    "successRate": "Taxa de Sucesso",
+    "daysInShop_one": "{{count}} dia na oficina",
+    "daysInShop_other": "{{count}} dias na oficina",
+    "photos_one": "{{count}} foto desta reparação",
+    "photos_other": "{{count}} fotos desta reparação",
+    "scanBarcode": "Escanear código de barras / QR",
+    "supplier": "Fornecedor",
+    "sale": "Venda",
+    "platform": "Plataforma",
+    "brand": "Marca",
+    "model": "Modelo",
+    "category": "Categoria"
   }
 }

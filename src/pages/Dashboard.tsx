@@ -121,15 +121,15 @@ export function Dashboard() {
   }))
   const weekData = weeklyFlow.map(w => ({
     week: format(w.weekStart, 'dd/MM'),
-    Criados: w.created,
-    Vendidos: w.sold,
+    [t('dashboard.created')]: w.created,
+    [t('dashboard.soldLabel')]: w.sold,
   }))
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-text-primary">{t('dashboard.title')}</h1>
           <p className="text-text-muted text-sm mt-0.5">{t('dashboard.subtitle')}</p>
         </div>
       </div>
@@ -162,7 +162,7 @@ export function Dashboard() {
 
         {/* Pipeline mini-kanban */}
         <Card>
-          <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Wrench className="h-4 w-4 text-accent" />Pipeline</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Wrench className="h-4 w-4 text-accent" />{t('dashboard.pipeline')}</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-1.5">
               {byStatus.filter(s => !['Vendido', 'Cancelado'].includes(s.status)).map(s => (
@@ -209,21 +209,21 @@ export function Dashboard() {
                 <div className="flex items-center justify-between rounded-lg bg-yellow-500/5 border border-yellow-500/20 px-3 py-2 cursor-pointer hover:bg-yellow-500/10 transition-colors">
                   <div className="flex items-center gap-2">
                     <Wrench className="h-3.5 w-3.5 text-yellow-400" />
-                    <span className="text-xs text-yellow-400 font-medium">{toolsToCalibrate.length} ferramentas p/ calibrar</span>
+                    <span className="text-xs text-yellow-400 font-medium">{t('dashboard.toolsToCalibrate', { count: toolsToCalibrate.length })}</span>
                   </div>
                   <ArrowRight className="h-3 w-3 text-yellow-400" />
                 </div>
               </Link>
             )}
             {lowStock.length === 0 && inTransitOrders.length === 0 && toolsToCalibrate.length === 0 && (
-              <p className="text-xs text-text-muted text-center py-3">Sem alertas activos</p>
+              <p className="text-xs text-text-muted text-center py-3">{t('dashboard.noAlerts')}</p>
             )}
           </CardContent>
         </Card>
 
-        {/* Actividade recente */}
+        {/* Recent activity */}
         <Card>
-          <CardHeader><CardTitle className="text-sm">Actividade Recente</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">{t('dashboard.recentActivity')}</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-2">
               {recentActivity.map(a => (
@@ -244,24 +244,24 @@ export function Dashboard() {
                 </div>
               ))}
               {recentActivity.length === 0 && (
-                <p className="text-xs text-text-muted text-center py-3">Sem actividade</p>
+                <p className="text-xs text-text-muted text-center py-3">{t('dashboard.noActivity')}</p>
               )}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Widget Saúde Financeira */}
+      {/* Financial Health */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm flex items-center gap-2">
               <PoundSterling className="h-4 w-4 text-accent" />
-              Saúde Financeira
+              {t('dashboard.financialHealth')}
             </CardTitle>
             <Link href="/finances">
               <span className="text-xs text-accent hover:underline cursor-pointer flex items-center gap-1">
-                Ver detalhes <ArrowRight className="h-3 w-3" />
+                {t('common.viewDetails')} <ArrowRight className="h-3 w-3" />
               </span>
             </Link>
           </div>
@@ -269,12 +269,12 @@ export function Dashboard() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <p className="text-xs text-text-muted">Receita este mês</p>
+              <p className="text-xs text-text-muted">{t('dashboard.revenueMonth')}</p>
               <p className="text-lg font-bold text-success">{fmtGBP(totalRevenue)}</p>
               {currentGoal?.revenue_target && currentGoal.revenue_target > 0 && (
                 <>
                   <div className="flex justify-between text-xs text-text-muted">
-                    <span>Meta: {fmtGBP(currentGoal.revenue_target)}</span>
+                    <span>{t('dashboard.target')}: {fmtGBP(currentGoal.revenue_target)}</span>
                     <span className={totalRevenue >= currentGoal.revenue_target ? 'text-success' : 'text-text-muted'}>
                       {Math.min(100, Math.round((totalRevenue / currentGoal.revenue_target) * 100))}%
                     </span>
@@ -286,21 +286,21 @@ export function Dashboard() {
               )}
             </div>
             <div className="space-y-2">
-              <p className="text-xs text-text-muted">Despesas este mês</p>
+              <p className="text-xs text-text-muted">{t('dashboard.expensesMonth')}</p>
               <p className={cn('text-lg font-bold', currentGoal?.expenses_budget && monthlyExpenses > currentGoal.expenses_budget ? 'text-danger' : 'text-text-primary')}>
                 {fmtGBP(monthlyExpenses)}
               </p>
               {currentGoal?.expenses_budget && currentGoal.expenses_budget > 0 && (
-                <p className="text-xs text-text-muted">Orçamento: {fmtGBP(currentGoal.expenses_budget)}</p>
+                <p className="text-xs text-text-muted">{t('dashboard.budget')}: {fmtGBP(currentGoal.expenses_budget)}</p>
               )}
               {monthlyExpenses === 0 && (
-                <p className="text-xs text-text-muted">Nenhuma despesa registada</p>
+                <p className="text-xs text-text-muted">{t('dashboard.noExpenses')}</p>
               )}
             </div>
             <div className="space-y-2">
-              <p className="text-xs text-text-muted">Potencial do stock</p>
+              <p className="text-xs text-text-muted">{t('dashboard.stockPotential')}</p>
               <p className="text-lg font-bold text-accent">{fmtGBP(stockPotential)}</p>
-              <p className="text-xs text-text-muted">{readyStock.length} equipamento{readyStock.length !== 1 ? 's' : ''} pronto{readyStock.length !== 1 ? 's' : ''} para venda</p>
+              <p className="text-xs text-text-muted">{t('dashboard.readyForSaleCount', { count: readyStock.length })}</p>
             </div>
           </div>
         </CardContent>
@@ -309,7 +309,7 @@ export function Dashboard() {
       {/* FILA 4 — Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
-          <CardHeader><CardTitle className="text-sm">Lucro por Mês (últimos 6 meses)</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">{t('dashboard.monthlyChart')}</CardTitle></CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
@@ -326,7 +326,7 @@ export function Dashboard() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-sm">Criados vs Vendidos (últimas 8 semanas)</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">{t('dashboard.weeklyChart')}</CardTitle></CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={weekData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
@@ -335,8 +335,8 @@ export function Dashboard() {
                 <YAxis tick={{ fontSize: 10, fill: '#9AA0AC' }} allowDecimals={false} />
                 <Tooltip contentStyle={{ background: '#252836', border: '1px solid #2E3141', borderRadius: 8, fontSize: 12 }} labelStyle={{ color: '#E8EAED' }} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Line type="monotone" dataKey="Criados" stroke="#4F8EF7" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="Vendidos" stroke="#4CAF82" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey={t('dashboard.created')} stroke="#4F8EF7" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey={t('dashboard.soldLabel')} stroke="#4CAF82" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
@@ -356,7 +356,7 @@ export function Dashboard() {
               </CardTitle>
               <Link href="/labels">
                 <span className="text-xs text-accent hover:underline cursor-pointer flex items-center gap-1">
-                  Etiquetas <ArrowRight className="h-3 w-3" />
+                  {t('labels.title')} <ArrowRight className="h-3 w-3" />
                 </span>
               </Link>
             </div>
@@ -373,7 +373,7 @@ export function Dashboard() {
                         {p.ticket_number && <span className="text-accent/70 mr-1">#{p.ticket_number}</span>}
                         {p.equipment}
                       </p>
-                      <p className="text-xs text-text-muted">{fmtGBP(p.cost)} custo · ROI {p.roi.toFixed(0)}%</p>
+                      <p className="text-xs text-text-muted">{fmtGBP(p.cost)} {t('dashboard.costRoi')} {p.roi.toFixed(0)}%</p>
                     </div>
                     <div className="flex items-center gap-2 ml-2 shrink-0">
                       <p className={cn('text-sm font-bold', p.profit >= 0 ? 'text-success' : 'text-danger')}>
@@ -381,7 +381,7 @@ export function Dashboard() {
                       </p>
                       <button
                         onClick={() => printLabel(p)}
-                        title="Imprimir etiqueta"
+                        title={t('labels.print')}
                         className="p-1 rounded hover:bg-accent/10 text-text-muted hover:text-success transition-colors"
                       >
                         <Tag className="h-3.5 w-3.5" />
@@ -390,7 +390,7 @@ export function Dashboard() {
                   </div>
                 ))}
                 {readyToSell.length > 6 && (
-                  <p className="text-xs text-text-muted text-center">+ {readyToSell.length - 6} mais</p>
+                  <p className="text-xs text-text-muted text-center">{t('dashboard.moreItems', { count: readyToSell.length - 6 })}</p>
                 )}
               </div>
             )}
@@ -403,7 +403,7 @@ export function Dashboard() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Clock className="h-4 w-4 text-warning" />
-                Em Atraso (&gt;14 dias)
+                {t('dashboard.overdue')}
               </CardTitle>
               {overdue.length > 0 && (
                 <span className="text-xs bg-warning/10 text-warning border border-warning/20 px-2 py-0.5 rounded-full font-semibold">
@@ -414,7 +414,7 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             {overdue.length === 0 ? (
-              <p className="text-xs text-text-muted py-4 text-center">Sem projectos em atraso</p>
+              <p className="text-xs text-text-muted py-4 text-center">{t('dashboard.noOverdue')}</p>
             ) : (
               <div className="space-y-2">
                 {overdue.slice(0, 6).map(p => {

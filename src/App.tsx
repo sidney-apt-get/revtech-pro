@@ -33,7 +33,7 @@ function Spinner() {
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="space-y-4 text-center">
         <div className="h-10 w-10 rounded-full border-2 border-accent border-t-transparent animate-spin mx-auto" />
-        <p className="text-text-muted text-sm">A carregar...</p>
+        <p className="text-text-muted text-sm">Loading…</p>
       </div>
     </div>
   )
