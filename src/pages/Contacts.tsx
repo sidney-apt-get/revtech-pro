@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { DeleteConfirmation } from '@/components/DeleteConfirmation'
 import type { Contact } from '@/lib/supabase'
 import { Plus, Pencil, Trash2, Mail, Phone, MapPin, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -46,6 +47,7 @@ export function Contacts() {
   const [filterType, setFilterType] = useState<ContactType | 'all'>('all')
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Contact | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Contact | null>(null)
 
   const { register, handleSubmit, watch, setValue, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
@@ -144,7 +146,7 @@ export function Contacts() {
               {c.notes && <p className="text-xs text-text-muted italic border-t border-border pt-2">{c.notes}</p>}
               <div className="flex justify-end gap-1 pt-1 border-t border-border">
                 <button onClick={() => openEdit(c)} className="p-1.5 rounded hover:bg-surface text-text-muted hover:text-accent transition-colors"><Pencil className="h-3.5 w-3.5" /></button>
-                <button onClick={() => remove.mutate(c.id)} className="p-1.5 rounded hover:bg-surface text-text-muted hover:text-danger transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
+                <button onClick={() => setDeleteTarget(c)} className="p-1.5 rounded hover:bg-surface text-text-muted hover:text-danger transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
               </div>
             </div>
           ))
@@ -194,6 +196,14 @@ export function Contacts() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <DeleteConfirmation
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => { remove.mutate(deleteTarget!.id); setDeleteTarget(null) }}
+        itemName={deleteTarget?.name}
+        loading={remove.isPending}
+      />
     </div>
   )
 }

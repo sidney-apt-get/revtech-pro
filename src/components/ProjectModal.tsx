@@ -13,13 +13,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ROICalculator } from './ROICalculator'
 import { BarcodeScanner } from './BarcodeScanner'
 import { WarrantyModal } from './WarrantyModal'
-import { ScannerPairing } from './ScannerPairing'
+import { PhotoUpload } from './PhotoUpload'
+import { NumberInput } from './NumberInput'
 import { useCreateProject, useUpdateProject } from '@/hooks/useProjects'
+import { useUploadPhoto } from '@/hooks/useProjectPhotos'
 import type { Project } from '@/lib/supabase'
 import type { FilledFields } from '@/hooks/usePairedScanner'
 import { ALL_STATUSES } from '@/lib/utils'
 import { lookupBarcode } from '@/lib/productLookup'
-import { ScanLine, Loader2, ChevronDown, ChevronUp, ExternalLink, Sparkles } from 'lucide-react'
+import { ScanLine, Loader2, ChevronDown, ChevronUp, ExternalLink, Sparkles, Smartphone } from 'lucide-react'
 
 const STORAGE_OPTIONS = [16, 32, 64, 128, 256, 512, 1024]
 const RAM_OPTIONS = [1, 2, 3, 4, 6, 8, 12, 16]
@@ -72,13 +74,25 @@ interface ProjectModalProps {
   open: boolean
   onClose: () => void
   project?: Project | null
+  pendingAiFields?: FilledFields | null
+  onPendingConsumed?: () => void
 }
 
 const PLATFORMS = ['eBay UK', 'Back Market', 'CeX', 'Gumtree', 'Facebook Marketplace', 'Outro']
 
-export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
+function dataUrlToFile(dataUrl: string, name: string): File {
+  const [header, data] = dataUrl.split(',')
+  const mime = header.match(/:(.*?);/)?.[1] ?? 'image/jpeg'
+  const bstr = atob(data)
+  const u8 = new Uint8Array(bstr.length)
+  for (let i = 0; i < bstr.length; i++) u8[i] = bstr.charCodeAt(i)
+  return new File([u8], name, { type: mime })
+}
+
+export function ProjectModal({ open, onClose, project, pendingAiFields, onPendingConsumed }: ProjectModalProps) {
   const create = useCreateProject()
   const update = useUpdateProject()
+  const uploadPhoto = useUploadPhoto()
   const [showScanner, setShowScanner] = useState(false)
   const [scanTarget, setScanTarget] = useState<'serial' | 'equipment'>('serial')
   const [warrantyProject, setWarrantyProject] = useState<{ id: string; equipment: string } | null>(null)
@@ -86,6 +100,7 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
   const [productImage, setProductImage] = useState<string | null>(null)
   const [deviceOpen, setDeviceOpen] = useState(false)
   const [aiFields, setAiFields] = useState<Set<string>>(new Set())
+  const [localPhotos, setLocalPhotos] = useState<string[]>([])
 
   const { register, handleSubmit, watch, setValue, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
@@ -97,6 +112,18 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
       shipping_out: 0,
     },
   })
+
+  // Apply pending AI fields when modal opens for new project
+  useEffect(() => {
+    if (open && pendingAiFields && !project) {
+      handleAIFill(pendingAiFields)
+      onPendingConsumed?.()
+    }
+  }, [open, pendingAiFields]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!open) setLocalPhotos([])
+  }, [open])
 
   useEffect(() => {
     if (project) {
@@ -218,6 +245,15 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
       const created = await create.mutateAsync(payload as Parameters<typeof create.mutateAsync>[0])
       savedId = (created as { id: string }).id
     }
+    // Upload any local photos
+    if (savedId && localPhotos.length > 0) {
+      for (let i = 0; i < localPhotos.length; i++) {
+        if (localPhotos[i].startsWith('data:')) {
+          const file = dataUrlToFile(localPhotos[i], `photo-${i + 1}.jpg`)
+          await uploadPhoto.mutateAsync({ projectId: savedId, phase: 'recepcao', file }).catch(() => {})
+        }
+      }
+    }
     if (wasVendido && savedId) {
       setWarrantyProject({ id: savedId, equipment: data.equipment })
     } else {
@@ -248,7 +284,13 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
           <DialogTitle>{project ? 'Editar Projecto' : 'Novo Projecto'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="p-6 pt-4 space-y-5">
-          <ScannerPairing onFieldsFilled={handleAIFill} />
+          {/* Scanner status (panel is in parent) */}
+          {aiFields.size > 0 && (
+            <div className="flex items-center gap-2 rounded-lg bg-accent/10 border border-accent/20 px-3 py-2">
+              <Smartphone className="h-4 w-4 text-accent" />
+              <span className="text-xs text-accent font-medium">{aiFields.size} campos preenchidos pelo scanner ✨</span>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
@@ -316,11 +358,11 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
           <div className="border-t border-border pt-4 space-y-4">
             <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider">Financeiro</h4>
             <div className="grid grid-cols-2 gap-4">
-              <F label="Preço de compra (£)"><Input type="number" step="0.01" {...register('purchase_price')} /></F>
-              <F label="Custo de peças (£)"><Input type="number" step="0.01" {...register('parts_cost')} /></F>
-              <F label="Frete entrada (£)"><Input type="number" step="0.01" {...register('shipping_in')} /></F>
-              <F label="Frete saída (£)"><Input type="number" step="0.01" {...register('shipping_out')} /></F>
-              <F label="Preço de venda (£)"><Input type="number" step="0.01" {...register('sale_price')} placeholder="Opcional" /></F>
+              <F label="Preço de compra (£)"><NumberInput value={watch('purchase_price')} onChange={v => setValue('purchase_price', v)} isDecimal /></F>
+              <F label="Custo de peças (£)"><NumberInput value={watch('parts_cost')} onChange={v => setValue('parts_cost', v)} isDecimal /></F>
+              <F label="Frete entrada (£)"><NumberInput value={watch('shipping_in')} onChange={v => setValue('shipping_in', v)} isDecimal /></F>
+              <F label="Frete saída (£)"><NumberInput value={watch('shipping_out')} onChange={v => setValue('shipping_out', v)} isDecimal /></F>
+              <F label="Preço de venda (£)"><NumberInput value={watch('sale_price') ?? null} onChange={v => setValue('sale_price', v)} isDecimal placeholder="Opcional" /></F>
               <div className="space-y-1.5">
                 <Label>Plataforma de venda</Label>
                 <Select value={watch('sale_platform') ?? ''} onValueChange={(v) => setValue('sale_platform', v)}>
@@ -389,10 +431,10 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
                 {/* Battery */}
                 <div className="grid grid-cols-2 gap-3">
                   <F label="Capacidade original (mAh)">
-                    <Input type="number" {...register('battery_capacity_original')} placeholder="ex: 3227" />
+                    <NumberInput value={watch('battery_capacity_original') ?? null} onChange={v => setValue('battery_capacity_original', v)} placeholder="ex: 3227" />
                   </F>
                   <F label="Capacidade actual (mAh)">
-                    <Input type="number" {...register('battery_capacity_current')} placeholder="ex: 2900" />
+                    <NumberInput value={watch('battery_capacity_current') ?? null} onChange={v => setValue('battery_capacity_current', v)} placeholder="ex: 2900" />
                   </F>
                 </div>
 
@@ -427,7 +469,7 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
 
                 <div className="grid grid-cols-3 gap-3">
                   <F label="Ciclos de carga">
-                    <Input type="number" {...register('battery_cycles')} placeholder="ex: 312" />
+                    <NumberInput value={watch('battery_cycles') ?? null} onChange={v => setValue('battery_cycles', v)} placeholder="ex: 312" />
                   </F>
                   <F label="Cor do dispositivo">
                     <Input {...register('device_color')} placeholder="ex: Space Grey" />
@@ -470,6 +512,11 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
           <F label="Notas">
             <Textarea {...register('notes')} placeholder="Observações adicionais..." rows={2} />
           </F>
+
+          <div className="border-t border-border pt-4 space-y-3">
+            <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider">Fotos</h4>
+            <PhotoUpload photos={localPhotos} onChange={setLocalPhotos} maxPhotos={6} />
+          </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>

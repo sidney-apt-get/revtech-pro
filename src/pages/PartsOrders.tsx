@@ -7,6 +7,7 @@ import { fmtDate, fmtGBP } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { Plus, X, ExternalLink, Trash2, Package, ChevronDown, ChevronUp } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
+import { DeleteConfirmation } from '@/components/DeleteConfirmation'
 
 const ORDER_STATUSES = ['Encomendado', 'Em Trânsito', 'Entregue', 'Cancelado'] as const
 const STATUS_COLORS: Record<string, string> = {
@@ -263,6 +264,7 @@ export function PartsOrders() {
   const [filterStatus, setFilterStatus] = useState('')
   const [filterSupplier, setFilterSupplier] = useState('')
   const [showAdd, setShowAdd] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
   const filtered = orders.filter(o => {
     if (filterStatus && o.status !== filterStatus) return false
@@ -342,12 +344,20 @@ export function PartsOrders() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(o => (
-            <OrderCard key={o.id} order={o} onUpdateStatus={handleStatusChange} onDelete={id => deleteOrder.mutate(id)} />
+            <OrderCard key={o.id} order={o} onUpdateStatus={handleStatusChange} onDelete={id => setDeleteTarget(id)} />
           ))}
         </div>
       )}
 
       {showAdd && <AddOrderModal onClose={() => setShowAdd(false)} />}
+
+      <DeleteConfirmation
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => { deleteOrder.mutate(deleteTarget!); setDeleteTarget(null) }}
+        itemName={orders.find(o => o.id === deleteTarget)?.part_name}
+        loading={deleteOrder.isPending}
+      />
     </div>
   )
 }

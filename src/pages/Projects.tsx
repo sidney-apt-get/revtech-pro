@@ -1,13 +1,15 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useProjects } from '@/hooks/useProjects'
 import { ProjectCard } from '@/components/ProjectCard'
 import { KanbanBoard } from '@/components/KanbanBoard'
 import { ProjectModal } from '@/components/ProjectModal'
+import { ScannerPanel } from '@/components/ScannerPanel'
 import { Button } from '@/components/ui/button'
 import type { Project, ProjectStatus } from '@/lib/supabase'
+import type { FilledFields } from '@/hooks/usePairedScanner'
 import { ALL_STATUSES } from '@/lib/utils'
-import { Plus, LayoutGrid, Kanban, Filter } from 'lucide-react'
+import { Plus, LayoutGrid, Kanban, Filter, Smartphone } from 'lucide-react'
 
 type View = 'grid' | 'kanban'
 
@@ -18,11 +20,26 @@ export function Projects() {
   const [filter, setFilter] = useState<ProjectStatus | 'all'>('all')
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Project | null>(null)
+  const [scannerPanelOpen, setScannerPanelOpen] = useState(false)
+  const [pendingFields, setPendingFields] = useState<FilledFields | null>(null)
 
   const filtered = filter === 'all' ? projects : projects.filter(p => p.status === filter)
 
   function handleEdit(p: Project) { setEditing(p); setModalOpen(true) }
-  function handleNew() { setEditing(null); setModalOpen(true) }
+
+  function handleNew() {
+    setEditing(null)
+    setPendingFields(null)
+    setModalOpen(true)
+  }
+
+  const handleScannerFill = useCallback((fields: FilledFields) => {
+    setPendingFields(prev => ({ ...prev, ...fields }))
+    if (!modalOpen) {
+      setEditing(null)
+      setModalOpen(true)
+    }
+  }, [modalOpen])
 
   if (isLoading) return <div className="text-text-muted animate-pulse p-4">{t('common.loading')}</div>
 
@@ -50,6 +67,14 @@ export function Projects() {
               <Kanban className="h-4 w-4" />
             </button>
           </div>
+          <button
+            onClick={() => setScannerPanelOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm text-text-muted hover:bg-surface hover:text-accent transition-colors"
+            title="Scanner telemóvel"
+          >
+            <Smartphone className="h-4 w-4" />
+            <span className="hidden sm:inline">Scanner</span>
+          </button>
           <Button onClick={handleNew} size="sm">
             <Plus className="h-4 w-4" />
             {t('common.new')}
@@ -104,6 +129,14 @@ export function Projects() {
         open={modalOpen}
         onClose={() => { setModalOpen(false); setEditing(null) }}
         project={editing}
+        pendingAiFields={editing ? null : pendingFields}
+        onPendingConsumed={() => setPendingFields(null)}
+      />
+
+      <ScannerPanel
+        open={scannerPanelOpen}
+        onClose={() => setScannerPanelOpen(false)}
+        onFieldsFilled={handleScannerFill}
       />
     </div>
   )
