@@ -190,17 +190,17 @@ function AddOrderModal({ onClose }: { onClose: () => void }) {
             </div>
             <div className="space-y-1">
               <label className="text-xs text-text-muted">{t('orders.fields.quantity')}</label>
-              <input type="number" min="1" value={form.quantity ?? 1} onChange={e => set('quantity', parseInt(e.target.value))}
+              <input type="number" min="1" defaultValue={1} onBlur={e => set('quantity', parseInt(e.target.value) || 1)}
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50" />
             </div>
             <div className="space-y-1">
               <label className="text-xs text-text-muted">{t('orders.fields.unitCost')}</label>
-              <input type="number" step="0.01" value={form.unit_cost ?? ''} onChange={e => set('unit_cost', parseFloat(e.target.value))}
+              <input type="number" step="0.01" min="0" defaultValue="" onBlur={e => { const v = parseFloat(e.target.value); if (!isNaN(v)) set('unit_cost', v) }}
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50" />
             </div>
             <div className="space-y-1">
               <label className="text-xs text-text-muted">{t('orders.fields.totalCost')}</label>
-              <input type="number" step="0.01" value={form.total_cost ?? ''} onChange={e => set('total_cost', parseFloat(e.target.value))}
+              <input type="number" step="0.01" min="0" defaultValue="" onBlur={e => { const v = parseFloat(e.target.value); if (!isNaN(v)) set('total_cost', v) }}
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50" />
             </div>
             <div className="space-y-1">

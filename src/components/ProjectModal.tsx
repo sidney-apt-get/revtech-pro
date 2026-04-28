@@ -80,6 +80,8 @@ interface ProjectModalProps {
 
 const PLATFORMS = ['eBay UK', 'Back Market', 'CeX', 'Gumtree', 'Facebook Marketplace', 'Outro']
 
+const NUM_CLS = 'flex h-9 w-full rounded-md border border-border bg-surface px-3 py-1 text-sm text-text-primary placeholder:text-text-muted shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent'
+
 function dataUrlToFile(dataUrl: string, name: string): File {
   const [header, data] = dataUrl.split(',')
   const mime = header.match(/:(.*?);/)?.[1] ?? 'image/jpeg'
@@ -358,14 +360,14 @@ export function ProjectModal({ open, onClose, project, pendingAiFields, onPendin
           <div className="border-t border-border pt-4 space-y-4">
             <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider">Financeiro</h4>
             <div className="grid grid-cols-2 gap-4">
-              <F label="Preço de compra (£)"><NumberInput value={watch('purchase_price')} onChange={v => setValue('purchase_price', v)} isDecimal /></F>
-              <F label="Custo de peças (£)"><NumberInput value={watch('parts_cost')} onChange={v => setValue('parts_cost', v)} isDecimal /></F>
-              <F label="Frete entrada (£)"><NumberInput value={watch('shipping_in')} onChange={v => setValue('shipping_in', v)} isDecimal /></F>
-              <F label="Frete saída (£)"><NumberInput value={watch('shipping_out')} onChange={v => setValue('shipping_out', v)} isDecimal /></F>
-              <F label="Preço de venda (£)"><NumberInput value={watch('sale_price') ?? null} onChange={v => setValue('sale_price', v)} isDecimal placeholder="Opcional" /></F>
+              <F label="Preço de compra (£)"><input type="number" step="0.01" min="0" defaultValue={project?.purchase_price ?? 0} onBlur={e => setValue('purchase_price', parseFloat(e.target.value) || 0)} className={NUM_CLS} /></F>
+              <F label="Custo de peças (£)"><input type="number" step="0.01" min="0" defaultValue={project?.parts_cost ?? 0} onBlur={e => setValue('parts_cost', parseFloat(e.target.value) || 0)} className={NUM_CLS} /></F>
+              <F label="Frete entrada (£)"><input type="number" step="0.01" min="0" defaultValue={project?.shipping_in ?? 0} onBlur={e => setValue('shipping_in', parseFloat(e.target.value) || 0)} className={NUM_CLS} /></F>
+              <F label="Frete saída (£)"><input type="number" step="0.01" min="0" defaultValue={project?.shipping_out ?? 0} onBlur={e => setValue('shipping_out', parseFloat(e.target.value) || 0)} className={NUM_CLS} /></F>
+              <F label="Preço de venda (£)"><input type="number" step="0.01" min="0" defaultValue={project?.sale_price ?? ''} onBlur={e => { const v = parseFloat(e.target.value); setValue('sale_price', isNaN(v) ? null : v) }} placeholder="Opcional" className={NUM_CLS} /></F>
               <div className="space-y-1.5">
                 <Label>Plataforma de venda</Label>
-                <Select value={watch('sale_platform') ?? ''} onValueChange={(v) => setValue('sale_platform', v)}>
+                <Select value={watch('sale_platform') || undefined} onValueChange={(v) => setValue('sale_platform', v)}>
                   <SelectTrigger><SelectValue placeholder="Selecciona..." /></SelectTrigger>
                   <SelectContent>
                     {PLATFORMS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
@@ -431,10 +433,10 @@ export function ProjectModal({ open, onClose, project, pendingAiFields, onPendin
                 {/* Battery */}
                 <div className="grid grid-cols-2 gap-3">
                   <F label="Capacidade original (mAh)">
-                    <NumberInput value={watch('battery_capacity_original') ?? null} onChange={v => setValue('battery_capacity_original', v)} placeholder="ex: 3227" />
+                    <input type="number" min="0" defaultValue={project?.battery_capacity_original ?? ''} onBlur={e => { const v = parseInt(e.target.value); setValue('battery_capacity_original', isNaN(v) ? undefined : v) }} placeholder="ex: 3227" className={NUM_CLS} />
                   </F>
                   <F label="Capacidade actual (mAh)">
-                    <NumberInput value={watch('battery_capacity_current') ?? null} onChange={v => setValue('battery_capacity_current', v)} placeholder="ex: 2900" />
+                    <input type="number" min="0" defaultValue={project?.battery_capacity_current ?? ''} onBlur={e => { const v = parseInt(e.target.value); setValue('battery_capacity_current', isNaN(v) ? undefined : v) }} placeholder="ex: 2900" className={NUM_CLS} />
                   </F>
                 </div>
 
@@ -473,14 +475,14 @@ export function ProjectModal({ open, onClose, project, pendingAiFields, onPendin
 
                 <div className="grid grid-cols-3 gap-3">
                   <F label="Ciclos de carga">
-                    <NumberInput value={watch('battery_cycles') ?? null} onChange={v => setValue('battery_cycles', v)} placeholder="ex: 312" />
+                    <input type="number" min="0" defaultValue={project?.battery_cycles ?? ''} onBlur={e => { const v = parseInt(e.target.value); setValue('battery_cycles', isNaN(v) ? undefined : v) }} placeholder="ex: 312" className={NUM_CLS} />
                   </F>
                   <F label="Cor do dispositivo">
                     <Input {...register('device_color')} placeholder="ex: Space Grey" />
                   </F>
                   <div className="space-y-1.5">
                     <Label>Condição</Label>
-                    <Select value={watch('condition_grade') ?? ''} onValueChange={v => setValue('condition_grade', v as FormData['condition_grade'])}>
+                    <Select value={watch('condition_grade') || undefined} onValueChange={v => setValue('condition_grade', v as FormData['condition_grade'])}>
                       <SelectTrigger><SelectValue placeholder="Grau..." /></SelectTrigger>
                       <SelectContent>
                         {CONDITION_GRADES.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
@@ -492,7 +494,7 @@ export function ProjectModal({ open, onClose, project, pendingAiFields, onPendin
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Armazenamento (GB)</Label>
-                    <Select value={watch('storage_gb')?.toString() ?? ''} onValueChange={v => setValue('storage_gb', parseInt(v))}>
+                    <Select value={watch('storage_gb')?.toString()} onValueChange={v => setValue('storage_gb', parseInt(v))}>
                       <SelectTrigger><SelectValue placeholder="Selecciona..." /></SelectTrigger>
                       <SelectContent>
                         {STORAGE_OPTIONS.map(s => <SelectItem key={s} value={String(s)}>{s >= 1024 ? '1TB' : `${s}GB`}</SelectItem>)}
@@ -501,7 +503,7 @@ export function ProjectModal({ open, onClose, project, pendingAiFields, onPendin
                   </div>
                   <div className="space-y-1.5">
                     <Label>RAM (GB)</Label>
-                    <Select value={watch('ram_gb')?.toString() ?? ''} onValueChange={v => setValue('ram_gb', parseInt(v))}>
+                    <Select value={watch('ram_gb')?.toString()} onValueChange={v => setValue('ram_gb', parseInt(v))}>
                       <SelectTrigger><SelectValue placeholder="Selecciona..." /></SelectTrigger>
                       <SelectContent>
                         {RAM_OPTIONS.map(r => <SelectItem key={r} value={String(r)}>{r}GB</SelectItem>)}
