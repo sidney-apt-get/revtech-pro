@@ -121,6 +121,12 @@ export type InventoryItem = {
   category_slug?: string | null
   ai_confidence?: number | null
   photos?: string[]
+  // Added by migration 020
+  entry_date?: string | null
+  added_by?: string | null
+  barcode?: string | null
+  supplier_ref?: string | null
+  source_order_id?: string | null
 }
 
 export type Contact = {

@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocation } from 'wouter'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -15,7 +16,7 @@ import { BarcodeScanner } from '@/components/BarcodeScanner'
 import { lookupBarcode } from '@/lib/productLookup'
 import type { InventoryItem } from '@/lib/supabase'
 import { fmtGBP, fmtDate } from '@/lib/utils'
-import { Plus, Pencil, Trash2, AlertTriangle, ScanLine, Package } from 'lucide-react'
+import { Plus, Pencil, Trash2, AlertTriangle, ScanLine, Package, Search } from 'lucide-react'
 
 const categories = ['Peças', 'Consumíveis', 'Ferramentas', 'Patrimônio'] as const
 type Category = typeof categories[number]
@@ -38,6 +39,9 @@ const schema = z.object({
   source_project_id: z.string().optional(),
   cannibalization_reason: z.string().optional(),
   condition_tested: z.boolean().default(false),
+  entry_date: z.string().optional(),
+  barcode: z.string().optional(),
+  supplier_ref: z.string().optional(),
 })
 type FormData = z.infer<typeof schema>
 
@@ -53,16 +57,21 @@ function ContextBadge({ ctx }: { ctx?: string | null }) {
 
 interface ItemRowProps {
   item: InventoryItem
-  onEdit: () => void
-  onDelete: () => void
+  onEdit: (e: React.MouseEvent) => void
+  onDelete: (e: React.MouseEvent) => void
+  onRowClick: () => void
 }
 
-function ItemRow({ item, onEdit, onDelete }: ItemRowProps) {
+function ItemRow({ item, onEdit, onDelete, onRowClick }: ItemRowProps) {
   const low = item.quantity < item.min_stock
   const thumb = item.photos?.[0]
+  const totalValue = item.quantity * item.unit_cost
 
   return (
-    <tr className={`border-b border-border group hover:bg-surface/50 transition-colors ${low ? 'bg-warning/3' : ''}`}>
+    <tr
+      onClick={onRowClick}
+      className={`border-b border-border group hover:bg-surface/50 transition-colors cursor-pointer ${low ? 'bg-warning/3' : ''}`}
+    >
       <td className="px-3 py-2.5 w-12">
         {thumb
           ? <img src={thumb} alt="" className="h-10 w-10 rounded-lg object-cover border border-border" />
@@ -81,15 +90,13 @@ function ItemRow({ item, onEdit, onDelete }: ItemRowProps) {
         <span className={`font-bold ${low ? 'text-warning' : 'text-text-primary'}`}>{item.quantity}</span>
         <span className="text-text-muted text-xs"> / {item.min_stock}</span>
       </td>
-      <td className="px-3 py-2.5 text-sm text-text-muted">{item.location || '—'}</td>
       <td className="px-3 py-2.5 text-sm text-text-primary">{fmtGBP(item.unit_cost)}</td>
-      {(item.category === 'Ferramentas' || item.category === 'Patrimônio') && (
-        <td className="px-3 py-2.5 text-xs text-text-muted">
-          {item.calibration_date && <p>Cal: {fmtDate(item.calibration_date)}</p>}
-          {item.next_maintenance && <p>Maint: {fmtDate(item.next_maintenance)}</p>}
-        </td>
-      )}
-      <td className="px-3 py-2.5">
+      <td className="px-3 py-2.5 text-sm text-text-primary hidden md:table-cell">{fmtGBP(totalValue)}</td>
+      <td className="px-3 py-2.5 text-sm text-text-muted hidden md:table-cell">{item.location || '—'}</td>
+      <td className="px-3 py-2.5 text-xs text-text-muted hidden lg:table-cell">
+        {item.entry_date ? fmtDate(item.entry_date) : fmtDate(item.created_at)}
+      </td>
+      <td className="px-3 py-2.5" onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button onClick={onEdit} className="p-1.5 rounded hover:bg-surface text-text-muted hover:text-accent transition-colors">
             <Pencil className="h-3.5 w-3.5" />
@@ -124,8 +131,11 @@ function filterByTab(items: InventoryItem[], tab: ContextTab): InventoryItem[] {
   }
 }
 
+const today = new Date().toISOString().split('T')[0]
+
 export function Inventory() {
   const { t } = useTranslation()
+  const [, navigate] = useLocation()
   useEffect(() => { document.title = 'Inventário — RevTech PRO' }, [])
   const { data: inventory = [], isLoading } = useInventory()
   const create = useCreateInventoryItem()
@@ -133,6 +143,7 @@ export function Inventory() {
   const remove = useDeleteInventoryItem()
 
   const [activeTab, setActiveTab] = useState<ContextTab>('all')
+  const [search, setSearch] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<InventoryItem | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<InventoryItem | null>(null)
@@ -140,17 +151,37 @@ export function Inventory() {
 
   const { register, handleSubmit, watch, setValue, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
-    defaultValues: { category: 'Peças', quantity: 0, min_stock: 5, unit_cost: 0, item_context: 'new', condition_tested: false },
+    defaultValues: {
+      category: 'Peças', quantity: 0, min_stock: 5, unit_cost: 0,
+      item_context: 'new', condition_tested: false, entry_date: today,
+    },
   })
 
   const watchedContext = watch('item_context')
   const isToolOrAsset = watch('category') === 'Ferramentas' || watch('category') === 'Patrimônio'
 
+  const tabItems = filterByTab(inventory, activeTab)
+  const filteredItems = useMemo(() => {
+    if (!search.trim()) return tabItems
+    const q = search.toLowerCase()
+    return tabItems.filter(i =>
+      i.item_name.toLowerCase().includes(q) ||
+      i.supplier?.toLowerCase().includes(q) ||
+      i.location?.toLowerCase().includes(q) ||
+      i.barcode?.toLowerCase().includes(q)
+    )
+  }, [tabItems, search])
+
+  const lowCount = inventory.filter(i => i.quantity < i.min_stock).length
+
   async function handleScanDetected(code: string) {
     setScannerOpen(false)
-    const match = inventory.find(i => i.item_name.toLowerCase().includes(code.toLowerCase()))
-    if (match) { openEdit(match); return }
+    const byBarcode = inventory.find(i => i.barcode === code)
+    if (byBarcode) { navigate(`/inventory/${byBarcode.id}`); return }
+    const byName = inventory.find(i => i.item_name.toLowerCase().includes(code.toLowerCase()))
+    if (byName) { navigate(`/inventory/${byName.id}`); return }
     openNew()
+    setValue('barcode', code)
     setValue('item_name', code)
     const info = await lookupBarcode(code)
     if (info) {
@@ -161,7 +192,10 @@ export function Inventory() {
 
   function openNew() {
     setEditing(null)
-    reset({ category: 'Peças', quantity: 0, min_stock: 5, unit_cost: 0, item_context: 'new', condition_tested: false })
+    reset({
+      category: 'Peças', quantity: 0, min_stock: 5, unit_cost: 0,
+      item_context: 'new', condition_tested: false, entry_date: today,
+    })
     setModalOpen(true)
   }
 
@@ -183,6 +217,9 @@ export function Inventory() {
       source_project_id: item.source_project_id ?? '',
       cannibalization_reason: item.cannibalization_reason ?? '',
       condition_tested: item.condition_tested ?? false,
+      entry_date: item.entry_date ?? today,
+      barcode: item.barcode ?? '',
+      supplier_ref: item.supplier_ref ?? '',
     })
     setModalOpen(true)
   }
@@ -204,6 +241,9 @@ export function Inventory() {
       source_project_id: data.source_project_id || null,
       cannibalization_reason: data.cannibalization_reason || null,
       condition_tested: data.condition_tested,
+      entry_date: data.entry_date || null,
+      barcode: data.barcode || null,
+      supplier_ref: data.supplier_ref || null,
     }
     if (editing) {
       await update.mutateAsync({ id: editing.id, ...payload })
@@ -213,15 +253,12 @@ export function Inventory() {
     setModalOpen(false)
   }
 
-  const tabItems = filterByTab(inventory, activeTab)
-  const lowCount = inventory.filter(i => i.quantity < i.min_stock).length
-
   if (isLoading) return <div className="text-text-muted animate-pulse p-4">{t('common.loading')}</div>
 
   return (
     <div className="space-y-4 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">{t('inventory.title')}</h1>
           <p className="text-text-muted text-sm mt-0.5">
@@ -229,15 +266,24 @@ export function Inventory() {
             {lowCount > 0 && <span className="ml-2 text-warning font-medium">· {lowCount} com stock baixo</span>}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
+          <div className="relative flex-1 max-w-xs">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted pointer-events-none" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder={t('inventory.search')}
+              className="w-full rounded-lg border border-border bg-surface pl-8 pr-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+            />
+          </div>
           <button
             onClick={() => setScannerOpen(true)}
             title={t('inventory.scan')}
-            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm text-text-muted hover:bg-surface hover:text-accent transition-colors"
+            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm text-text-muted hover:bg-surface hover:text-accent transition-colors shrink-0"
           >
             <ScanLine className="h-4 w-4" />
           </button>
-          <Button onClick={openNew} size="sm">
+          <Button onClick={openNew} size="sm" className="shrink-0">
             <Plus className="h-4 w-4" /> {t('inventory.new')}
           </Button>
         </div>
@@ -271,21 +317,26 @@ export function Inventory() {
               <th className="px-3 py-2.5 w-12"></th>
               <th className="px-3 py-2.5 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Nome</th>
               <th className="px-3 py-2.5 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Qty / Mín</th>
-              <th className="px-3 py-2.5 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Local</th>
               <th className="px-3 py-2.5 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">Custo</th>
+              <th className="px-3 py-2.5 text-left text-xs font-semibold text-text-muted uppercase tracking-wider hidden md:table-cell">{t('inventory.totalValue')}</th>
+              <th className="px-3 py-2.5 text-left text-xs font-semibold text-text-muted uppercase tracking-wider hidden md:table-cell">Local</th>
+              <th className="px-3 py-2.5 text-left text-xs font-semibold text-text-muted uppercase tracking-wider hidden lg:table-cell">{t('inventory.entry_date')}</th>
               <th className="px-3 py-2.5"></th>
             </tr>
           </thead>
           <tbody className="bg-card">
-            {tabItems.length === 0 ? (
-              <tr><td colSpan={6} className="text-center py-12 text-text-muted text-sm">{t('inventory.noItemsInCategory')}</td></tr>
+            {filteredItems.length === 0 ? (
+              <tr><td colSpan={8} className="text-center py-12 text-text-muted text-sm">
+                {search ? t('inventory.noItems') : t('inventory.noItemsInCategory')}
+              </td></tr>
             ) : (
-              tabItems.map(item => (
+              filteredItems.map(item => (
                 <ItemRow
                   key={item.id}
                   item={item}
-                  onEdit={() => openEdit(item)}
-                  onDelete={() => setDeleteTarget(item)}
+                  onRowClick={() => navigate(`/inventory/${item.id}`)}
+                  onEdit={e => { e.stopPropagation(); openEdit(item) }}
+                  onDelete={e => { e.stopPropagation(); setDeleteTarget(item) }}
                 />
               ))
             )}
@@ -398,6 +449,24 @@ export function Inventory() {
               </div>
             </div>
 
+            {/* Barcode + Ref Fornecedor */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>{t('inventory.barcode')}</Label>
+                <Input {...register('barcode')} placeholder="EAN / SKU" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t('inventory.supplier_ref')}</Label>
+                <Input {...register('supplier_ref')} placeholder="REF-12345" />
+              </div>
+            </div>
+
+            {/* Data de entrada */}
+            <div className="space-y-1.5">
+              <Label>{t('inventory.entry_date')}</Label>
+              <Input type="date" {...register('entry_date')} />
+            </div>
+
             {/* Ferramentas/Patrimônio */}
             {isToolOrAsset && (
               <div className="grid grid-cols-2 gap-3">
@@ -444,7 +513,7 @@ export function Inventory() {
         loading={remove.isPending}
       />
 
-      {/* QR barcode scanner */}
+      {/* Barcode scanner */}
       {scannerOpen && (
         <BarcodeScanner
           title={t('inventory.scan')}
@@ -452,7 +521,6 @@ export function Inventory() {
           onClose={() => setScannerOpen(false)}
         />
       )}
-
     </div>
   )
 }
