@@ -4,8 +4,12 @@ import { useTranslation } from 'react-i18next'
 import { useProjects, useUpdateProject, useDeleteProject } from '@/hooks/useProjects'
 import { useOrders } from '@/hooks/useOrders'
 import { autoUpdateDefectDatabase } from '@/hooks/useDefects'
+import { useItemFieldValues } from '@/hooks/useItemFieldValues'
+import { sendTelegramNotification } from '@/lib/telegram'
 import { PhotoGallery } from '@/components/PhotoGallery'
 import { ProjectModal } from '@/components/ProjectModal'
+import { TranslateButton } from '@/components/TranslateButton'
+import { DynamicFieldsDisplay } from '@/components/DynamicFields'
 import { calcROI, fmtGBP, fmtDate, STATUS_COLORS, ALL_STATUSES, cn } from '@/lib/utils'
 import type { Project, ProjectPhase, ProjectStatus } from '@/lib/supabase'
 import {
@@ -61,6 +65,7 @@ const ORDER_STATUS_COLORS: Record<string, string> = {
 }
 
 function PhaseStep({ phase, project, onSaveObs }: { phase: TimelinePhase; project: Project; onSaveObs: (key: string, value: string) => void }) {
+  const { i18n } = useTranslation()
   const isDone = phase.doneStatuses.includes(project.status)
   const isActive = phase.activeStatuses.includes(project.status)
   const isCancelled = project.status === 'Cancelado'
@@ -68,6 +73,7 @@ function PhaseStep({ phase, project, onSaveObs }: { phase: TimelinePhase; projec
   const [obs, setObs] = useState(obsValue)
   const [saving, setSaving] = useState(false)
   const [photosOpen, setPhotosOpen] = useState(false)
+  const targetLang = i18n.language.startsWith('en') ? 'en' : 'pt' as 'pt' | 'en'
 
   const dotColor = isDone ? 'bg-success border-success' : isActive ? 'bg-accent border-accent animate-pulse' : isCancelled && !isDone ? 'bg-border border-border' : 'bg-surface border-border'
 
@@ -96,6 +102,11 @@ function PhaseStep({ phase, project, onSaveObs }: { phase: TimelinePhase; projec
           <div className="mb-3">
             <textarea value={obs} onChange={e => setObs(e.target.value)} onBlur={saveObs} placeholder={`Observações de ${phase.label.toLowerCase()}...`} rows={2}
               className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/40 resize-none" />
+            <TranslateButton
+              value={obs}
+              targetLang={targetLang}
+              onTranslated={v => { setObs(v); onSaveObs(phase.obsKey!, v) }}
+            />
             {saving && <p className="text-[10px] text-text-muted mt-0.5">A guardar...</p>}
           </div>
         )}
@@ -124,13 +135,14 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 export function ProjectDetails() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const [, navigate] = useLocation()
   const { data: projects = [], isLoading } = useProjects()
   const { data: allOrders = [] } = useOrders()
   const update = useUpdateProject()
   const deleteProject = useDeleteProject()
+  const fieldValues = useItemFieldValues(id ?? null, 'project')
   const [editOpen, setEditOpen] = useState(false)
   const [deleteInput, setDeleteInput] = useState('')
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -138,6 +150,8 @@ export function ProjectDetails() {
 
   const project = projects.find(p => p.id === id)
   const linkedOrders = allOrders.filter(o => o.project_id === id)
+  const dynamicCategorySlug = fieldValues['_category_slug'] ?? null
+  const targetLang = i18n.language.startsWith('en') ? 'en' : 'pt' as 'pt' | 'en'
 
   useEffect(() => {
     if (project) document.title = `${project.equipment} — RevTech PRO`
@@ -165,12 +179,27 @@ export function ProjectDetails() {
     await update.mutateAsync({ id: project!.id, [key]: value || null })
   }
 
+  async function handleTranslateField(key: keyof Project, value: string) {
+    await update.mutateAsync({ id: project!.id, [key]: value }).catch(() => {})
+  }
+
   async function handleStatusChange(status: ProjectStatus) {
     setStatusChanging(true)
     try {
       await update.mutateAsync({ id: project!.id, status })
       if (status === 'Vendido' || status === 'Cancelado') {
         autoUpdateDefectDatabase({ ...project!, status }).catch(() => {})
+      }
+      if (status === 'Vendido') {
+        const { profit } = calcROI(project!)
+        const margin = project!.sale_price ? (profit / project!.sale_price * 100) : 0
+        sendTelegramNotification(
+          `💰 <b>Venda registada!</b>\nTicket: ${project!.ticket_number ?? '—'}\nEquipamento: ${project!.equipment}\nVendido por: £${project!.sale_price ?? 0} via ${project!.sale_platform ?? '—'}\nLucro: £${profit.toFixed(2)} (${margin.toFixed(1)}%)`
+        ).catch(() => {})
+      } else {
+        sendTelegramNotification(
+          `📋 <b>Projecto actualizado</b>\nTicket: ${project!.ticket_number ?? '—'}\n${project!.status} → ${status}`
+        ).catch(() => {})
       }
     } finally { setStatusChanging(false) }
   }
@@ -338,6 +367,13 @@ export function ProjectDetails() {
         </div>
       </div>
 
+      {/* Dynamic category fields */}
+      <DynamicFieldsDisplay
+        categorySlug={dynamicCategorySlug}
+        values={fieldValues}
+        language={targetLang}
+      />
+
       {/* Defect + Diagnosis + Notes */}
       {(project.defect_description || project.diagnosis || project.notes) && (
         <div className="rounded-xl border border-border bg-card p-4 space-y-3">
@@ -345,18 +381,33 @@ export function ProjectDetails() {
             <div>
               <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">Defeito reportado</p>
               <p className="text-sm text-text-primary">{project.defect_description}</p>
+              <TranslateButton
+                value={project.defect_description}
+                targetLang={targetLang}
+                onTranslated={v => handleTranslateField('defect_description', v)}
+              />
             </div>
           )}
           {project.diagnosis && (
             <div className="border-t border-border pt-3">
               <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">Diagnóstico</p>
               <p className="text-sm text-text-primary">{project.diagnosis}</p>
+              <TranslateButton
+                value={project.diagnosis}
+                targetLang={targetLang}
+                onTranslated={v => handleTranslateField('diagnosis', v)}
+              />
             </div>
           )}
           {project.notes && (
             <div className="border-t border-border pt-3">
               <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1">Notas</p>
               <p className="text-sm text-text-primary">{project.notes}</p>
+              <TranslateButton
+                value={project.notes}
+                targetLang={targetLang}
+                onTranslated={v => handleTranslateField('notes', v)}
+              />
             </div>
           )}
         </div>

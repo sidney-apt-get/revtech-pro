@@ -3,8 +3,12 @@ import { useParams, useLocation } from 'wouter'
 import { useTranslation } from 'react-i18next'
 import { useInventory, useUpdateInventoryItem, useDeleteInventoryItem } from '@/hooks/useInventory'
 import { useProjects } from '@/hooks/useProjects'
+import { useItemFieldValues } from '@/hooks/useItemFieldValues'
+import { sendTelegramNotification } from '@/lib/telegram'
 import { supabase, type ItemHistory } from '@/lib/supabase'
 import { fmtGBP, fmtDate, cn } from '@/lib/utils'
+import { TranslateButton } from '@/components/TranslateButton'
+import { DynamicFieldsDisplay } from '@/components/DynamicFields'
 import { ArrowLeft, Pencil, Trash2, Plus, Minus, Package, Wrench, Droplets, Cpu, Camera, X, Clock } from 'lucide-react'
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
@@ -90,23 +94,26 @@ function EventDetail({ event_type, event_data }: { event_type: string; event_dat
 }
 
 export function InventoryDetail() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const [, navigate] = useLocation()
   const { data: items = [], isLoading } = useInventory()
   const { data: projects = [] } = useProjects()
   const updateItem = useUpdateInventoryItem()
   const deleteItem = useDeleteInventoryItem()
+  const fieldValues = useItemFieldValues(id ?? null, 'inventory')
 
   const [deleteInput, setDeleteInput] = useState('')
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [qtySaving, setQtySaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [history, setHistory] = useState<ItemHistory[]>([])
+  const [noteTranslated, setNoteTranslated] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const item = items.find(i => i.id === id) ?? null
   const sourceProject = item?.source_project_id ? projects.find(p => p.id === item!.source_project_id) ?? null : null
+  const targetLang = i18n.language.startsWith('en') ? 'en' : 'pt' as 'pt' | 'en'
 
   useEffect(() => {
     if (item) document.title = `${item.item_name} — RevTech PRO`
@@ -162,6 +169,12 @@ export function InventoryDetail() {
         .select()
         .single()
       if (entry) setHistory(prev => [entry as ItemHistory, ...prev])
+      // Low stock telegram notification
+      if (next <= item!.min_stock && from > item!.min_stock) {
+        sendTelegramNotification(
+          `⚠️ <b>Stock baixo</b>\n${item!.item_name}: ${next} unidades restantes\n(mínimo: ${item!.min_stock})`
+        ).catch(() => {})
+      }
     } finally {
       setQtySaving(false)
     }
@@ -280,7 +293,17 @@ export function InventoryDetail() {
           {item.notes && (
             <div className="border-t border-border pt-3">
               <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Notas</p>
-              <p className="text-sm text-text-primary">{item.notes}</p>
+              <p className="text-sm text-text-primary">
+                {noteTranslated ?? item.notes}
+              </p>
+              <TranslateButton
+                value={noteTranslated ?? item.notes}
+                targetLang={targetLang}
+                onTranslated={v => {
+                  setNoteTranslated(v)
+                  updateItem.mutateAsync({ id: item!.id, notes: v }).catch(() => {})
+                }}
+              />
             </div>
           )}
         </div>
@@ -315,6 +338,13 @@ export function InventoryDetail() {
           </div>
         )}
       </div>
+
+      {/* Dynamic fields for this inventory item's sub-category */}
+      <DynamicFieldsDisplay
+        categorySlug={item.category_slug ?? null}
+        values={fieldValues}
+        language={targetLang}
+      />
 
       {/* Photos */}
       <div className="rounded-xl border border-border bg-card p-4 space-y-3">
@@ -355,11 +385,7 @@ export function InventoryDetail() {
           <div className="grid grid-cols-3 gap-2">
             {photos.map((photo, i) => (
               <div key={i} className="relative group aspect-square">
-                <img
-                  src={photo}
-                  alt={`Foto ${i + 1}`}
-                  className="w-full h-full object-cover rounded-lg border border-border"
-                />
+                <img src={photo} alt={`Foto ${i + 1}`} className="w-full h-full object-cover rounded-lg border border-border" />
                 <button
                   onClick={() => handlePhotoDelete(photo)}
                   className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-danger"

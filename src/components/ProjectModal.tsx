@@ -14,8 +14,13 @@ import { FinancialInput } from './FinancialInput'
 import { BarcodeScanner } from './BarcodeScanner'
 import { WarrantyModal } from './WarrantyModal'
 import { PhotoUpload } from './PhotoUpload'
+import { DynamicFields } from './DynamicFields'
 import { useCreateProject, useUpdateProject } from '@/hooks/useProjects'
 import { useUploadPhoto } from '@/hooks/useProjectPhotos'
+import { useCategories } from '@/hooks/useCategories'
+import { saveItemFieldValues } from '@/hooks/useItemFieldValues'
+import { supabase } from '@/lib/supabase'
+import { sendTelegramNotification } from '@/lib/telegram'
 import type { Project } from '@/lib/supabase'
 import { ALL_STATUSES } from '@/lib/utils'
 import { lookupBarcode } from '@/lib/productLookup'
@@ -92,6 +97,7 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
   const create = useCreateProject()
   const update = useUpdateProject()
   const uploadPhoto = useUploadPhoto()
+  const { categories } = useCategories('project')
   const [showScanner, setShowScanner] = useState(false)
   const [scanTarget, setScanTarget] = useState<'serial' | 'equipment'>('serial')
   const [warrantyProject, setWarrantyProject] = useState<{ id: string; equipment: string } | null>(null)
@@ -103,7 +109,8 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
   const [capOrig, setCapOrig] = useState<number | null>(null)
   const [capCur, setCapCur] = useState<number | null>(null)
   const [batteryHealthManual, setBatteryHealthManual] = useState<number | null>(null)
-
+  const [categorySlug, setCategorySlug] = useState<string>('')
+  const [dynValues, setDynValues] = useState<Record<string, string>>({})
 
   const { register, handleSubmit, watch, setValue, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
@@ -157,6 +164,21 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
       setCapOrig(project.battery_capacity_original ?? null)
       setCapCur(project.battery_capacity_current ?? null)
       setBatteryHealthManual(project.battery_health_percent ?? null)
+
+      // Load existing dynamic field values
+      supabase.from('item_field_values').select('field_key, value')
+        .eq('item_id', project.id).eq('item_type', 'project')
+        .then(({ data }) => {
+          if (!data) return
+          const map: Record<string, string> = {}
+          let slug = ''
+          for (const row of data) {
+            if (row.field_key === '_category_slug') { slug = row.value ?? ''; continue }
+            if (row.field_key && row.value != null) map[row.field_key] = row.value
+          }
+          setCategorySlug(slug)
+          setDynValues(map)
+        })
     } else {
       reset({ status: 'Recebido', purchase_price: 0, parts_cost: 0, shipping_in: 0, shipping_out: 0 })
       setProductImage(null)
@@ -165,6 +187,8 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
       setCapOrig(null)
       setCapCur(null)
       setBatteryHealthManual(null)
+      setCategorySlug('')
+      setDynValues({})
     }
   }, [project, reset, open])
 
@@ -221,13 +245,27 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
     }
     const wasVendido = project?.status !== 'Vendido' && data.status === 'Vendido'
     let savedId = project?.id ?? ''
+    const isNew = !project
+    let ticketNumber = project?.ticket_number ?? ''
+
     if (project) {
       await update.mutateAsync({ id: project.id, ...payload })
       savedId = project.id
     } else {
       const created = await create.mutateAsync(payload as Parameters<typeof create.mutateAsync>[0])
-      savedId = (created as { id: string }).id
+      savedId = (created as { id: string; ticket_number?: string }).id
+      ticketNumber = (created as { ticket_number?: string }).ticket_number ?? ''
     }
+
+    // Save dynamic field values
+    if (savedId) {
+      const allDynValues: Record<string, string> = { ...dynValues }
+      if (categorySlug) allDynValues['_category_slug'] = categorySlug
+      if (Object.keys(allDynValues).length > 0) {
+        await saveItemFieldValues(savedId, 'project', allDynValues).catch(() => {})
+      }
+    }
+
     // Upload any local photos
     if (savedId && localPhotos.length > 0) {
       for (let i = 0; i < localPhotos.length; i++) {
@@ -237,6 +275,14 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
         }
       }
     }
+
+    // Telegram notifications
+    if (isNew) {
+      sendTelegramNotification(
+        `🔧 <b>Novo projecto criado</b>\nTicket: ${ticketNumber}\nEquipamento: ${[data.brand, data.equipment].filter(Boolean).join(' ')}\nDefeito: ${data.defect_description}\nCompra: £${data.purchase_price}`
+      ).catch(() => {})
+    }
+
     if (wasVendido && savedId) {
       setWarrantyProject({ id: savedId, equipment: data.equipment })
     } else {
@@ -260,6 +306,24 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
           <DialogTitle>{project ? 'Editar Projecto' : 'Novo Projecto'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="p-6 pt-4 space-y-5">
+
+          {/* Categoria do equipamento */}
+          <div className="space-y-1.5">
+            <Label>Categoria do Equipamento</Label>
+            <select
+              value={categorySlug}
+              onChange={e => { setCategorySlug(e.target.value); setDynValues({}) }}
+              className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+            >
+              <option value="">Selecciona categoria...</option>
+              {categories.map(cat => (
+                <option key={cat.slug} value={cat.slug}>
+                  {cat.icon ? `${cat.icon} ` : ''}{cat.name_pt}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <F label="Equipamento *" error={errors.equipment?.message}>
@@ -324,6 +388,13 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
             <F label="Comprador"><Input {...register('buyer_name')} placeholder="Nome do comprador" /></F>
             <F label="Ref. de compra"><Input {...register('purchase_reference')} placeholder="Nº recibo, factura..." /></F>
           </div>
+
+          {/* Dynamic fields for selected category */}
+          <DynamicFields
+            categorySlug={categorySlug || null}
+            values={dynValues}
+            onChange={(key, val) => setDynValues(prev => ({ ...prev, [key]: val }))}
+          />
 
           <div className="border-t border-border pt-4 space-y-4">
             <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider">Financeiro</h4>

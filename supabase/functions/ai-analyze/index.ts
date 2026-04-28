@@ -44,7 +44,40 @@ serve(async (req) => {
       )
     }
 
-    const { imageBase64, mimeType = 'image/jpeg' } = await req.json()
+    const body = await req.json()
+
+    // Translation request
+    if (body.type === 'translate') {
+      const prompt = `Translate the following text to ${body.targetLanguage}.
+Return ONLY the translated text, nothing else. Do not add explanations or quotes.
+
+Text to translate:
+${body.text}`
+
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.1, maxOutputTokens: 512 },
+          }),
+        }
+      )
+      if (!geminiRes.ok) {
+        return new Response(JSON.stringify({ error: 'Translation failed' }), {
+          status: 502, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+        })
+      }
+      const tData = await geminiRes.json()
+      const result = tData.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+      return new Response(JSON.stringify({ result: result.trim() }), {
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const { imageBase64, mimeType = 'image/jpeg' } = body
     if (!imageBase64) {
       return new Response(
         JSON.stringify({ error: 'imageBase64 is required' }),

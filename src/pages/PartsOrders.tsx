@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { sendTelegramNotification } from '@/lib/telegram'
 import { useOrders, useCreateOrder, useUpdateOrder, useDeleteOrder } from '@/hooks/useOrders'
 import { useProjects, useUpdateProject } from '@/hooks/useProjects'
 import { useCreateInventoryItem } from '@/hooks/useInventory'
@@ -377,7 +378,12 @@ export function PartsOrders() {
     if (status === 'Entregue') {
       update.delivered_at = new Date().toISOString().split('T')[0]
       updateOrder.mutate(update)
-      if (order) setReceivedOrder(order)
+      if (order) {
+        setReceivedOrder(order)
+        sendTelegramNotification(
+          `📦 <b>Encomenda recebida</b>\n${order.part_name} de ${order.supplier}\nQty: ${order.quantity}${order.total_cost != null ? `\nTotal: £${order.total_cost.toFixed(2)}` : ''}`
+        )
+      }
     } else {
       updateOrder.mutate(update)
     }

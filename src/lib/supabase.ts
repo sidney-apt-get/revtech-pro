@@ -223,6 +223,7 @@ export type AppSettings = {
   currency_symbol: string
   vat_rate: number
   ticket_prefix: string
+  telegram_enabled?: boolean
   created_at: string
   updated_at: string
 }

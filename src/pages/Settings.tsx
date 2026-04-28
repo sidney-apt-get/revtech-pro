@@ -4,7 +4,7 @@ import { useSettings } from '@/contexts/SettingsContext'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
-import { Upload, Save, LogOut, Palette, Building2, Briefcase, User, AlertTriangle, Lock, Database, Download, RotateCcw, CloudUpload, HardDrive, Link2, Link2Off } from 'lucide-react'
+import { Upload, Save, LogOut, Palette, Building2, Briefcase, User, AlertTriangle, Lock, Database, Download, RotateCcw, CloudUpload, HardDrive, Link2, Link2Off, Bell } from 'lucide-react'
 import { initiateXeroAuth, isXeroConnected, clearXeroTokens } from '@/lib/xero'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -106,6 +106,23 @@ export function Settings() {
     const next = !autoBackup
     setAutoBackup(next)
     localStorage.setItem('revtech_auto_backup', next ? '1' : '0')
+  }
+
+  const [telegramEnabled, setTelegramEnabled] = useState(
+    () => localStorage.getItem('revtech_telegram_enabled') !== '0'
+  )
+
+  async function toggleTelegram() {
+    const next = !telegramEnabled
+    setTelegramEnabled(next)
+    localStorage.setItem('revtech_telegram_enabled', next ? '1' : '0')
+    const { data: { user: u } } = await supabase.auth.getUser()
+    if (u) {
+      supabase.from('app_settings').upsert(
+        { user_id: u.id, telegram_enabled: next, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id' }
+      ).then(() => {})
+    }
   }
 
   const [companyName, setCompanyName] = useState(settings.company_name)
@@ -719,6 +736,37 @@ export function Settings() {
                   <li>Adiciona <code className="bg-surface border border-border px-1 rounded">VITE_XERO_CLIENT_ID</code> ao .env.local</li>
                   <li>Clica em "Ligar ao Xero" acima</li>
                 </ol>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Bell className="h-4 w-4 text-accent" />
+                {t('notifications.telegram_title')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-text-muted">{t('notifications.telegram_desc')}</p>
+              <div className="flex items-center justify-between rounded-xl border border-border bg-surface px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-text-primary">
+                    {telegramEnabled ? t('notifications.telegram_enabled') : t('notifications.telegram_disabled')}
+                  </p>
+                </div>
+                <button
+                  onClick={toggleTelegram}
+                  className={cn(
+                    'relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0',
+                    telegramEnabled ? 'bg-accent' : 'bg-surface border border-border'
+                  )}
+                >
+                  <span className={cn(
+                    'inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform',
+                    telegramEnabled ? 'translate-x-6' : 'translate-x-1'
+                  )} />
+                </button>
               </div>
             </CardContent>
           </Card>

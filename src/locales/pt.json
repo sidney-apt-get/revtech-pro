@@ -42,7 +42,23 @@
     "lowStock_one": "{{count}} item com stock baixo",
     "lowStock_other": "{{count}} itens com stock baixo",
     "inTransit_one": "{{count}} encomenda a caminho",
-    "inTransit_other": "{{count}} encomendas a caminho"
+    "inTransit_other": "{{count}} encomendas a caminho",
+    "telegram_title": "Notificações Telegram",
+    "telegram_desc": "Recebe alertas em tempo real no telemóvel via Telegram",
+    "telegram_enabled": "Notificações activas",
+    "telegram_disabled": "Notificações desactivadas"
+  },
+  "dynamic_fields": {
+    "category_select": "Categoria do Equipamento",
+    "category_placeholder": "Selecciona categoria...",
+    "specific_fields": "Campos Específicos",
+    "no_fields": "Sem campos específicos para esta categoria"
+  },
+  "translate": {
+    "button": "🌐 Traduzir",
+    "translating": "A traduzir...",
+    "auto_translated": "🤖 Traduzido automaticamente — pode conter imprecisões",
+    "apply": "Usar esta"
   },
   "auth": {
     "logout": "Terminar sessão",

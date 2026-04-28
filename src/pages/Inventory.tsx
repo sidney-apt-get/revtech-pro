@@ -5,6 +5,10 @@ import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useInventory, useCreateInventoryItem, useUpdateInventoryItem, useDeleteInventoryItem } from '@/hooks/useInventory'
+import { useCategories } from '@/hooks/useCategories'
+import { saveItemFieldValues } from '@/hooks/useItemFieldValues'
+import { DynamicFields } from '@/components/DynamicFields'
+import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -134,7 +138,7 @@ function filterByTab(items: InventoryItem[], tab: ContextTab): InventoryItem[] {
 const today = new Date().toISOString().split('T')[0]
 
 export function Inventory() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [, navigate] = useLocation()
   useEffect(() => { document.title = 'Inventário — RevTech PRO' }, [])
   const { data: inventory = [], isLoading } = useInventory()
@@ -148,6 +152,10 @@ export function Inventory() {
   const [editing, setEditing] = useState<InventoryItem | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<InventoryItem | null>(null)
   const [scannerOpen, setScannerOpen] = useState(false)
+  const [dynCategorySlug, setDynCategorySlug] = useState('')
+  const [dynValues, setDynValues] = useState<Record<string, string>>({})
+  const { categories: subCategories } = useCategories('inventory')
+  const targetLang = (i18n.language.startsWith('en') ? 'en' : 'pt') as 'pt' | 'en'
 
   const { register, handleSubmit, watch, setValue, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
@@ -192,6 +200,8 @@ export function Inventory() {
 
   function openNew() {
     setEditing(null)
+    setDynCategorySlug('')
+    setDynValues({})
     reset({
       category: 'Peças', quantity: 0, min_stock: 5, unit_cost: 0,
       item_context: 'new', condition_tested: false, entry_date: today,
@@ -199,8 +209,14 @@ export function Inventory() {
     setModalOpen(true)
   }
 
-  function openEdit(item: InventoryItem) {
+  async function openEdit(item: InventoryItem) {
     setEditing(item)
+    setDynCategorySlug(item.category_slug ?? '')
+    const { data } = await supabase.from('item_field_values').select('field_key, value')
+      .eq('item_id', item.id).eq('item_type', 'inventory')
+    const map: Record<string, string> = {}
+    if (data) for (const row of data) if (row.field_key && row.value != null) map[row.field_key] = row.value
+    setDynValues(map)
     reset({
       item_name: item.item_name,
       category: item.category,
@@ -244,11 +260,14 @@ export function Inventory() {
       entry_date: data.entry_date || null,
       barcode: data.barcode || null,
       supplier_ref: data.supplier_ref || null,
+      category_slug: dynCategorySlug || null,
     }
     if (editing) {
       await update.mutateAsync({ id: editing.id, ...payload })
+      await saveItemFieldValues(editing.id, 'inventory', dynValues)
     } else {
-      await create.mutateAsync(payload as Parameters<typeof create.mutateAsync>[0])
+      const newItem = await create.mutateAsync(payload as Parameters<typeof create.mutateAsync>[0])
+      if (newItem?.id) await saveItemFieldValues(newItem.id, 'inventory', dynValues)
     }
     setModalOpen(false)
   }
@@ -405,6 +424,34 @@ export function Inventory() {
                 <Label className="text-xs">ID do projecto de origem (opcional)</Label>
                 <Input {...register('source_project_id')} placeholder="UUID do projecto" />
               </div>
+            )}
+
+            {/* Sub-categoria */}
+            {subCategories.length > 0 && (
+              <div className="space-y-1.5">
+                <Label>Sub-categoria</Label>
+                <select
+                  value={dynCategorySlug}
+                  onChange={e => { setDynCategorySlug(e.target.value); setDynValues({}) }}
+                  className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                >
+                  <option value="">— Nenhuma —</option>
+                  {subCategories.map(c => (
+                    <option key={c.slug} value={c.slug}>
+                      {c.icon ? `${c.icon} ` : ''}{targetLang === 'en' ? c.name_en : c.name_pt}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {dynCategorySlug && (
+              <DynamicFields
+                categorySlug={dynCategorySlug}
+                values={dynValues}
+                onChange={(key, val) => setDynValues(prev => ({ ...prev, [key]: val }))}
+                language={targetLang}
+              />
             )}
 
             {/* Quantidade, Stock mín, Custo */}
