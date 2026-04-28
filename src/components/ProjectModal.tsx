@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { ROICalculator } from './ROICalculator'
+import { FinancialInput } from './FinancialInput'
 import { BarcodeScanner } from './BarcodeScanner'
 import { WarrantyModal } from './WarrantyModal'
 import { PhotoUpload } from './PhotoUpload'
@@ -106,11 +107,6 @@ export function ProjectModal({ open, onClose, project, pendingAiFields, onPendin
   const [capCur, setCapCur] = useState<number | null>(null)
   const [batteryHealthManual, setBatteryHealthManual] = useState<number | null>(null)
 
-  const purchasePriceRef = useRef<HTMLInputElement>(null)
-  const partsCostRef = useRef<HTMLInputElement>(null)
-  const shippingInRef = useRef<HTMLInputElement>(null)
-  const shippingOutRef = useRef<HTMLInputElement>(null)
-  const salePriceRef = useRef<HTMLInputElement>(null)
 
   const { register, handleSubmit, watch, setValue, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
@@ -371,11 +367,11 @@ export function ProjectModal({ open, onClose, project, pendingAiFields, onPendin
           <div className="border-t border-border pt-4 space-y-4">
             <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider">Financeiro</h4>
             <div className="grid grid-cols-2 gap-4">
-              <F label="Preço de compra (£)"><input ref={purchasePriceRef} type="number" step="0.01" min="0" defaultValue={project?.purchase_price ?? 0} onBlur={e => { const v = parseFloat(e.target.value) || 0; setValue('purchase_price', v); setRoiValues(p => ({ ...p, purchasePrice: v })) }} className={NUM_CLS} /></F>
-              <F label="Custo de peças (£)"><input ref={partsCostRef} type="number" step="0.01" min="0" defaultValue={project?.parts_cost ?? 0} onBlur={e => { const v = parseFloat(e.target.value) || 0; setValue('parts_cost', v); setRoiValues(p => ({ ...p, partsCost: v })) }} className={NUM_CLS} /></F>
-              <F label="Frete entrada (£)"><input ref={shippingInRef} type="number" step="0.01" min="0" defaultValue={project?.shipping_in ?? 0} onBlur={e => { const v = parseFloat(e.target.value) || 0; setValue('shipping_in', v); setRoiValues(p => ({ ...p, shippingIn: v })) }} className={NUM_CLS} /></F>
-              <F label="Frete saída (£)"><input ref={shippingOutRef} type="number" step="0.01" min="0" defaultValue={project?.shipping_out ?? 0} onBlur={e => { const v = parseFloat(e.target.value) || 0; setValue('shipping_out', v); setRoiValues(p => ({ ...p, shippingOut: v })) }} className={NUM_CLS} /></F>
-              <F label="Preço de venda (£)"><input ref={salePriceRef} type="number" step="0.01" min="0" defaultValue={project?.sale_price ?? ''} onBlur={e => { const v = parseFloat(e.target.value); const n = isNaN(v) ? null : v; setValue('sale_price', n); setRoiValues(p => ({ ...p, salePrice: n })) }} placeholder="Opcional" className={NUM_CLS} /></F>
+              <FinancialInput label="Preço de compra" value={roiValues.purchasePrice} onChange={v => { const n = v ?? 0; setValue('purchase_price', n); setRoiValues(p => ({ ...p, purchasePrice: n })) }} />
+              <FinancialInput label="Custo de peças" value={roiValues.partsCost} onChange={v => { const n = v ?? 0; setValue('parts_cost', n); setRoiValues(p => ({ ...p, partsCost: n })) }} />
+              <FinancialInput label="Frete entrada" value={roiValues.shippingIn} onChange={v => { const n = v ?? 0; setValue('shipping_in', n); setRoiValues(p => ({ ...p, shippingIn: n })) }} />
+              <FinancialInput label="Frete saída" value={roiValues.shippingOut} onChange={v => { const n = v ?? 0; setValue('shipping_out', n); setRoiValues(p => ({ ...p, shippingOut: n })) }} />
+              <FinancialInput label="Preço de venda" value={roiValues.salePrice} onChange={v => { setValue('sale_price', v); setRoiValues(p => ({ ...p, salePrice: v })) }} optional placeholder="Opcional" />
               <div className="space-y-1.5">
                 <Label>Plataforma de venda</Label>
                 <select

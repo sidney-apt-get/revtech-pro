@@ -23,6 +23,7 @@ import { Warranties } from '@/pages/Warranties'
 import { ProjectDetails } from '@/pages/ProjectDetails'
 import { Finances } from '@/pages/Finances'
 import { Lots } from '@/pages/Lots'
+import { InventoryDetail } from '@/pages/InventoryDetail'
 import MobileCamera from '@/pages/MobileCamera'
 import ScannerPhone from '@/pages/ScannerPhone'
 import AuthCallback from '@/pages/AuthCallback'
@@ -95,6 +96,9 @@ export default function App() {
           </Route>
           <Route path="/inventory">
             <Protected><Inventory /></Protected>
+          </Route>
+          <Route path="/inventory/:id">
+            <Protected><InventoryDetail /></Protected>
           </Route>
           <Route path="/contacts">
             <Protected><Contacts /></Protected>
