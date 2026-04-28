@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useLocation } from 'wouter'
 import { useTranslation } from 'react-i18next'
 import { useInventory, useUpdateInventoryItem, useDeleteInventoryItem } from '@/hooks/useInventory'
@@ -44,6 +44,10 @@ export function InventoryDetail() {
 
   const item = items.find(i => i.id === id) ?? null
   const sourceProject = item?.source_project_id ? projects.find(p => p.id === item!.source_project_id) ?? null : null
+
+  useEffect(() => {
+    if (item) document.title = `${item.item_name} — RevTech PRO`
+  }, [item?.item_name])
 
   if (isLoading) return <div className="text-text-muted animate-pulse p-4">{t('common.loading')}</div>
 

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useDashboard } from '@/hooks/useDashboard'
 import { useOrders } from '@/hooks/useOrders'
 import { useInventory } from '@/hooks/useInventory'
@@ -82,6 +83,7 @@ const STATUS_COLOR: Record<string, string> = {
 
 export function Dashboard() {
   const { t, i18n } = useTranslation()
+  useEffect(() => { document.title = 'Dashboard — RevTech PRO' }, [])
   const locale = i18n.language === 'pt' ? pt : enGB
   const {
     totalInvested, totalRevenue, netProfit, avgMargin,
@@ -124,6 +126,25 @@ export function Dashboard() {
     [t('dashboard.created')]: w.created,
     [t('dashboard.soldLabel')]: w.sold,
   }))
+
+  if (projects.length === 0) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div>
+          <h1 className="text-2xl font-bold text-text-primary">{t('dashboard.title')}</h1>
+          <p className="text-text-muted text-sm mt-0.5">{t('dashboard.subtitle')}</p>
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-12 text-center space-y-4">
+          <p className="text-4xl">🔧</p>
+          <h2 className="text-lg font-semibold text-text-primary">Começa por criar o teu primeiro projecto</h2>
+          <p className="text-sm text-text-muted max-w-sm mx-auto">Regista um equipamento para reparação ou revenda para começares a acompanhar o teu negócio.</p>
+          <Link href="/projects" className="inline-flex items-center gap-2 mt-2 px-5 py-2.5 rounded-xl bg-accent text-white text-sm font-medium hover:bg-accent/90 transition-colors">
+            <Wrench className="h-4 w-4" /> Criar primeiro projecto
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">

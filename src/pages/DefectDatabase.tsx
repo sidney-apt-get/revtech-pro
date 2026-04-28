@@ -33,7 +33,12 @@ function DefectCard({ defect, onDelete }: DefectCardProps) {
               {defect.brand && <span className="text-xs font-semibold text-text-primary">{defect.brand}</span>}
               {defect.model && <span className="text-xs text-text-muted">{defect.model}</span>}
             </div>
-            <p className="text-sm font-semibold text-text-primary mt-0.5">{defect.common_defect}</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <p className="text-sm font-semibold text-text-primary">{defect.common_defect}</p>
+              {defect.auto_created && (
+                <span className="text-[10px] font-medium rounded-full border border-accent/30 bg-accent/10 text-accent px-1.5 py-0.5 shrink-0">🤖 Auto</span>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
             {defect.difficulty && (
@@ -129,6 +134,8 @@ function AddDefectModal({ onClose }: { onClose: () => void }) {
       difficulty: form.difficulty ?? null,
       success_rate: form.success_rate ?? null,
       notes: form.notes ?? null,
+      auto_created: false,
+      source_project_id: null,
     })
     onClose()
   }

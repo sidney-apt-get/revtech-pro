@@ -1,15 +1,13 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation } from 'wouter'
 import { useProjects } from '@/hooks/useProjects'
 import { KanbanBoard } from '@/components/KanbanBoard'
 import { ProjectModal } from '@/components/ProjectModal'
-import { ScannerPanel } from '@/components/ScannerPanel'
 import { Button } from '@/components/ui/button'
 import type { Project, ProjectStatus } from '@/lib/supabase'
-import type { FilledFields } from '@/hooks/usePairedScanner'
 import { ALL_STATUSES, calcROI, fmtGBP, fmtDate, STATUS_COLORS, STATUS_DOT, cn } from '@/lib/utils'
-import { Plus, Kanban, Filter, Smartphone, Search, TrendingUp, TrendingDown, ArrowUpDown, List, Pencil } from 'lucide-react'
+import { Plus, Kanban, Filter, Search, TrendingUp, TrendingDown, ArrowUpDown, List, Pencil } from 'lucide-react'
 
 type View = 'list' | 'kanban'
 type SortBy = 'date_desc' | 'date_asc' | 'profit_desc' | 'value_desc'
@@ -82,6 +80,7 @@ function ProjectRow({ project, onEdit }: { project: Project; onEdit: (p: Project
 
 export function Projects() {
   const { t } = useTranslation()
+  useEffect(() => { document.title = 'Projectos — RevTech PRO' }, [])
   const { data: projects = [], isLoading } = useProjects()
   const [view, setView] = useState<View>('list')
   const [filter, setFilter] = useState<ProjectStatus | 'all'>('all')
@@ -89,24 +88,11 @@ export function Projects() {
   const [sortBy, setSortBy] = useState<SortBy>('date_desc')
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Project | null>(null)
-  const [scannerPanelOpen, setScannerPanelOpen] = useState(false)
-  const [pendingFields, setPendingFields] = useState<FilledFields | null>(null)
+  const [page, setPage] = useState(0)
+  const PAGE_SIZE = 25
 
   function handleEdit(p: Project) { setEditing(p); setModalOpen(true) }
-
-  function handleNew() {
-    setEditing(null)
-    setPendingFields(null)
-    setModalOpen(true)
-  }
-
-  const handleScannerFill = useCallback((fields: FilledFields) => {
-    setPendingFields(prev => ({ ...prev, ...fields }))
-    if (!modalOpen) {
-      setEditing(null)
-      setModalOpen(true)
-    }
-  }, [modalOpen])
+  function handleNew() { setEditing(null); setModalOpen(true) }
 
   const filtered = useMemo(() => {
     let list = projects
@@ -132,6 +118,9 @@ export function Projects() {
       return new Date(b.received_at).getTime() - new Date(a.received_at).getTime()
     })
   }, [projects, filter, search, sortBy])
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+  const paged = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
   if (isLoading) return <div className="text-text-muted animate-pulse p-4">{t('common.loading')}</div>
 
@@ -160,14 +149,6 @@ export function Projects() {
               <Kanban className="h-4 w-4" />
             </button>
           </div>
-          <button
-            onClick={() => setScannerPanelOpen(true)}
-            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm text-text-muted hover:bg-surface hover:text-accent transition-colors"
-            title="Scanner telemóvel"
-          >
-            <Smartphone className="h-4 w-4" />
-            <span className="hidden sm:inline">Scanner</span>
-          </button>
           <Button onClick={handleNew} size="sm">
             <Plus className="h-4 w-4" />
             {t('common.new')}
@@ -181,7 +162,7 @@ export function Projects() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted pointer-events-none" />
           <input
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => { setSearch(e.target.value); setPage(0) }}
             placeholder="Pesquisar equipamento, ticket, série..."
             className="w-full rounded-lg border border-border bg-surface pl-8 pr-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
           />
@@ -252,11 +233,36 @@ export function Projects() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(p => (
+                {paged.map(p => (
                   <ProjectRow key={p.id} project={p} onEdit={handleEdit} />
                 ))}
               </tbody>
             </table>
+          )}
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-card/50 rounded-b-xl">
+              <p className="text-xs text-text-muted">
+                Mostrando {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} de {filtered.length} projectos
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={page === 0}
+                  onClick={() => setPage(p => p - 1)}
+                  className="px-3 py-1 rounded-lg border border-border text-xs text-text-muted hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  ← Anterior
+                </button>
+                <span className="text-xs text-text-muted">Pág. {page + 1} de {totalPages}</span>
+                <button
+                  disabled={page >= totalPages - 1}
+                  onClick={() => setPage(p => p + 1)}
+                  className="px-3 py-1 rounded-lg border border-border text-xs text-text-muted hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  Próxima →
+                </button>
+              </div>
+            </div>
           )}
         </div>
       )}
@@ -265,14 +271,6 @@ export function Projects() {
         open={modalOpen}
         onClose={() => { setModalOpen(false); setEditing(null) }}
         project={editing}
-        pendingAiFields={editing ? null : pendingFields}
-        onPendingConsumed={() => setPendingFields(null)}
-      />
-
-      <ScannerPanel
-        open={scannerPanelOpen}
-        onClose={() => setScannerPanelOpen(false)}
-        onFieldsFilled={handleScannerFill}
       />
     </div>
   )

@@ -35,9 +35,11 @@ export async function analyzeWithGemini(
   mimeType: string = 'image/jpeg'
 ): Promise<GeminiResult | null> {
   try {
-    const { data, error } = await supabase.functions.invoke('ai-analyze', {
-      body: { imageBase64, mimeType },
-    })
+    const invoke = supabase.functions.invoke('ai-analyze', { body: { imageBase64, mimeType } })
+    const timeoutPromise = new Promise<null>(resolve => setTimeout(() => resolve(null), 15000))
+    const result = await Promise.race([invoke, timeoutPromise])
+    if (!result) return null
+    const { data, error } = result
     if (error) throw error
     if (!data || data.error) {
       console.error('Edge function error:', data?.error ?? 'unknown')

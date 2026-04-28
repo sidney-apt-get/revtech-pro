@@ -31,6 +31,7 @@ export type Project = {
   sale_platform: string | null
   status: ProjectStatus
   notes: string | null
+  purchase_reference: string | null
   obs_recepcao: string | null
   obs_diagnostico: string | null
   obs_reparacao: string | null
@@ -178,6 +179,8 @@ export type DefectEntry = {
   difficulty: 'Fácil' | 'Médio' | 'Difícil' | null
   success_rate: number | null
   notes: string | null
+  auto_created: boolean | null
+  source_project_id: string | null
   created_at: string
 }
 

@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useLocation } from 'wouter'
 import { useTranslation } from 'react-i18next'
 import { useProjects, useUpdateProject, useDeleteProject } from '@/hooks/useProjects'
 import { useOrders } from '@/hooks/useOrders'
+import { autoUpdateDefectDatabase } from '@/hooks/useDefects'
 import { PhotoGallery } from '@/components/PhotoGallery'
 import { ProjectModal } from '@/components/ProjectModal'
 import { calcROI, fmtGBP, fmtDate, STATUS_COLORS, ALL_STATUSES, cn } from '@/lib/utils'
@@ -138,6 +139,10 @@ export function ProjectDetails() {
   const project = projects.find(p => p.id === id)
   const linkedOrders = allOrders.filter(o => o.project_id === id)
 
+  useEffect(() => {
+    if (project) document.title = `${project.equipment} — RevTech PRO`
+  }, [project?.equipment])
+
   if (isLoading) return <div className="text-text-muted animate-pulse p-4">{t('common.loading')}</div>
 
   if (!project) {
@@ -162,7 +167,12 @@ export function ProjectDetails() {
 
   async function handleStatusChange(status: ProjectStatus) {
     setStatusChanging(true)
-    try { await update.mutateAsync({ id: project!.id, status }) } finally { setStatusChanging(false) }
+    try {
+      await update.mutateAsync({ id: project!.id, status })
+      if (status === 'Vendido' || status === 'Cancelado') {
+        autoUpdateDefectDatabase({ ...project!, status }).catch(() => {})
+      }
+    } finally { setStatusChanging(false) }
   }
 
   async function handleDelete() {

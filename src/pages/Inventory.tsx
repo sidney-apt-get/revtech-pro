@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -11,13 +11,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { NumberInput } from '@/components/NumberInput'
 import { DeleteConfirmation } from '@/components/DeleteConfirmation'
-import { ScannerPanel } from '@/components/ScannerPanel'
 import { BarcodeScanner } from '@/components/BarcodeScanner'
 import { lookupBarcode } from '@/lib/productLookup'
 import type { InventoryItem } from '@/lib/supabase'
-import type { FilledFields } from '@/hooks/usePairedScanner'
 import { fmtGBP, fmtDate } from '@/lib/utils'
-import { Plus, Pencil, Trash2, AlertTriangle, ScanLine, Smartphone, Package } from 'lucide-react'
+import { Plus, Pencil, Trash2, AlertTriangle, ScanLine, Package } from 'lucide-react'
 
 const categories = ['Peças', 'Consumíveis', 'Ferramentas', 'Patrimônio'] as const
 type Category = typeof categories[number]
@@ -128,6 +126,7 @@ function filterByTab(items: InventoryItem[], tab: ContextTab): InventoryItem[] {
 
 export function Inventory() {
   const { t } = useTranslation()
+  useEffect(() => { document.title = 'Inventário — RevTech PRO' }, [])
   const { data: inventory = [], isLoading } = useInventory()
   const create = useCreateInventoryItem()
   const update = useUpdateInventoryItem()
@@ -138,7 +137,6 @@ export function Inventory() {
   const [editing, setEditing] = useState<InventoryItem | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<InventoryItem | null>(null)
   const [scannerOpen, setScannerOpen] = useState(false)
-  const [scannerPanelOpen, setScannerPanelOpen] = useState(false)
 
   const { register, handleSubmit, watch, setValue, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
@@ -147,17 +145,6 @@ export function Inventory() {
 
   const watchedContext = watch('item_context')
   const isToolOrAsset = watch('category') === 'Ferramentas' || watch('category') === 'Patrimônio'
-
-  const handleScannerFill = useCallback((fields: FilledFields) => {
-    const name = fields.equipment ?? (fields.brand && fields.model ? `${fields.brand} ${fields.model}` : undefined)
-    if (name) setValue('item_name', name)
-    if (fields.brand) setValue('supplier', String(fields.brand))
-    if (!modalOpen) {
-      reset({ category: 'Peças', quantity: 0, min_stock: 5, unit_cost: 0, item_context: 'new', condition_tested: false })
-      setEditing(null)
-      setModalOpen(true)
-    }
-  }, [setValue, modalOpen, reset])
 
   async function handleScanDetected(code: string) {
     setScannerOpen(false)
@@ -243,14 +230,6 @@ export function Inventory() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setScannerPanelOpen(true)}
-            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm text-text-muted hover:bg-surface hover:text-accent transition-colors"
-            title="Scanner telemóvel"
-          >
-            <Smartphone className="h-4 w-4" />
-            <span className="hidden sm:inline">Scanner</span>
-          </button>
           <button
             onClick={() => setScannerOpen(true)}
             title={t('inventory.scan')}
@@ -474,12 +453,6 @@ export function Inventory() {
         />
       )}
 
-      {/* Scanner panel */}
-      <ScannerPanel
-        open={scannerPanelOpen}
-        onClose={() => setScannerPanelOpen(false)}
-        onFieldsFilled={handleScannerFill}
-      />
     </div>
   )
 }

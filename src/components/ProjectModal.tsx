@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -17,10 +17,9 @@ import { PhotoUpload } from './PhotoUpload'
 import { useCreateProject, useUpdateProject } from '@/hooks/useProjects'
 import { useUploadPhoto } from '@/hooks/useProjectPhotos'
 import type { Project } from '@/lib/supabase'
-import type { FilledFields } from '@/hooks/usePairedScanner'
 import { ALL_STATUSES } from '@/lib/utils'
 import { lookupBarcode } from '@/lib/productLookup'
-import { ScanLine, Loader2, ChevronDown, ChevronUp, ExternalLink, Sparkles, Smartphone } from 'lucide-react'
+import { ScanLine, Loader2, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react'
 
 const STORAGE_OPTIONS = [16, 32, 64, 128, 256, 512, 1024]
 const RAM_OPTIONS = [1, 2, 3, 4, 6, 8, 12, 16]
@@ -43,6 +42,7 @@ const schema = z.object({
   brand: z.string().optional(),
   model: z.string().optional(),
   serial_number: z.string().optional(),
+  purchase_reference: z.string().optional(),
   defect_description: z.string().min(1, 'Obrigatório'),
   diagnosis: z.string().optional(),
   supplier_name: z.string().optional(),
@@ -73,8 +73,6 @@ interface ProjectModalProps {
   open: boolean
   onClose: () => void
   project?: Project | null
-  pendingAiFields?: FilledFields | null
-  onPendingConsumed?: () => void
 }
 
 const PLATFORMS = ['eBay UK', 'Back Market', 'CeX', 'Gumtree', 'Facebook Marketplace', 'Outro']
@@ -90,7 +88,7 @@ function dataUrlToFile(dataUrl: string, name: string): File {
   return new File([u8], name, { type: mime })
 }
 
-export function ProjectModal({ open, onClose, project, pendingAiFields, onPendingConsumed }: ProjectModalProps) {
+export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
   const create = useCreateProject()
   const update = useUpdateProject()
   const uploadPhoto = useUploadPhoto()
@@ -100,7 +98,6 @@ export function ProjectModal({ open, onClose, project, pendingAiFields, onPendin
   const [lookupLoading, setLookupLoading] = useState(false)
   const [productImage, setProductImage] = useState<string | null>(null)
   const [deviceOpen, setDeviceOpen] = useState(false)
-  const [aiFields, setAiFields] = useState<Set<string>>(new Set())
   const [localPhotos, setLocalPhotos] = useState<string[]>([])
   const [roiValues, setRoiValues] = useState({ purchasePrice: 0, partsCost: 0, shippingIn: 0, shippingOut: 0, salePrice: null as number | null })
   const [capOrig, setCapOrig] = useState<number | null>(null)
@@ -119,14 +116,6 @@ export function ProjectModal({ open, onClose, project, pendingAiFields, onPendin
     },
   })
 
-  // Apply pending AI fields when modal opens for new project
-  useEffect(() => {
-    if (open && pendingAiFields && !project) {
-      handleAIFill(pendingAiFields)
-      onPendingConsumed?.()
-    }
-  }, [open, pendingAiFields]) // eslint-disable-line react-hooks/exhaustive-deps
-
   useEffect(() => {
     if (!open) setLocalPhotos([])
   }, [open])
@@ -142,6 +131,7 @@ export function ProjectModal({ open, onClose, project, pendingAiFields, onPendin
         diagnosis: project.diagnosis ?? '',
         supplier_name: project.supplier_name ?? '',
         buyer_name: project.buyer_name ?? '',
+        purchase_reference: project.purchase_reference ?? '',
         purchase_price: project.purchase_price,
         parts_cost: project.parts_cost,
         shipping_in: project.shipping_in,
@@ -178,22 +168,6 @@ export function ProjectModal({ open, onClose, project, pendingAiFields, onPendin
     }
   }, [project, reset, open])
 
-  const handleAIFill = useCallback((fields: FilledFields) => {
-    const filled = new Set<string>()
-    if (fields.equipment) { setValue('equipment', fields.equipment); filled.add('equipment') }
-    if (fields.brand) { setValue('brand', fields.brand); filled.add('brand') }
-    if (fields.model) { setValue('model', String(fields.model)); filled.add('model') }
-    if (fields.serial_number) { setValue('serial_number', String(fields.serial_number)); filled.add('serial_number') }
-    if (fields.imei) { setValue('imei', String(fields.imei)); filled.add('imei') }
-    if (fields.color) { setValue('device_color', String(fields.color)); filled.add('device_color'); setDeviceOpen(true) }
-    if (fields.storage_gb) { setValue('storage_gb', Number(fields.storage_gb)); filled.add('storage_gb'); setDeviceOpen(true) }
-    if (fields.ram_gb) { setValue('ram_gb', Number(fields.ram_gb)); filled.add('ram_gb'); setDeviceOpen(true) }
-    if (fields.battery_mah_original) { setValue('battery_capacity_original', Number(fields.battery_mah_original)); filled.add('battery_capacity_original'); setDeviceOpen(true) }
-    if (fields.condition_grade) { setValue('condition_grade', fields.condition_grade as FormData['condition_grade']); filled.add('condition_grade'); setDeviceOpen(true) }
-    if (fields.obs_recepcao) { setValue('notes', String(fields.obs_recepcao)); filled.add('notes') }
-    setAiFields(filled)
-  }, [setValue])
-
   async function handleEquipmentScan(code: string) {
     setShowScanner(false)
     setValue('serial_number', code)
@@ -223,6 +197,7 @@ export function ProjectModal({ open, onClose, project, pendingAiFields, onPendin
       diagnosis: data.diagnosis || null,
       supplier_name: data.supplier_name || null,
       buyer_name: data.buyer_name || null,
+      purchase_reference: data.purchase_reference || null,
       purchase_price: data.purchase_price,
       parts_cost: data.parts_cost,
       shipping_in: data.shipping_in,
@@ -269,16 +244,9 @@ export function ProjectModal({ open, onClose, project, pendingAiFields, onPendin
     }
   }
 
-  const F = ({ label, error, children, aiKey }: { label: string; error?: string; children: React.ReactNode; aiKey?: string }) => (
+  const F = ({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) => (
     <div className="space-y-1.5">
-      <div className="flex items-center gap-1.5">
-        <Label>{label}</Label>
-        {aiKey && aiFields.has(aiKey) && (
-          <span title="Preenchido por IA — editável">
-            <Sparkles className="h-3 w-3 text-accent" />
-          </span>
-        )}
-      </div>
+      <Label>{label}</Label>
       {children}
       {error && <p className="text-xs text-danger">{error}</p>}
     </div>
@@ -292,17 +260,9 @@ export function ProjectModal({ open, onClose, project, pendingAiFields, onPendin
           <DialogTitle>{project ? 'Editar Projecto' : 'Novo Projecto'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="p-6 pt-4 space-y-5">
-          {/* Scanner status (panel is in parent) */}
-          {aiFields.size > 0 && (
-            <div className="flex items-center gap-2 rounded-lg bg-accent/10 border border-accent/20 px-3 py-2">
-              <Smartphone className="h-4 w-4 text-accent" />
-              <span className="text-xs text-accent font-medium">{aiFields.size} campos preenchidos pelo scanner ✨</span>
-            </div>
-          )}
-
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
-              <F label="Equipamento *" error={errors.equipment?.message} aiKey="equipment">
+              <F label="Equipamento *" error={errors.equipment?.message}>
                 <div className="flex gap-1.5 items-start">
                   <div className="flex-1">
                     <Input {...register('equipment')} placeholder="ex: MacBook Pro 2019" />
@@ -362,6 +322,7 @@ export function ProjectModal({ open, onClose, project, pendingAiFields, onPendin
             </div>
             <F label="Fornecedor / Vendedor"><Input {...register('supplier_name')} placeholder="Nome ou plataforma" /></F>
             <F label="Comprador"><Input {...register('buyer_name')} placeholder="Nome do comprador" /></F>
+            <F label="Ref. de compra"><Input {...register('purchase_reference')} placeholder="Nº recibo, factura..." /></F>
           </div>
 
           <div className="border-t border-border pt-4 space-y-4">

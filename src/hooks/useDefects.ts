@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase, type DefectEntry } from '@/lib/supabase'
+import { supabase, type DefectEntry, type Project } from '@/lib/supabase'
 
 const SEED_DEFECTS = [
   { equipment_type: 'Smartphone', brand: 'Apple', model: 'iPhone', common_defect: 'Não liga', likely_cause: 'Bateria descarregada ou circuito de carregamento danificado', required_parts: ['Bateria', 'Cabo de carga'], avg_repair_time_hours: 1, avg_parts_cost: 25, difficulty: 'Fácil', success_rate: 92 },
@@ -53,6 +53,61 @@ async function createDefect(d: Omit<DefectEntry, 'id' | 'user_id' | 'created_at'
 async function deleteDefect(id: string) {
   const { error } = await supabase.from('defect_database').delete().eq('id', id)
   if (error) throw error
+}
+
+export async function autoUpdateDefectDatabase(project: Project): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user || !project.defect_description) return
+
+  const equipmentType = project.equipment || 'Desconhecido'
+  const defectText = project.defect_description
+
+  // Look for existing matching entry
+  const { data: existing } = await supabase
+    .from('defect_database')
+    .select('*')
+    .eq('user_id', user.id)
+    .ilike('equipment_type', equipmentType)
+    .ilike('common_defect', defectText)
+    .maybeSingle()
+
+  const isSuccess = project.status === 'Vendido'
+
+  if (existing) {
+    // Update averages
+    const newSuccessRate = existing.success_rate != null
+      ? Math.round((existing.success_rate + (isSuccess ? 100 : 0)) / 2)
+      : isSuccess ? 100 : 0
+    const newPartsCost = existing.avg_parts_cost != null && project.parts_cost > 0
+      ? Math.round(((existing.avg_parts_cost + project.parts_cost) / 2) * 100) / 100
+      : existing.avg_parts_cost ?? (project.parts_cost > 0 ? project.parts_cost : null)
+
+    await supabase.from('defect_database').update({
+      success_rate: newSuccessRate,
+      avg_parts_cost: newPartsCost,
+    }).eq('id', existing.id)
+  } else {
+    // Create new auto entry
+    const days = project.sold_at && project.received_at
+      ? Math.max(1, Math.round((new Date(project.sold_at).getTime() - new Date(project.received_at).getTime()) / (1000 * 60 * 60)))
+      : null
+
+    await supabase.from('defect_database').insert({
+      user_id: user.id,
+      equipment_type: equipmentType,
+      brand: project.brand,
+      model: project.model,
+      common_defect: defectText,
+      likely_cause: project.diagnosis || null,
+      required_parts: [],
+      avg_repair_time_hours: days,
+      avg_parts_cost: project.parts_cost > 0 ? project.parts_cost : null,
+      difficulty: null,
+      success_rate: isSuccess ? 100 : 0,
+      auto_created: true,
+      source_project_id: project.id,
+    })
+  }
 }
 
 export function useDefects() {
