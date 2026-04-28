@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -9,12 +9,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ROICalculator } from './ROICalculator'
 import { BarcodeScanner } from './BarcodeScanner'
 import { WarrantyModal } from './WarrantyModal'
 import { PhotoUpload } from './PhotoUpload'
-import { NumberInput } from './NumberInput'
 import { useCreateProject, useUpdateProject } from '@/hooks/useProjects'
 import { useUploadPhoto } from '@/hooks/useProjectPhotos'
 import type { Project } from '@/lib/supabase'
@@ -103,6 +101,16 @@ export function ProjectModal({ open, onClose, project, pendingAiFields, onPendin
   const [deviceOpen, setDeviceOpen] = useState(false)
   const [aiFields, setAiFields] = useState<Set<string>>(new Set())
   const [localPhotos, setLocalPhotos] = useState<string[]>([])
+  const [roiValues, setRoiValues] = useState({ purchasePrice: 0, partsCost: 0, shippingIn: 0, shippingOut: 0, salePrice: null as number | null })
+  const [capOrig, setCapOrig] = useState<number | null>(null)
+  const [capCur, setCapCur] = useState<number | null>(null)
+  const [batteryHealthManual, setBatteryHealthManual] = useState<number | null>(null)
+
+  const purchasePriceRef = useRef<HTMLInputElement>(null)
+  const partsCostRef = useRef<HTMLInputElement>(null)
+  const shippingInRef = useRef<HTMLInputElement>(null)
+  const shippingOutRef = useRef<HTMLInputElement>(null)
+  const salePriceRef = useRef<HTMLInputElement>(null)
 
   const { register, handleSubmit, watch, setValue, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
@@ -159,10 +167,18 @@ export function ProjectModal({ open, onClose, project, pendingAiFields, onPendin
       })
       const hasDevice = !!(project.imei || project.battery_health_percent || project.condition_grade)
       setDeviceOpen(hasDevice)
+      setRoiValues({ purchasePrice: project.purchase_price, partsCost: project.parts_cost, shippingIn: project.shipping_in, shippingOut: project.shipping_out, salePrice: project.sale_price ?? null })
+      setCapOrig(project.battery_capacity_original ?? null)
+      setCapCur(project.battery_capacity_current ?? null)
+      setBatteryHealthManual(project.battery_health_percent ?? null)
     } else {
       reset({ status: 'Recebido', purchase_price: 0, parts_cost: 0, shipping_in: 0, shipping_out: 0 })
       setProductImage(null)
       setDeviceOpen(false)
+      setRoiValues({ purchasePrice: 0, partsCost: 0, shippingIn: 0, shippingOut: 0, salePrice: null })
+      setCapOrig(null)
+      setCapCur(null)
+      setBatteryHealthManual(null)
     }
   }, [project, reset, open])
 
@@ -199,13 +215,7 @@ export function ProjectModal({ open, onClose, project, pendingAiFields, onPendin
     }
   }
 
-  const watched = watch(['purchase_price', 'parts_cost', 'shipping_in', 'shipping_out', 'sale_price'])
-  const [watchedCapOrig, watchedCapCur] = watch(['battery_capacity_original', 'battery_capacity_current'])
-
-  // Auto-calculate battery health when both capacities are filled
-  const calcHealth = watchedCapOrig && watchedCapCur && watchedCapOrig > 0
-    ? Math.min(100, Math.round((watchedCapCur / watchedCapOrig) * 100))
-    : null
+  const calcHealth = capOrig && capCur && capOrig > 0 ? Math.min(100, Math.round((capCur / capOrig) * 100)) : null
 
   async function onSubmit(data: FormData) {
     const payload = {
@@ -231,7 +241,7 @@ export function ProjectModal({ open, onClose, project, pendingAiFields, onPendin
       imei2: data.imei2 || null,
       battery_capacity_original: data.battery_capacity_original ?? null,
       battery_capacity_current: data.battery_capacity_current ?? null,
-      battery_health_percent: calcHealth ?? data.battery_health_percent ?? null,
+      battery_health_percent: calcHealth ?? batteryHealthManual ?? data.battery_health_percent ?? null,
       battery_cycles: data.battery_cycles ?? null,
       device_color: data.device_color || null,
       storage_gb: data.storage_gb ?? null,
@@ -336,12 +346,13 @@ export function ProjectModal({ open, onClose, project, pendingAiFields, onPendin
             </div>
             <div className="space-y-1.5">
               <Label>Estado</Label>
-              <Select value={watch('status')} onValueChange={(v) => setValue('status', v as FormData['status'])}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {ALL_STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <select
+                value={watch('status')}
+                onChange={e => setValue('status', e.target.value as FormData['status'])}
+                className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+              >
+                {ALL_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
             </div>
             <div className="col-span-2">
               <F label="Defeito descrito *" error={errors.defect_description?.message}>
@@ -360,28 +371,30 @@ export function ProjectModal({ open, onClose, project, pendingAiFields, onPendin
           <div className="border-t border-border pt-4 space-y-4">
             <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider">Financeiro</h4>
             <div className="grid grid-cols-2 gap-4">
-              <F label="Preço de compra (£)"><input type="number" step="0.01" min="0" defaultValue={project?.purchase_price ?? 0} onBlur={e => setValue('purchase_price', parseFloat(e.target.value) || 0)} className={NUM_CLS} /></F>
-              <F label="Custo de peças (£)"><input type="number" step="0.01" min="0" defaultValue={project?.parts_cost ?? 0} onBlur={e => setValue('parts_cost', parseFloat(e.target.value) || 0)} className={NUM_CLS} /></F>
-              <F label="Frete entrada (£)"><input type="number" step="0.01" min="0" defaultValue={project?.shipping_in ?? 0} onBlur={e => setValue('shipping_in', parseFloat(e.target.value) || 0)} className={NUM_CLS} /></F>
-              <F label="Frete saída (£)"><input type="number" step="0.01" min="0" defaultValue={project?.shipping_out ?? 0} onBlur={e => setValue('shipping_out', parseFloat(e.target.value) || 0)} className={NUM_CLS} /></F>
-              <F label="Preço de venda (£)"><input type="number" step="0.01" min="0" defaultValue={project?.sale_price ?? ''} onBlur={e => { const v = parseFloat(e.target.value); setValue('sale_price', isNaN(v) ? null : v) }} placeholder="Opcional" className={NUM_CLS} /></F>
+              <F label="Preço de compra (£)"><input ref={purchasePriceRef} type="number" step="0.01" min="0" defaultValue={project?.purchase_price ?? 0} onBlur={e => { const v = parseFloat(e.target.value) || 0; setValue('purchase_price', v); setRoiValues(p => ({ ...p, purchasePrice: v })) }} className={NUM_CLS} /></F>
+              <F label="Custo de peças (£)"><input ref={partsCostRef} type="number" step="0.01" min="0" defaultValue={project?.parts_cost ?? 0} onBlur={e => { const v = parseFloat(e.target.value) || 0; setValue('parts_cost', v); setRoiValues(p => ({ ...p, partsCost: v })) }} className={NUM_CLS} /></F>
+              <F label="Frete entrada (£)"><input ref={shippingInRef} type="number" step="0.01" min="0" defaultValue={project?.shipping_in ?? 0} onBlur={e => { const v = parseFloat(e.target.value) || 0; setValue('shipping_in', v); setRoiValues(p => ({ ...p, shippingIn: v })) }} className={NUM_CLS} /></F>
+              <F label="Frete saída (£)"><input ref={shippingOutRef} type="number" step="0.01" min="0" defaultValue={project?.shipping_out ?? 0} onBlur={e => { const v = parseFloat(e.target.value) || 0; setValue('shipping_out', v); setRoiValues(p => ({ ...p, shippingOut: v })) }} className={NUM_CLS} /></F>
+              <F label="Preço de venda (£)"><input ref={salePriceRef} type="number" step="0.01" min="0" defaultValue={project?.sale_price ?? ''} onBlur={e => { const v = parseFloat(e.target.value); const n = isNaN(v) ? null : v; setValue('sale_price', n); setRoiValues(p => ({ ...p, salePrice: n })) }} placeholder="Opcional" className={NUM_CLS} /></F>
               <div className="space-y-1.5">
                 <Label>Plataforma de venda</Label>
-                <Select value={watch('sale_platform') || undefined} onValueChange={(v) => setValue('sale_platform', v)}>
-                  <SelectTrigger><SelectValue placeholder="Selecciona..." /></SelectTrigger>
-                  <SelectContent>
-                    {PLATFORMS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <select
+                  value={watch('sale_platform') ?? ''}
+                  onChange={e => setValue('sale_platform', e.target.value)}
+                  className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                >
+                  <option value="">Selecciona...</option>
+                  {PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
               </div>
             </div>
 
             <ROICalculator
-              purchasePrice={watched[0] || 0}
-              partsCost={watched[1] || 0}
-              shippingIn={watched[2] || 0}
-              shippingOut={watched[3] || 0}
-              salePrice={watched[4] ?? null}
+              purchasePrice={roiValues.purchasePrice}
+              partsCost={roiValues.partsCost}
+              shippingIn={roiValues.shippingIn}
+              shippingOut={roiValues.shippingOut}
+              salePrice={roiValues.salePrice}
             />
           </div>
 
@@ -433,10 +446,10 @@ export function ProjectModal({ open, onClose, project, pendingAiFields, onPendin
                 {/* Battery */}
                 <div className="grid grid-cols-2 gap-3">
                   <F label="Capacidade original (mAh)">
-                    <input type="number" min="0" defaultValue={project?.battery_capacity_original ?? ''} onBlur={e => { const v = parseInt(e.target.value); setValue('battery_capacity_original', isNaN(v) ? undefined : v) }} placeholder="ex: 3227" className={NUM_CLS} />
+                    <input type="number" min="0" defaultValue={project?.battery_capacity_original ?? ''} onBlur={e => { const v = parseInt(e.target.value); const n = isNaN(v) ? null : v; setValue('battery_capacity_original', n ?? undefined); setCapOrig(n) }} placeholder="ex: 3227" className={NUM_CLS} />
                   </F>
                   <F label="Capacidade actual (mAh)">
-                    <input type="number" min="0" defaultValue={project?.battery_capacity_current ?? ''} onBlur={e => { const v = parseInt(e.target.value); setValue('battery_capacity_current', isNaN(v) ? undefined : v) }} placeholder="ex: 2900" className={NUM_CLS} />
+                    <input type="number" min="0" defaultValue={project?.battery_capacity_current ?? ''} onBlur={e => { const v = parseInt(e.target.value); const n = isNaN(v) ? null : v; setValue('battery_capacity_current', n ?? undefined); setCapCur(n) }} placeholder="ex: 2900" className={NUM_CLS} />
                   </F>
                 </div>
 
@@ -453,16 +466,18 @@ export function ProjectModal({ open, onClose, project, pendingAiFields, onPendin
                       {calcHealth}% (calculado automaticamente)
                     </div>
                   ) : (
-                    <NumberInput
-                      value={watch('battery_health_percent') ?? null}
-                      onChange={v => setValue('battery_health_percent', v)}
-                      min={0}
-                      max={100}
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      defaultValue={project?.battery_health_percent ?? ''}
+                      onBlur={e => { const v = parseInt(e.target.value); const n = isNaN(v) ? null : Math.min(100, Math.max(0, v)); setValue('battery_health_percent', n ?? undefined); setBatteryHealthManual(n) }}
                       placeholder="0–100"
+                      className={NUM_CLS}
                     />
                   )}
                   {(() => {
-                    const h = calcHealth ?? watch('battery_health_percent')
+                    const h = calcHealth ?? batteryHealthManual
                     if (!h) return null
                     const color = h >= 80 ? 'bg-success' : h >= 60 ? 'bg-warning' : 'bg-danger'
                     return (
@@ -482,33 +497,39 @@ export function ProjectModal({ open, onClose, project, pendingAiFields, onPendin
                   </F>
                   <div className="space-y-1.5">
                     <Label>Condição</Label>
-                    <Select value={watch('condition_grade') || undefined} onValueChange={v => setValue('condition_grade', v as FormData['condition_grade'])}>
-                      <SelectTrigger><SelectValue placeholder="Grau..." /></SelectTrigger>
-                      <SelectContent>
-                        {CONDITION_GRADES.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <select
+                      value={watch('condition_grade') ?? ''}
+                      onChange={e => setValue('condition_grade', (e.target.value || null) as FormData['condition_grade'])}
+                      className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                    >
+                      <option value="">Grau...</option>
+                      {CONDITION_GRADES.map(g => <option key={g} value={g}>{g}</option>)}
+                    </select>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Armazenamento (GB)</Label>
-                    <Select value={watch('storage_gb')?.toString()} onValueChange={v => setValue('storage_gb', parseInt(v))}>
-                      <SelectTrigger><SelectValue placeholder="Selecciona..." /></SelectTrigger>
-                      <SelectContent>
-                        {STORAGE_OPTIONS.map(s => <SelectItem key={s} value={String(s)}>{s >= 1024 ? '1TB' : `${s}GB`}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <select
+                      value={watch('storage_gb')?.toString() ?? ''}
+                      onChange={e => setValue('storage_gb', e.target.value ? parseInt(e.target.value) : null)}
+                      className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                    >
+                      <option value="">Selecciona...</option>
+                      {STORAGE_OPTIONS.map(s => <option key={s} value={String(s)}>{s >= 1024 ? '1TB' : `${s}GB`}</option>)}
+                    </select>
                   </div>
                   <div className="space-y-1.5">
                     <Label>RAM (GB)</Label>
-                    <Select value={watch('ram_gb')?.toString()} onValueChange={v => setValue('ram_gb', parseInt(v))}>
-                      <SelectTrigger><SelectValue placeholder="Selecciona..." /></SelectTrigger>
-                      <SelectContent>
-                        {RAM_OPTIONS.map(r => <SelectItem key={r} value={String(r)}>{r}GB</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <select
+                      value={watch('ram_gb')?.toString() ?? ''}
+                      onChange={e => setValue('ram_gb', e.target.value ? parseInt(e.target.value) : null)}
+                      className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                    >
+                      <option value="">Selecciona...</option>
+                      {RAM_OPTIONS.map(r => <option key={r} value={String(r)}>{r}GB</option>)}
+                    </select>
                   </div>
                 </div>
               </div>

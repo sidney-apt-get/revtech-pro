@@ -7,7 +7,6 @@ import { fmtDate, fmtGBP } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { Plus, X, ExternalLink, Trash2, Package, ChevronDown, ChevronUp } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
-import { DeleteConfirmation } from '@/components/DeleteConfirmation'
 
 const ORDER_STATUSES = ['Encomendado', 'Em Trânsito', 'Entregue', 'Cancelado'] as const
 const STATUS_COLORS: Record<string, string> = {
@@ -265,6 +264,7 @@ export function PartsOrders() {
   const [filterSupplier, setFilterSupplier] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [deleteInput, setDeleteInput] = useState('')
 
   const filtered = orders.filter(o => {
     if (filterStatus && o.status !== filterStatus) return false
@@ -344,20 +344,41 @@ export function PartsOrders() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(o => (
-            <OrderCard key={o.id} order={o} onUpdateStatus={handleStatusChange} onDelete={id => setDeleteTarget(id)} />
+            <OrderCard key={o.id} order={o} onUpdateStatus={handleStatusChange} onDelete={id => { setDeleteTarget(id); setDeleteInput('') }} />
           ))}
         </div>
       )}
 
       {showAdd && <AddOrderModal onClose={() => setShowAdd(false)} />}
 
-      <DeleteConfirmation
-        open={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={() => { deleteOrder.mutate(deleteTarget!); setDeleteTarget(null) }}
-        itemName={orders.find(o => o.id === deleteTarget)?.part_name}
-        loading={deleteOrder.isPending}
-      />
+      {deleteTarget && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 px-4" onClick={() => { setDeleteTarget(null); setDeleteInput('') }}>
+          <div className="bg-card border border-border rounded-xl shadow-2xl p-6 w-full max-w-sm space-y-4" onClick={e => e.stopPropagation()}>
+            <h2 className="text-base font-semibold text-text-primary">Eliminar encomenda</h2>
+            <p className="text-sm text-text-muted">
+              Tens a certeza que queres eliminar <span className="font-medium text-text-primary">{orders.find(o => o.id === deleteTarget)?.part_name}</span>? Esta acção é irreversível.
+            </p>
+            <p className="text-xs text-text-muted">Escreve <span className="font-mono font-bold text-danger">ELIMINAR</span> para confirmar.</p>
+            <input
+              autoFocus
+              value={deleteInput}
+              onChange={e => setDeleteInput(e.target.value)}
+              placeholder="ELIMINAR"
+              className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-danger"
+            />
+            <div className="flex justify-end gap-2">
+              <button onClick={() => { setDeleteTarget(null); setDeleteInput('') }} className="rounded-lg border border-border px-4 py-2 text-sm text-text-muted hover:text-text-primary transition-colors">Cancelar</button>
+              <button
+                disabled={deleteInput !== 'ELIMINAR' || deleteOrder.isPending}
+                onClick={() => { deleteOrder.mutate(deleteTarget!); setDeleteTarget(null); setDeleteInput('') }}
+                className="rounded-lg bg-danger px-4 py-2 text-sm font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-danger/90 transition-colors"
+              >
+                {deleteOrder.isPending ? 'A eliminar...' : 'Eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

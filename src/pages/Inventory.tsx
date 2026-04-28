@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { NumberInput } from '@/components/NumberInput'
 import { DeleteConfirmation } from '@/components/DeleteConfirmation'
 import { ScannerPanel } from '@/components/ScannerPanel'
@@ -334,25 +333,27 @@ export function Inventory() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Categoria</Label>
-                <Select value={watch('category')} onValueChange={v => setValue('category', v as Category)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {categories.map(c => (
-                      <SelectItem key={c} value={c}>{t(`categoryMap.${c}`, { defaultValue: c })}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <select
+                  value={watch('category')}
+                  onChange={e => setValue('category', e.target.value as Category)}
+                  className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                >
+                  {categories.map(c => (
+                    <option key={c} value={c}>{t(`categoryMap.${c}`, { defaultValue: c })}</option>
+                  ))}
+                </select>
               </div>
               <div className="space-y-1.5">
                 <Label>Origem</Label>
-                <Select value={watchedContext} onValueChange={v => setValue('item_context', v as 'new' | 'cannibalized' | 'lot')}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="new">{t('inventory.context.new')}</SelectItem>
-                    <SelectItem value="cannibalized">♻️ {t('inventory.context.cannibalized')}</SelectItem>
-                    <SelectItem value="lot">📦 {t('inventory.context.lot')}</SelectItem>
-                  </SelectContent>
-                </Select>
+                <select
+                  value={watchedContext}
+                  onChange={e => setValue('item_context', e.target.value as 'new' | 'cannibalized' | 'lot')}
+                  className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                >
+                  <option value="new">{t('inventory.context.new')}</option>
+                  <option value="cannibalized">♻️ {t('inventory.context.cannibalized')}</option>
+                  <option value="lot">📦 {t('inventory.context.lot')}</option>
+                </select>
               </div>
             </div>
 
