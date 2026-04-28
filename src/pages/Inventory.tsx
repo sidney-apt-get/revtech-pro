@@ -4,7 +4,6 @@ import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useInventory, useCreateInventoryItem, useUpdateInventoryItem, useDeleteInventoryItem } from '@/hooks/useInventory'
-import { useLots } from '@/hooks/useSmartCatalog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,7 +11,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { NumberInput } from '@/components/NumberInput'
-import { PhotoUpload } from '@/components/PhotoUpload'
 import { DeleteConfirmation } from '@/components/DeleteConfirmation'
 import { ScannerPanel } from '@/components/ScannerPanel'
 import { BarcodeScanner } from '@/components/BarcodeScanner'
@@ -132,7 +130,6 @@ function filterByTab(items: InventoryItem[], tab: ContextTab): InventoryItem[] {
 export function Inventory() {
   const { t } = useTranslation()
   const { data: inventory = [], isLoading } = useInventory()
-  const { data: lots = [] } = useLots()
   const create = useCreateInventoryItem()
   const update = useUpdateInventoryItem()
   const remove = useDeleteInventoryItem()
@@ -143,7 +140,6 @@ export function Inventory() {
   const [deleteTarget, setDeleteTarget] = useState<InventoryItem | null>(null)
   const [scannerOpen, setScannerOpen] = useState(false)
   const [scannerPanelOpen, setScannerPanelOpen] = useState(false)
-  const [photos, setPhotos] = useState<string[]>([])
 
   const { register, handleSubmit, watch, setValue, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
@@ -160,7 +156,6 @@ export function Inventory() {
     if (!modalOpen) {
       reset({ category: 'Peças', quantity: 0, min_stock: 5, unit_cost: 0, item_context: 'new', condition_tested: false })
       setEditing(null)
-      setPhotos([])
       setModalOpen(true)
     }
   }, [setValue, modalOpen, reset])
@@ -180,14 +175,12 @@ export function Inventory() {
 
   function openNew() {
     setEditing(null)
-    setPhotos([])
     reset({ category: 'Peças', quantity: 0, min_stock: 5, unit_cost: 0, item_context: 'new', condition_tested: false })
     setModalOpen(true)
   }
 
   function openEdit(item: InventoryItem) {
     setEditing(item)
-    setPhotos(item.photos ?? [])
     reset({
       item_name: item.item_name,
       category: item.category,
@@ -225,7 +218,6 @@ export function Inventory() {
       source_project_id: data.source_project_id || null,
       cannibalization_reason: data.cannibalization_reason || null,
       condition_tested: data.condition_tested,
-      photos: photos.length > 0 ? photos : undefined,
     }
     if (editing) {
       await update.mutateAsync({ id: editing.id, ...payload })
@@ -384,22 +376,6 @@ export function Inventory() {
               </div>
             )}
 
-            {watchedContext === 'lot' && lots.length > 0 && (
-              <div className="space-y-1.5">
-                <Label>Lote</Label>
-                <Select value={watch('lot_id') ?? ''} onValueChange={v => setValue('lot_id', v)}>
-                  <SelectTrigger><SelectValue placeholder="Selecciona lote..." /></SelectTrigger>
-                  <SelectContent>
-                    {lots.map(l => (
-                      <SelectItem key={l.id} value={l.id}>
-                        📦 {l.lot_number ? `#${l.lot_number}` : t('lots.unnamed')} — {l.supplier ?? ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
             {/* Quantidade, Stock mín, Custo */}
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1.5">
@@ -460,12 +436,6 @@ export function Inventory() {
             <div className="space-y-1.5">
               <Label>Notas</Label>
               <Textarea {...register('notes')} rows={2} />
-            </div>
-
-            {/* Fotos */}
-            <div className="space-y-2">
-              <Label>Fotos da peça (máx. 4)</Label>
-              <PhotoUpload photos={photos} onChange={setPhotos} maxPhotos={4} />
             </div>
 
             <DialogFooter>

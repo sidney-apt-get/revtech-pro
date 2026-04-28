@@ -443,18 +443,22 @@ export function ProjectModal({ open, onClose, project, pendingAiFields, onPendin
                   <div className="flex items-center justify-between">
                     <Label>Saúde da bateria (%)</Label>
                     {calcHealth != null && (
-                      <span className="text-xs text-text-muted">Calculado: <span className={calcHealth >= 80 ? 'text-success' : calcHealth >= 60 ? 'text-warning' : 'text-danger'}>{calcHealth}%</span></span>
+                      <span className="text-xs text-accent font-medium">Auto-calculado das capacidades</span>
                     )}
                   </div>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    {...register('battery_health_percent')}
-                    value={calcHealth != null ? calcHealth : (watch('battery_health_percent') ?? '')}
-                    onChange={e => setValue('battery_health_percent', parseInt(e.target.value) || undefined)}
-                    placeholder="0–100"
-                  />
+                  {calcHealth != null ? (
+                    <div className="flex h-9 w-full items-center rounded-md border border-border bg-surface/50 px-3 text-sm text-text-muted">
+                      {calcHealth}% (calculado automaticamente)
+                    </div>
+                  ) : (
+                    <NumberInput
+                      value={watch('battery_health_percent') ?? null}
+                      onChange={v => setValue('battery_health_percent', v)}
+                      min={0}
+                      max={100}
+                      placeholder="0–100"
+                    />
+                  )}
                   {(() => {
                     const h = calcHealth ?? watch('battery_health_percent')
                     if (!h) return null
