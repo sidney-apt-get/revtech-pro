@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -17,7 +17,9 @@ import type { InventoryItem } from '@/lib/supabase'
 import { fmtGBP, fmtDate } from '@/lib/utils'
 import { Plus, Pencil, Trash2, AlertTriangle, Wrench, Package, Beaker, Building, ScanLine } from 'lucide-react'
 import { BarcodeScanner } from '@/components/BarcodeScanner'
+import { ScannerPairing } from '@/components/ScannerPairing'
 import { lookupBarcode } from '@/lib/productLookup'
+import type { FilledFields } from '@/hooks/usePairedScanner'
 
 const categories = ['Peças', 'Consumíveis', 'Ferramentas', 'Patrimônio'] as const
 type Category = typeof categories[number]
@@ -191,6 +193,12 @@ export function Inventory() {
     setModalOpen(true)
   }
 
+  const handleAIFill = useCallback((fields: FilledFields) => {
+    const name = fields.equipment ?? (fields.brand && fields.model ? `${fields.brand} ${fields.model}` : undefined)
+    if (name) setValue('item_name', name)
+    if (fields.brand) setValue('supplier', String(fields.brand))
+  }, [setValue])
+
   async function onSubmit(data: FormData) {
     const payload = {
       item_name: data.item_name,
@@ -304,6 +312,8 @@ export function Inventory() {
             <DialogTitle>{editing ? t('inventory.editItem') : t('inventory.newItem')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="p-6 pt-4 space-y-4">
+            <ScannerPairing onFieldsFilled={handleAIFill} />
+
             {/* Smart AI Section */}
             <SmartFormSection
               context="inventory"

@@ -300,6 +300,12 @@ export type CameraSession = {
   ai_result: Record<string, unknown> | null
   expires_at: string
   created_at: string
+  // Added by migration 016
+  paired: boolean
+  device_name: string | null
+  last_active: string | null
+  session_type: 'single' | 'paired'
+  barcode: string | null
 }
 
 export type Warranty = {

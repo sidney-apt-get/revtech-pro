@@ -24,6 +24,7 @@ import { ProjectDetails } from '@/pages/ProjectDetails'
 import { Finances } from '@/pages/Finances'
 import { Lots } from '@/pages/Lots'
 import MobileCamera from '@/pages/MobileCamera'
+import ScannerPhone from '@/pages/ScannerPhone'
 import AuthCallback from '@/pages/AuthCallback'
 import { SettingsProvider } from '@/contexts/SettingsContext'
 import { RoleProvider } from '@/contexts/RoleContext'
@@ -79,6 +80,7 @@ export default function App() {
           </Route>
           <Route path="/auth/callback" component={AuthCallback} />
           <Route path="/camera/:token" component={MobileCamera} />
+          <Route path="/scanner/:token" component={ScannerPhone} />
           <Route path="/dashboard">
             <Protected><Dashboard /></Protected>
           </Route>
