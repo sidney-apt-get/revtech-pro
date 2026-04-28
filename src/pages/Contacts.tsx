@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -39,6 +39,7 @@ type FormData = z.infer<typeof schema>
 
 export function Contacts() {
   const { t } = useTranslation()
+  useEffect(() => { document.title = 'Contactos — RevTech PRO' }, [])
   const { data: contacts = [], isLoading } = useContacts()
   const create = useCreateContact()
   const update = useUpdateContact()

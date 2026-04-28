@@ -30,7 +30,7 @@ function ProjectRow({ project, onEdit }: { project: Project; onEdit: (p: Project
       onClick={() => navigate(`/projects/${project.id}`)}
       className="group border-b border-border hover:bg-surface/60 transition-colors cursor-pointer"
     >
-      <td className="px-3 py-2.5 text-xs font-mono text-accent/70 whitespace-nowrap">
+      <td className="px-3 py-2.5 text-xs font-mono text-accent/70 whitespace-nowrap hidden md:table-cell">
         {project.ticket_number ?? '—'}
       </td>
       <td className="px-3 py-2.5">
@@ -48,7 +48,7 @@ function ProjectRow({ project, onEdit }: { project: Project; onEdit: (p: Project
       <td className="px-3 py-2.5 max-w-[200px] hidden md:table-cell">
         <p className="text-xs text-text-muted truncate">{project.defect_description}</p>
       </td>
-      <td className="px-3 py-2.5 text-xs text-text-muted whitespace-nowrap hidden lg:table-cell">
+      <td className="px-3 py-2.5 text-xs text-text-muted whitespace-nowrap hidden md:table-cell">
         {fmtGBP(project.purchase_price)}
         {project.sale_price != null && <span className="mx-1 text-border">→</span>}
         {project.sale_price != null && <span className="text-text-primary">{fmtGBP(project.sale_price)}</span>}
@@ -63,7 +63,7 @@ function ProjectRow({ project, onEdit }: { project: Project; onEdit: (p: Project
           <span className="text-xs text-text-muted">—</span>
         )}
       </td>
-      <td className="px-3 py-2.5 text-xs text-text-muted whitespace-nowrap hidden sm:table-cell">
+      <td className="px-3 py-2.5 text-xs text-text-muted whitespace-nowrap hidden md:table-cell">
         {fmtDate(project.received_at)}
       </td>
       <td className="px-3 py-2.5" onClick={e => e.stopPropagation()}>
@@ -222,13 +222,13 @@ export function Projects() {
             <table className="w-full text-left text-sm border-collapse">
               <thead className="sticky top-0 z-10 bg-card border-b border-border">
                 <tr>
-                  <th className="px-3 py-2 text-xs font-medium text-text-muted">Ticket</th>
+                  <th className="px-3 py-2 text-xs font-medium text-text-muted hidden md:table-cell">Ticket</th>
                   <th className="px-3 py-2 text-xs font-medium text-text-muted">Estado</th>
                   <th className="px-3 py-2 text-xs font-medium text-text-muted">Equipamento</th>
                   <th className="px-3 py-2 text-xs font-medium text-text-muted hidden md:table-cell">Defeito</th>
-                  <th className="px-3 py-2 text-xs font-medium text-text-muted hidden lg:table-cell">Compra → Venda</th>
+                  <th className="px-3 py-2 text-xs font-medium text-text-muted hidden md:table-cell">Compra → Venda</th>
                   <th className="px-3 py-2 text-xs font-medium text-text-muted">Lucro</th>
-                  <th className="px-3 py-2 text-xs font-medium text-text-muted hidden sm:table-cell">Data</th>
+                  <th className="px-3 py-2 text-xs font-medium text-text-muted hidden md:table-cell">Data</th>
                   <th className="px-3 py-2 w-8" />
                 </tr>
               </thead>

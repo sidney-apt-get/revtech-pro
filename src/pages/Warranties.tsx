@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useWarranties, useClaimWarranty } from '@/hooks/useWarranties'
 import { useProjects } from '@/hooks/useProjects'
@@ -33,6 +33,7 @@ function WarrantyBadge({ status, expiresAt }: { status: string; expiresAt: strin
 
 export function Warranties() {
   const { t } = useTranslation()
+  useEffect(() => { document.title = 'Garantias — RevTech PRO' }, [])
   const { data: warranties = [], isLoading } = useWarranties()
   const { data: projects = [] } = useProjects()
   const claimWarranty = useClaimWarranty()

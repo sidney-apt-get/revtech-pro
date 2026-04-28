@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useOrders, useCreateOrder, useUpdateOrder, useDeleteOrder } from '@/hooks/useOrders'
 import { useProjects } from '@/hooks/useProjects'
@@ -257,6 +257,7 @@ function AddOrderModal({ onClose }: { onClose: () => void }) {
 
 export function PartsOrders() {
   const { t } = useTranslation()
+  useEffect(() => { document.title = 'Encomendas — RevTech PRO' }, [])
   const { data: orders = [], isLoading } = useOrders()
   const updateOrder = useUpdateOrder()
   const deleteOrder = useDeleteOrder()

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useProjects } from '@/hooks/useProjects'
 import { calcROI, fmtGBP } from '@/lib/utils'
@@ -15,6 +15,7 @@ import { useProjects as useProjectsForTime } from '@/hooks/useProjects'
 
 export function Analytics() {
   const { t, i18n } = useTranslation()
+  useEffect(() => { document.title = 'Analytics — RevTech PRO' }, [])
   const { data: projects = [] } = useProjects()
   const { data: timeEntries = [] } = useAllTimeEntries()
   const { data: allProjects = [] } = useProjectsForTime()

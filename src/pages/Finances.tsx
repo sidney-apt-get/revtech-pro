@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useProjects } from '@/hooks/useProjects'
 import { useExpenses, useCreateExpense, useDeleteExpense, useFinancialGoals, useUpsertGoal } from '@/hooks/useFinances'
@@ -46,6 +46,7 @@ function BudgetBar({ value, target, color = 'accent' }: { value: number; target:
 
 export function Finances() {
   const { t } = useTranslation()
+  useEffect(() => { document.title = 'Finanças — RevTech PRO' }, [])
   const { data: projects = [], isLoading: loadingProjects } = useProjects()
   const { data: expenses = [], isLoading: loadingExpenses } = useExpenses()
   const { data: goals = [] } = useFinancialGoals()

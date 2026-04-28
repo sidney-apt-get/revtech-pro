@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useAuth } from '@/hooks/useAuth'
@@ -42,6 +42,7 @@ const CURRENCIES = [
 
 export function Settings() {
   const { t } = useTranslation()
+  useEffect(() => { document.title = 'Configurações — RevTech PRO' }, [])
   const { settings, save } = useSettings()
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<Tab>('company')
@@ -460,6 +461,14 @@ export function Settings() {
         <Card>
           <CardHeader><CardTitle className="text-base flex items-center gap-2"><Lock className="h-4 w-4 text-accent" />Alterar PIN de Administrador</CardTitle></CardHeader>
           <CardContent>
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 mb-4">
+              <p className="text-amber-400 text-sm font-medium">🔐 Boas práticas de segurança</p>
+              <p className="text-gray-400 text-xs mt-1">
+                Renova o Google Client Secret periodicamente em{' '}
+                <span className="font-mono text-amber-400/80">console.cloud.google.com</span>{' '}
+                para manter a conta segura.
+              </p>
+            </div>
             <form onSubmit={handlePinChange} className="space-y-4 max-w-sm">
               <div className="rounded-lg bg-surface border border-border px-4 py-3 text-xs text-text-muted space-y-1">
                 <p>O PIN protege o acesso às Configurações.</p>

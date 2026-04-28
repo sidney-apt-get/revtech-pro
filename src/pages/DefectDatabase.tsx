@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDefects, useCreateDefect, useDeleteDefect } from '@/hooks/useDefects'
 import { type DefectEntry } from '@/lib/supabase'
@@ -233,6 +233,7 @@ function AddDefectModal({ onClose }: { onClose: () => void }) {
 
 export function DefectDatabase() {
   const { t } = useTranslation()
+  useEffect(() => { document.title = 'Base de Defeitos — RevTech PRO' }, [])
   const { data: defects = [], isLoading } = useDefects()
   const deleteDefect = useDeleteDefect()
   const [search, setSearch] = useState('')
