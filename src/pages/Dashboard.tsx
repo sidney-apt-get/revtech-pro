@@ -136,10 +136,10 @@ export function Dashboard() {
         </div>
         <div className="rounded-2xl border border-border bg-card p-12 text-center space-y-4">
           <p className="text-4xl">🔧</p>
-          <h2 className="text-lg font-semibold text-text-primary">Começa por criar o teu primeiro projecto</h2>
-          <p className="text-sm text-text-muted max-w-sm mx-auto">Regista um equipamento para reparação ou revenda para começares a acompanhar o teu negócio.</p>
+          <h2 className="text-lg font-semibold text-text-primary">{t('dashboard.emptyTitle')}</h2>
+          <p className="text-sm text-text-muted max-w-sm mx-auto">{t('dashboard.emptyDesc')}</p>
           <Link href="/projects" className="inline-flex items-center gap-2 mt-2 px-5 py-2.5 rounded-xl bg-accent text-white text-sm font-medium hover:bg-accent/90 transition-colors">
-            <Wrench className="h-4 w-4" /> Criar primeiro projecto
+            <Wrench className="h-4 w-4" /> {t('projects.createFirst')}
           </Link>
         </div>
       </div>

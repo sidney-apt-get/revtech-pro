@@ -33,7 +33,7 @@ function WarrantyBadge({ status, expiresAt }: { status: string; expiresAt: strin
 
 export function Warranties() {
   const { t } = useTranslation()
-  useEffect(() => { document.title = 'Garantias — RevTech PRO' }, [])
+  useEffect(() => { document.title = t('page_titles.warranties') + ' — RevTech PRO' }, [t])
   const { data: warranties = [], isLoading } = useWarranties()
   const { data: projects = [] } = useProjects()
   const claimWarranty = useClaimWarranty()

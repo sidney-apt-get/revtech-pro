@@ -180,7 +180,7 @@ function suggestCategory(itemName: string): string | null {
 export function Inventory() {
   const { t, i18n } = useTranslation()
   const [, navigate] = useLocation()
-  useEffect(() => { document.title = 'Inventário — RevTech PRO' }, [])
+  useEffect(() => { document.title = t('page_titles.inventory') + ' — RevTech PRO' }, [t])
   const { data: inventory = [], isLoading } = useInventory()
   const create = useCreateInventoryItem()
   const update = useUpdateInventoryItem()

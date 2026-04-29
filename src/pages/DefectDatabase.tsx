@@ -233,7 +233,7 @@ function AddDefectModal({ onClose }: { onClose: () => void }) {
 
 export function DefectDatabase() {
   const { t } = useTranslation()
-  useEffect(() => { document.title = 'Base de Defeitos — RevTech PRO' }, [])
+  useEffect(() => { document.title = t('page_titles.defects') + ' — RevTech PRO' }, [t])
   const { data: defects = [], isLoading } = useDefects()
   const deleteDefect = useDeleteDefect()
   const [search, setSearch] = useState('')

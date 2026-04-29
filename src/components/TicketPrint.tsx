@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useReactToPrint } from 'react-to-print'
 import QRCode from 'qrcode'
 import { type Project } from '@/lib/supabase'
@@ -11,6 +12,7 @@ interface TicketPrintProps {
 }
 
 export function TicketPrint({ project, onClose }: TicketPrintProps) {
+  const { t } = useTranslation()
   const contentRef = useRef<HTMLDivElement>(null)
   const [qrDataUrl, setQrDataUrl] = useState('')
 
@@ -27,7 +29,7 @@ export function TicketPrint({ project, onClose }: TicketPrintProps) {
       <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-sm">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <h2 className="text-sm font-semibold text-text-primary">Pré-visualização da Etiqueta</h2>
+          <h2 className="text-sm font-semibold text-text-primary">{t('labels.preview')}</h2>
           <button onClick={onClose} className="text-text-muted hover:text-text-primary transition-colors">
             <X className="h-4 w-4" />
           </button>
@@ -76,8 +78,8 @@ export function TicketPrint({ project, onClose }: TicketPrintProps) {
             {/* Bottom: QR + date */}
             <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', borderTop: '1px dashed #ccc', paddingTop: '2mm' }}>
               <div style={{ fontSize: '7px', color: '#666' }}>
-                <div>Recepção: {fmtDate(project.received_at)}</div>
-                {project.supplier_name && <div>Fornecedor: {project.supplier_name}</div>}
+                <div>{t('project_detail.recepcao')}: {fmtDate(project.received_at)}</div>
+                {project.supplier_name && <div>{t('projects.fields.supplier')}: {project.supplier_name}</div>}
               </div>
               {qrDataUrl && (
                 <img src={qrDataUrl} alt="QR" style={{ width: '28mm', height: '28mm' }} />
@@ -92,14 +94,14 @@ export function TicketPrint({ project, onClose }: TicketPrintProps) {
             onClick={onClose}
             className="flex-1 rounded-lg border border-border px-3 py-2 text-sm text-text-muted hover:bg-surface transition-colors"
           >
-            Fechar
+            {t('common.close')}
           </button>
           <button
             onClick={() => handlePrint()}
             className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white hover:bg-accent/90 transition-colors"
           >
             <Printer className="h-4 w-4" />
-            Imprimir
+            {t('common.print')}
           </button>
         </div>
       </div>

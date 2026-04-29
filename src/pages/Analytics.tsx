@@ -92,7 +92,7 @@ export function Analytics() {
       const p = allProjects.find(x => x.id === projectId)
       return {
         projectId,
-        equipment: p?.equipment ?? 'Projecto removido',
+        equipment: p?.equipment ?? t('analytics.deletedProject'),
         ticket: p?.ticket_number,
         status: p?.status ?? '—',
         totalMin,
@@ -190,12 +190,12 @@ export function Analytics() {
       {timeByProject.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-base font-semibold text-text-primary flex items-center gap-2">
-            <Clock className="h-4 w-4 text-accent" /> Tempo por Projecto
+            <Clock className="h-4 w-4 text-accent" /> {t('analytics.timeByProject')}
           </h2>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
-              <CardHeader><CardTitle className="text-sm">Horas por Projecto (Top 10)</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm">{t('analytics.hoursPerProject')}</CardTitle></CardHeader>
               <CardContent>
                 <div className="space-y-2">
                   {timeByProject.map(row => (
@@ -219,14 +219,14 @@ export function Analytics() {
 
             {timeByStatus.length > 0 && (
               <Card>
-                <CardHeader><CardTitle className="text-sm">Horas por Estado (onde passa mais tempo)</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="text-sm">{t('analytics.hoursByStatus')}</CardTitle></CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={timeByStatus} layout="vertical" margin={{ left: 0, right: 10 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#2E3141" horizontal={false} />
                       <XAxis type="number" tick={{ fontSize: 10, fill: '#9AA0AC' }} unit="h" />
                       <YAxis dataKey="status" type="category" tick={{ fontSize: 9, fill: '#9AA0AC' }} width={100} />
-                      <Tooltip {...tooltipStyle} formatter={(v: number) => [`${v}h`, 'Horas']} />
+                      <Tooltip {...tooltipStyle} formatter={(v: number) => [`${v}h`, t('analytics.hours')]} />
                       <Bar dataKey="horas" fill="#4F8EF7" radius={[0, 4, 4, 0]} maxBarSize={20} />
                     </BarChart>
                   </ResponsiveContainer>

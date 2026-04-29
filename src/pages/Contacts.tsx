@@ -39,7 +39,7 @@ type FormData = z.infer<typeof schema>
 
 export function Contacts() {
   const { t } = useTranslation()
-  useEffect(() => { document.title = 'Contactos — RevTech PRO' }, [])
+  useEffect(() => { document.title = t('page_titles.contacts') + ' — RevTech PRO' }, [t])
   const { data: contacts = [], isLoading } = useContacts()
   const create = useCreateContact()
   const update = useUpdateContact()

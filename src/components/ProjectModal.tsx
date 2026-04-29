@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -94,6 +95,7 @@ function dataUrlToFile(dataUrl: string, name: string): File {
 }
 
 export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
+  const { t } = useTranslation()
   const create = useCreateProject()
   const update = useUpdateProject()
   const uploadPhoto = useUploadPhoto()
@@ -303,19 +305,19 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{project ? 'Editar Projecto' : 'Novo Projecto'}</DialogTitle>
+          <DialogTitle>{project ? t('projects.modal.editTitle') : t('projects.modal.newTitle')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="p-6 pt-4 space-y-5">
 
           {/* Categoria do equipamento */}
           <div className="space-y-1.5">
-            <Label>Categoria do Equipamento</Label>
+            <Label>{t('projects.modal.categoryLabel')}</Label>
             <select
               value={categorySlug}
               onChange={e => { setCategorySlug(e.target.value); setDynValues({}) }}
               className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
             >
-              <option value="">Selecciona categoria...</option>
+              <option value="">{t('projects.modal.categoryPlaceholder')}</option>
               {categories.map(cat => (
                 <option key={cat.slug} value={cat.slug}>
                   {cat.icon ? `${cat.icon} ` : ''}{cat.name_pt}
@@ -326,7 +328,7 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
-              <F label="Equipamento *" error={errors.equipment?.message}>
+              <F label={t('projects.modal.equipmentLabel')} error={errors.equipment?.message}>
                 <div className="flex gap-1.5 items-start">
                   <div className="flex-1">
                     <Input {...register('equipment')} placeholder="ex: MacBook Pro 2019" />
@@ -334,7 +336,7 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
                   <button
                     type="button"
                     onClick={() => { setScanTarget('equipment'); setShowScanner(true) }}
-                    title="Escanear código de barras para preencher automaticamente"
+                    title={t('projects.modal.scanProduct')}
                     className="shrink-0 px-2 h-9 rounded-lg border border-border bg-surface text-text-muted hover:text-accent hover:border-accent/40 transition-colors flex items-center"
                   >
                     {lookupLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanLine className="h-4 w-4" />}
@@ -344,14 +346,14 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
                   )}
                 </div>
                 {lookupLoading && (
-                  <p className="text-xs text-accent mt-1">A consultar base de dados de produtos...</p>
+                  <p className="text-xs text-accent mt-1">{t('projects.modal.lookupLoading')}</p>
                 )}
               </F>
             </div>
-            <F label="Marca"><Input {...register('brand')} placeholder="Apple" /></F>
-            <F label="Modelo"><Input {...register('model')} placeholder="A2159" /></F>
+            <F label={t('projects.fields.brand')}><Input {...register('brand')} placeholder="Apple" /></F>
+            <F label={t('projects.fields.model')}><Input {...register('model')} placeholder="A2159" /></F>
             <div className="space-y-1.5">
-              <Label>Número de série</Label>
+              <Label>{t('projects.modal.serialLabel')}</Label>
               <div className="flex gap-1.5">
                 <Input {...register('serial_number')} placeholder="C02X..." className="flex-1" />
                 <button
@@ -365,7 +367,7 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Estado</Label>
+              <Label>{t('projects.modal.statusLabel')}</Label>
               <select
                 value={watch('status')}
                 onChange={e => setValue('status', e.target.value as FormData['status'])}
@@ -375,18 +377,18 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
               </select>
             </div>
             <div className="col-span-2">
-              <F label="Defeito descrito *" error={errors.defect_description?.message}>
+              <F label={t('projects.modal.defectLabel')} error={errors.defect_description?.message}>
                 <Textarea {...register('defect_description')} placeholder="Descreve o defeito relatado pelo fornecedor..." rows={2} />
               </F>
             </div>
             <div className="col-span-2">
-              <F label="Diagnóstico">
+              <F label={t('projects.modal.diagnosisLabel')}>
                 <Textarea {...register('diagnosis')} placeholder="Diagnóstico após análise..." rows={2} />
               </F>
             </div>
-            <F label="Fornecedor / Vendedor"><Input {...register('supplier_name')} placeholder="Nome ou plataforma" /></F>
-            <F label="Comprador"><Input {...register('buyer_name')} placeholder="Nome do comprador" /></F>
-            <F label="Ref. de compra"><Input {...register('purchase_reference')} placeholder="Nº recibo, factura..." /></F>
+            <F label={t('projects.modal.supplierLabel')}><Input {...register('supplier_name')} placeholder="Nome ou plataforma" /></F>
+            <F label={t('projects.modal.buyerLabel')}><Input {...register('buyer_name')} placeholder="Nome do comprador" /></F>
+            <F label={t('projects.modal.purchaseRefLabel')}><Input {...register('purchase_reference')} placeholder="Nº recibo, factura..." /></F>
           </div>
 
           {/* Dynamic fields for selected category */}
@@ -397,21 +399,21 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
           />
 
           <div className="border-t border-border pt-4 space-y-4">
-            <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider">Financeiro</h4>
+            <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider">{t('projects.modal.financialSection')}</h4>
             <div className="grid grid-cols-2 gap-4">
-              <FinancialInput label="Preço de compra" value={roiValues.purchasePrice} onChange={v => { const n = v ?? 0; setValue('purchase_price', n); setRoiValues(p => ({ ...p, purchasePrice: n })) }} />
-              <FinancialInput label="Custo de peças" value={roiValues.partsCost} onChange={v => { const n = v ?? 0; setValue('parts_cost', n); setRoiValues(p => ({ ...p, partsCost: n })) }} />
-              <FinancialInput label="Frete entrada" value={roiValues.shippingIn} onChange={v => { const n = v ?? 0; setValue('shipping_in', n); setRoiValues(p => ({ ...p, shippingIn: n })) }} />
-              <FinancialInput label="Frete saída" value={roiValues.shippingOut} onChange={v => { const n = v ?? 0; setValue('shipping_out', n); setRoiValues(p => ({ ...p, shippingOut: n })) }} />
-              <FinancialInput label="Preço de venda" value={roiValues.salePrice} onChange={v => { setValue('sale_price', v); setRoiValues(p => ({ ...p, salePrice: v })) }} optional placeholder="Opcional" />
+              <FinancialInput label={t('projects.fields.purchasePrice')} value={roiValues.purchasePrice} onChange={v => { const n = v ?? 0; setValue('purchase_price', n); setRoiValues(p => ({ ...p, purchasePrice: n })) }} />
+              <FinancialInput label={t('projects.fields.partsCost')} value={roiValues.partsCost} onChange={v => { const n = v ?? 0; setValue('parts_cost', n); setRoiValues(p => ({ ...p, partsCost: n })) }} />
+              <FinancialInput label={t('projects.fields.shippingIn')} value={roiValues.shippingIn} onChange={v => { const n = v ?? 0; setValue('shipping_in', n); setRoiValues(p => ({ ...p, shippingIn: n })) }} />
+              <FinancialInput label={t('projects.fields.shippingOut')} value={roiValues.shippingOut} onChange={v => { const n = v ?? 0; setValue('shipping_out', n); setRoiValues(p => ({ ...p, shippingOut: n })) }} />
+              <FinancialInput label={t('projects.fields.salePrice')} value={roiValues.salePrice} onChange={v => { setValue('sale_price', v); setRoiValues(p => ({ ...p, salePrice: v })) }} optional placeholder="Opcional" />
               <div className="space-y-1.5">
-                <Label>Plataforma de venda</Label>
+                <Label>{t('projects.modal.salePlatformLabel')}</Label>
                 <select
                   value={watch('sale_platform') ?? ''}
                   onChange={e => setValue('sale_platform', e.target.value)}
                   className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
                 >
-                  <option value="">Selecciona...</option>
+                  <option value="">{t('projects.modal.salePlatformPlaceholder')}</option>
                   {PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
               </div>
@@ -433,7 +435,7 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
               onClick={() => setDeviceOpen(o => !o)}
               className="w-full flex items-center justify-between px-4 py-2.5 bg-surface text-sm font-semibold text-text-muted hover:text-text-primary transition-colors"
             >
-              <span>Detalhes do Dispositivo</span>
+              <span>{t('projects.modal.deviceSection')}</span>
               {deviceOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </button>
             {deviceOpen && (
@@ -443,7 +445,7 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
                   <div className="space-y-1.5">
                     <Label>IMEI 1</Label>
                     <div className="flex gap-1.5">
-                      <Input {...register('imei')} placeholder="15 dígitos" maxLength={15} className="flex-1 font-mono text-xs" />
+                      <Input {...register('imei')} placeholder={t('projects.modal.imeiShort')} maxLength={15} className="flex-1 font-mono text-xs" />
                       {watch('imei') && watch('imei')!.length === 15 && (
                         <a
                           href={`https://www.imei.info/?imei=${watch('imei')}`}
@@ -457,26 +459,26 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
                       )}
                     </div>
                     {watch('imei') && watch('imei')!.length > 0 && watch('imei')!.length < 15 && (
-                      <p className="text-[10px] text-warning">IMEI deve ter 15 dígitos</p>
+                      <p className="text-[10px] text-warning">{t('projects.modal.imeiInvalid')}</p>
                     )}
                     {watch('imei') && watch('imei')!.length === 15 && !luhnValid(watch('imei')!) && (
-                      <p className="text-[10px] text-danger">IMEI inválido (falha Luhn)</p>
+                      <p className="text-[10px] text-danger">{t('projects.modal.imeiLuhnFail')}</p>
                     )}
                     {watch('imei') && luhnValid(watch('imei')!) && (
-                      <p className="text-[10px] text-success">✓ IMEI válido</p>
+                      <p className="text-[10px] text-success">{t('projects.modal.imeiValid')}</p>
                     )}
                   </div>
-                  <F label="IMEI 2 (Dual SIM)">
+                  <F label={t('projects.modal.imei2Label')}>
                     <Input {...register('imei2')} placeholder="Opcional" maxLength={15} className="font-mono text-xs" />
                   </F>
                 </div>
 
                 {/* Battery */}
                 <div className="grid grid-cols-2 gap-3">
-                  <F label="Capacidade original (mAh)">
+                  <F label={t('projects.modal.batteryOriginalLabel')}>
                     <input type="number" min="0" defaultValue={project?.battery_capacity_original ?? ''} onBlur={e => { const v = parseInt(e.target.value); const n = isNaN(v) ? null : v; setValue('battery_capacity_original', n ?? undefined); setCapOrig(n) }} placeholder="ex: 3227" className={NUM_CLS} />
                   </F>
-                  <F label="Capacidade actual (mAh)">
+                  <F label={t('projects.modal.batteryCurrentLabel')}>
                     <input type="number" min="0" defaultValue={project?.battery_capacity_current ?? ''} onBlur={e => { const v = parseInt(e.target.value); const n = isNaN(v) ? null : v; setValue('battery_capacity_current', n ?? undefined); setCapCur(n) }} placeholder="ex: 2900" className={NUM_CLS} />
                   </F>
                 </div>
@@ -484,14 +486,14 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
                 {/* Battery health bar + input */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label>Saúde da bateria (%)</Label>
+                    <Label>{t('projects.modal.batteryHealthLabel')}</Label>
                     {calcHealth != null && (
-                      <span className="text-xs text-accent font-medium">Auto-calculado das capacidades</span>
+                      <span className="text-xs text-accent font-medium">{t('projects.modal.batteryAutoCalc')}</span>
                     )}
                   </div>
                   {calcHealth != null ? (
                     <div className="flex h-9 w-full items-center rounded-md border border-border bg-surface/50 px-3 text-sm text-text-muted">
-                      {calcHealth}% (calculado automaticamente)
+                      {t('projects.modal.batteryAutoCalcValue', { value: calcHealth })}
                     </div>
                   ) : (
                     <input
@@ -517,20 +519,20 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
                 </div>
 
                 <div className="grid grid-cols-3 gap-3">
-                  <F label="Ciclos de carga">
+                  <F label={t('projects.modal.batteryCyclesLabel')}>
                     <input type="number" min="0" defaultValue={project?.battery_cycles ?? ''} onBlur={e => { const v = parseInt(e.target.value); setValue('battery_cycles', isNaN(v) ? undefined : v) }} placeholder="ex: 312" className={NUM_CLS} />
                   </F>
-                  <F label="Cor do dispositivo">
+                  <F label={t('projects.modal.colorLabel')}>
                     <Input {...register('device_color')} placeholder="ex: Space Grey" />
                   </F>
                   <div className="space-y-1.5">
-                    <Label>Condição</Label>
+                    <Label>{t('projects.modal.conditionLabel')}</Label>
                     <select
                       value={watch('condition_grade') ?? ''}
                       onChange={e => setValue('condition_grade', (e.target.value || null) as FormData['condition_grade'])}
                       className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
                     >
-                      <option value="">Grau...</option>
+                      <option value="">{t('projects.modal.conditionPlaceholder')}</option>
                       {CONDITION_GRADES.map(g => <option key={g} value={g}>{g}</option>)}
                     </select>
                   </div>
@@ -538,24 +540,24 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label>Armazenamento (GB)</Label>
+                    <Label>{t('projects.modal.storageLabel')}</Label>
                     <select
                       value={watch('storage_gb')?.toString() ?? ''}
                       onChange={e => setValue('storage_gb', e.target.value ? parseInt(e.target.value) : null)}
                       className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
                     >
-                      <option value="">Selecciona...</option>
+                      <option value="">{t('projects.modal.salePlatformPlaceholder')}</option>
                       {STORAGE_OPTIONS.map(s => <option key={s} value={String(s)}>{s >= 1024 ? '1TB' : `${s}GB`}</option>)}
                     </select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label>RAM (GB)</Label>
+                    <Label>{t('projects.modal.ramLabel')}</Label>
                     <select
                       value={watch('ram_gb')?.toString() ?? ''}
                       onChange={e => setValue('ram_gb', e.target.value ? parseInt(e.target.value) : null)}
                       className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
                     >
-                      <option value="">Selecciona...</option>
+                      <option value="">{t('projects.modal.salePlatformPlaceholder')}</option>
                       {RAM_OPTIONS.map(r => <option key={r} value={String(r)}>{r}GB</option>)}
                     </select>
                   </div>
@@ -564,19 +566,19 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
             )}
           </div>
 
-          <F label="Notas">
+          <F label={t('projects.modal.notesLabel')}>
             <Textarea {...register('notes')} placeholder="Observações adicionais..." rows={2} />
           </F>
 
           <div className="border-t border-border pt-4 space-y-3">
-            <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider">Fotos</h4>
+            <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider">{t('projects.modal.photosSection')}</h4>
             <PhotoUpload photos={localPhotos} onChange={setLocalPhotos} maxPhotos={6} />
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+            <Button type="button" variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'A guardar...' : project ? 'Actualizar' : 'Criar projecto'}
+              {isSubmitting ? t('common.saving') : project ? t('projects.modal.update') : t('projects.modal.create')}
             </Button>
           </DialogFooter>
         </form>
@@ -585,7 +587,7 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
 
     {showScanner && (
       <BarcodeScanner
-        title={scanTarget === 'equipment' ? 'Escanear produto (EAN/QR)' : 'Ler número de série'}
+        title={scanTarget === 'equipment' ? t('projects.modal.scanProduct') : t('projects.modal.scanSerial')}
         onDetected={scanTarget === 'equipment' ? handleEquipmentScan : code => { setValue('serial_number', code); setShowScanner(false) }}
         onClose={() => setShowScanner(false)}
       />

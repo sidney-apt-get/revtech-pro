@@ -42,7 +42,7 @@ const CURRENCIES = [
 
 export function Settings() {
   const { t } = useTranslation()
-  useEffect(() => { document.title = 'Configurações — RevTech PRO' }, [])
+  useEffect(() => { document.title = t('page_titles.settings') + ' — RevTech PRO' }, [t])
   const { settings, save } = useSettings()
   const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<Tab>('company')
@@ -147,15 +147,15 @@ export function Settings() {
     e.preventDefault()
     setPinError('')
     setPinSuccess(false)
-    if (newPin.length < 4 || newPin.length > 6) { setPinError('PIN deve ter 4 a 6 dígitos.'); return }
-    if (newPin !== confirmPin) { setPinError('Os PINs não coincidem.'); return }
+    if (newPin.length < 4 || newPin.length > 6) { setPinError(t('settings.security.pinLength')); return }
+    if (newPin !== confirmPin) { setPinError(t('settings.security.pinMismatch')); return }
     setSavingPin(true)
     // Verify current PIN first
     const { data } = await supabase.from('app_settings').select('admin_pin').single()
     const stored = data?.admin_pin ?? '1234'
     if (currentPin !== stored) {
       setSavingPin(false)
-      setPinError('PIN actual incorrecto.')
+      setPinError(t('settings.security.wrongPin'))
       return
     }
     await supabase.from('app_settings').upsert({
@@ -251,11 +251,11 @@ export function Settings() {
       {/* ABA 1 — EMPRESA */}
       {activeTab === 'company' && (
         <Card>
-          <CardHeader><CardTitle className="text-base">Informação da Empresa</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">{t('settings.company.title')}</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             {/* Logo upload */}
             <div className="space-y-2">
-              <label className="text-xs text-text-muted font-medium">Logo</label>
+              <label className="text-xs text-text-muted font-medium">{t('settings.company.logo')}</label>
               <div className="flex items-center gap-4">
                 <div
                   onClick={() => logoInputRef.current?.click()}
@@ -268,10 +268,10 @@ export function Settings() {
                   )}
                 </div>
                 <div className="text-xs text-text-muted space-y-1">
-                  <p>Clica para fazer upload</p>
-                  <p>PNG, JPG, SVG, WebP</p>
+                  <p>{t('settings.company.uploadHint')}</p>
+                  <p>{t('settings.company.uploadFormats')}</p>
                   {logoPreview && (
-                    <button onClick={() => setLogoPreview(null)} className="text-danger hover:underline">Remover logo</button>
+                    <button onClick={() => setLogoPreview(null)} className="text-danger hover:underline">{t('settings.company.removeLogo')}</button>
                   )}
                 </div>
                 <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
@@ -279,17 +279,17 @@ export function Settings() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs text-text-muted font-medium">Nome da empresa</label>
+              <label className="text-xs text-text-muted font-medium">{t('settings.company.name')}</label>
               <input value={companyName} onChange={e => setCompanyName(e.target.value)}
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs text-text-muted font-medium">Subtítulo</label>
+              <label className="text-xs text-text-muted font-medium">{t('settings.company.subtitle')}</label>
               <input value={companySubtitle} onChange={e => setCompanySubtitle(e.target.value)}
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs text-text-muted font-medium">Localização</label>
+              <label className="text-xs text-text-muted font-medium">{t('settings.company.location')}</label>
               <input value={companyLocation} onChange={e => setCompanyLocation(e.target.value)}
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50" />
             </div>
@@ -297,7 +297,7 @@ export function Settings() {
             <button onClick={handleSave} disabled={saving}
               className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent/90 transition-colors disabled:opacity-50">
               <Save className="h-4 w-4" />
-              {saving ? 'A guardar...' : saved ? '✓ Guardado!' : 'Guardar'}
+              {saving ? t('common.saving') : saved ? t('common.savedCheck') : t('common.save')}
             </button>
           </CardContent>
         </Card>
@@ -306,11 +306,11 @@ export function Settings() {
       {/* ABA 2 — APARÊNCIA */}
       {activeTab === 'appearance' && (
         <Card>
-          <CardHeader><CardTitle className="text-base">Tema e Cores</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">{t('settings.appearance.title')}</CardTitle></CardHeader>
           <CardContent className="space-y-5">
             {/* Presets */}
             <div className="space-y-2">
-              <label className="text-xs text-text-muted font-medium">Temas prontos</label>
+              <label className="text-xs text-text-muted font-medium">{t('settings.appearance.presets')}</label>
               <div className="flex flex-wrap gap-2">
                 {THEME_PRESETS.map(preset => (
                   <button
@@ -331,7 +331,7 @@ export function Settings() {
             {/* Color pickers */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-xs text-text-muted font-medium">Cor primária</label>
+                <label className="text-xs text-text-muted font-medium">{t('settings.appearance.primaryColor')}</label>
                 <div className="flex items-center gap-2">
                   <input type="color" value={primaryColor}
                     onChange={e => { setPrimaryColor(e.target.value); document.documentElement.style.setProperty('--color-accent', e.target.value) }}
@@ -341,7 +341,7 @@ export function Settings() {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-xs text-text-muted font-medium">Cor de destaque</label>
+                <label className="text-xs text-text-muted font-medium">{t('settings.appearance.accentColor')}</label>
                 <div className="flex items-center gap-2">
                   <input type="color" value={accentColor}
                     onChange={e => { setAccentColor(e.target.value); document.documentElement.style.setProperty('--color-accent-alt', e.target.value) }}
@@ -354,7 +354,7 @@ export function Settings() {
 
             {/* Live preview */}
             <div className="rounded-xl border border-border bg-surface p-4 space-y-2">
-              <p className="text-xs text-text-muted font-medium">Preview</p>
+              <p className="text-xs text-text-muted font-medium">{t('settings.appearance.preview')}</p>
               <div className="flex items-center gap-2">
                 <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ background: `${primaryColor}25` }}>
                   <div className="h-4 w-4 rounded" style={{ background: primaryColor }} />
@@ -365,15 +365,15 @@ export function Settings() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: `${primaryColor}20`, color: primaryColor, border: `1px solid ${primaryColor}40` }}>Botão primário</span>
-                <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: `${accentColor}20`, color: accentColor, border: `1px solid ${accentColor}40` }}>Destaque</span>
+                <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: `${primaryColor}20`, color: primaryColor, border: `1px solid ${primaryColor}40` }}>{t('settings.appearance.primaryBtn')}</span>
+                <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: `${accentColor}20`, color: accentColor, border: `1px solid ${accentColor}40` }}>{t('settings.appearance.highlight')}</span>
               </div>
             </div>
 
             <button onClick={handleSave} disabled={saving}
               className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent/90 transition-colors disabled:opacity-50">
               <Save className="h-4 w-4" />
-              {saving ? 'A guardar...' : saved ? '✓ Guardado!' : 'Guardar tema'}
+              {saving ? t('common.saving') : saved ? t('common.savedCheck') : t('common.save')}
             </button>
           </CardContent>
         </Card>
@@ -382,32 +382,32 @@ export function Settings() {
       {/* ABA 3 — NEGÓCIO */}
       {activeTab === 'business' && (
         <Card>
-          <CardHeader><CardTitle className="text-base">Configurações de Negócio</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">{t('settings.business.title')}</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1">
-              <label className="text-xs text-text-muted font-medium">Moeda</label>
+              <label className="text-xs text-text-muted font-medium">{t('settings.business.currency')}</label>
               <select value={currency} onChange={e => setCurrency(e.target.value)}
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50">
                 {CURRENCIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-xs text-text-muted font-medium">Taxa de IVA (%)</label>
+              <label className="text-xs text-text-muted font-medium">{t('settings.business.vatRate')}</label>
               <input type="number" min="0" max="100" step="0.5" value={vatRate} onChange={e => setVatRate(parseFloat(e.target.value))}
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs text-text-muted font-medium">Prefixo de tickets (ex: RT → RT-2026-001)</label>
+              <label className="text-xs text-text-muted font-medium">{t('settings.business.ticketPrefix')}</label>
               <input value={ticketPrefix} onChange={e => setTicketPrefix(e.target.value.toUpperCase().replace(/[^A-Z]/g, ''))}
                 maxLength={4}
                 className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary font-mono focus:outline-none focus:ring-2 focus:ring-accent/50" />
-              <p className="text-xs text-text-muted">Formato: {ticketPrefix || 'RT'}-{new Date().getFullYear()}-001</p>
+              <p className="text-xs text-text-muted">{t('settings.business.format')}: {ticketPrefix || 'RT'}-{new Date().getFullYear()}-001</p>
             </div>
 
             <button onClick={handleSave} disabled={saving}
               className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent/90 transition-colors disabled:opacity-50">
               <Save className="h-4 w-4" />
-              {saving ? 'A guardar...' : saved ? '✓ Guardado!' : 'Guardar'}
+              {saving ? t('common.saving') : saved ? t('common.savedCheck') : t('common.save')}
             </button>
           </CardContent>
         </Card>
@@ -417,7 +417,7 @@ export function Settings() {
       {activeTab === 'account' && (
         <div className="space-y-4">
           <Card>
-            <CardHeader><CardTitle className="text-base">Perfil</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">{t('settings.account.title')}</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-4">
                 {user?.user_metadata?.avatar_url ? (
@@ -430,13 +430,13 @@ export function Settings() {
                 <div>
                   <p className="font-semibold text-text-primary">{user?.user_metadata?.full_name ?? '—'}</p>
                   <p className="text-sm text-text-muted">{user?.email}</p>
-                  <p className="text-xs text-text-muted mt-0.5">Google OAuth</p>
+                  <p className="text-xs text-text-muted mt-0.5">{t('settings.account.googleOAuth')}</p>
                 </div>
               </div>
               <button onClick={handleLogout}
                 className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm text-text-muted hover:bg-surface hover:text-danger transition-colors">
                 <LogOut className="h-4 w-4" />
-                Terminar sessão
+                {t('settings.account.logout')}
               </button>
             </CardContent>
           </Card>
@@ -445,14 +445,14 @@ export function Settings() {
             <CardHeader>
               <CardTitle className="text-base text-danger flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4" />
-                Zona de Perigo
+                {t('settings.account.dangerZone')}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-xs text-text-muted mb-3">Estas acções são irreversíveis. Procede com cuidado.</p>
+              <p className="text-xs text-text-muted mb-3">{t('settings.account.dangerDesc')}</p>
               <button
                 onClick={async () => {
-                  if (!window.confirm('Tens a certeza? Isto apaga TODOS os teus dados permanentemente.')) return
+                  if (!window.confirm(t('settings.account.deleteConfirm'))) return
                   const { data: { user } } = await supabase.auth.getUser()
                   if (!user) return
                   await Promise.all([
@@ -466,7 +466,7 @@ export function Settings() {
                 }}
                 className="rounded-lg border border-danger/50 bg-danger/10 px-4 py-2 text-sm font-semibold text-danger hover:bg-danger/20 transition-colors"
               >
-                Apagar todos os dados
+                {t('settings.account.deleteAll')}
               </button>
             </CardContent>
           </Card>
@@ -476,56 +476,55 @@ export function Settings() {
       {/* ABA 5 — SEGURANÇA */}
       {activeTab === 'security' && (
         <Card>
-          <CardHeader><CardTitle className="text-base flex items-center gap-2"><Lock className="h-4 w-4 text-accent" />Alterar PIN de Administrador</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base flex items-center gap-2"><Lock className="h-4 w-4 text-accent" />{t('settings.security.title')}</CardTitle></CardHeader>
           <CardContent>
             <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 mb-4">
-              <p className="text-amber-400 text-sm font-medium">🔐 Boas práticas de segurança</p>
+              <p className="text-amber-400 text-sm font-medium">{t('settings.integrations.pinSecurity')}</p>
               <p className="text-gray-400 text-xs mt-1">
-                Renova o Google Client Secret periodicamente em{' '}
-                <span className="font-mono text-amber-400/80">console.cloud.google.com</span>{' '}
-                para manter a conta segura.
+                {t('settings.integrations.pinSecurityDesc')}{' '}
+                <span className="font-mono text-amber-400/80">console.cloud.google.com</span>
               </p>
             </div>
             <form onSubmit={handlePinChange} className="space-y-4 max-w-sm">
               <div className="rounded-lg bg-surface border border-border px-4 py-3 text-xs text-text-muted space-y-1">
-                <p>O PIN protege o acesso às Configurações.</p>
-                <p>Deve ter entre <strong className="text-text-primary">4 e 6 dígitos</strong>.</p>
-                <p>A sessão fica desbloqueada por <strong className="text-text-primary">30 minutos</strong> após cada autenticação.</p>
+                <p>{t('settings.security.desc')}</p>
+                <p>{t('settings.security.mustHave')}</p>
+                <p>{t('settings.security.sessionInfo')}</p>
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs text-text-muted font-medium">PIN actual</label>
+                <label className="text-xs text-text-muted font-medium">{t('settings.security.currentPin')}</label>
                 <input
                   type="password"
                   inputMode="numeric"
                   maxLength={6}
                   value={currentPin}
                   onChange={e => setCurrentPin(e.target.value.replace(/\D/g, ''))}
-                  placeholder="PIN actual"
+                  placeholder={t('settings.security.currentPin')}
                   className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-accent/50"
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs text-text-muted font-medium">Novo PIN</label>
+                <label className="text-xs text-text-muted font-medium">{t('settings.security.newPin')}</label>
                 <input
                   type="password"
                   inputMode="numeric"
                   maxLength={6}
                   value={newPin}
                   onChange={e => setNewPin(e.target.value.replace(/\D/g, ''))}
-                  placeholder="4 a 6 dígitos"
+                  placeholder={t('settings.security.pinPlaceholder')}
                   className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-accent/50"
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs text-text-muted font-medium">Confirmar novo PIN</label>
+                <label className="text-xs text-text-muted font-medium">{t('settings.security.confirmPin')}</label>
                 <input
                   type="password"
                   inputMode="numeric"
                   maxLength={6}
                   value={confirmPin}
                   onChange={e => setConfirmPin(e.target.value.replace(/\D/g, ''))}
-                  placeholder="Repete o novo PIN"
+                  placeholder={t('settings.security.repeatPin')}
                   className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-accent/50"
                 />
               </div>
@@ -534,7 +533,7 @@ export function Settings() {
                 <p className="text-xs text-danger bg-danger/10 border border-danger/30 rounded-lg px-3 py-2">{pinError}</p>
               )}
               {pinSuccess && (
-                <p className="text-xs text-success bg-success/10 border border-success/30 rounded-lg px-3 py-2">✓ PIN alterado com sucesso!</p>
+                <p className="text-xs text-success bg-success/10 border border-success/30 rounded-lg px-3 py-2">✓ {t('settings.security.pinChanged')}</p>
               )}
 
               <button
@@ -543,7 +542,7 @@ export function Settings() {
                 className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent/90 transition-colors disabled:opacity-50"
               >
                 <Lock className="h-4 w-4" />
-                {savingPin ? 'A guardar...' : 'Alterar PIN'}
+                {savingPin ? t('settings.security.saving') : t('settings.security.changePin')}
               </button>
             </form>
           </CardContent>
@@ -695,27 +694,24 @@ export function Settings() {
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Link2 className="h-4 w-4 text-accent" />
-                Xero — Contabilidade UK
+                {t('settings.integrations.xeroTitle')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-sm text-text-muted">
-                Liga o RevTech PRO ao Xero para exportar vendas e compras automaticamente para a tua contabilidade.
-                O Xero é o sistema de contabilidade mais usado por pequenas empresas no Reino Unido.
-              </p>
+              <p className="text-sm text-text-muted">{t('settings.integrations.xeroDesc')}</p>
 
               {isXeroConnected() ? (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-success text-sm font-medium">
                     <Link2 className="h-4 w-4" />
-                    Ligado ao Xero
+                    {t('settings.integrations.xeroConnected')}
                   </div>
                   <button
                     onClick={() => { clearXeroTokens(); window.location.reload() }}
                     className="flex items-center gap-2 text-sm text-danger hover:bg-danger/10 rounded-lg px-3 py-2 transition-colors border border-danger/30"
                   >
                     <Link2Off className="h-4 w-4" />
-                    Desligar do Xero
+                    {t('settings.integrations.xeroDisconnect')}
                   </button>
                 </div>
               ) : (
@@ -724,12 +720,12 @@ export function Settings() {
                   className="flex items-center gap-2 rounded-lg bg-[#13B5EA] text-white px-4 py-2 text-sm font-semibold hover:bg-[#0ea5d4] transition-colors"
                 >
                   <Link2 className="h-4 w-4" />
-                  Ligar ao Xero
+                  {t('settings.integrations.xeroConnect')}
                 </button>
               )}
 
               <div className="rounded-lg bg-surface border border-border p-3 space-y-2">
-                <p className="text-xs font-semibold text-text-primary">Passos para activar:</p>
+                <p className="text-xs font-semibold text-text-primary">{t('settings.integrations.xeroSteps')}</p>
                 <ol className="text-xs text-text-muted space-y-1 list-decimal list-inside">
                   <li>Cria uma conta gratuita em xero.com (30 dias de trial)</li>
                   <li>Em developer.xero.com, cria uma App OAuth 2.0</li>
