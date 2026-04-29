@@ -3,9 +3,9 @@ import { Link, useLocation } from 'wouter'
 import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard, Wrench, Package, Users,
-  BarChart3, Map, LogOut, Menu, X, AlertTriangle,
-  ShoppingCart, Database, FileText, Settings, Bell,
-  Shield, ChevronDown, ChevronUp, UserCog, ShoppingBag, Tag, History, ShieldCheck, PoundSterling, Layers,
+  BarChart3, LogOut, Menu, X, AlertTriangle,
+  ShoppingCart, FileText, Settings, Bell,
+  Shield, ChevronDown, ChevronUp, UserCog, Tag, History, ShieldCheck, PoundSterling, Layers,
 } from 'lucide-react'
 import { supabase, type InventoryItem } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
@@ -30,15 +30,12 @@ const ALL_NAV: NavItem[] = [
   { href: '/orders',     labelKey: 'nav.partsOrders',   icon: ShoppingCart,  badge: 'orders' },
   { href: '/inventory',  labelKey: 'nav.inventory',     icon: Package,       badge: 'stock' },
   { href: '/lots',       labelKey: 'nav.lots',          icon: Layers },
-  { href: '/defects',    labelKey: 'nav.defects',       icon: Database },
   { href: '/contacts',   labelKey: 'nav.contacts',      icon: Users },
   { href: '/reports',    labelKey: 'nav.reports',       icon: FileText },
   { href: '/analytics',  labelKey: 'nav.analytics',     icon: BarChart3 },
-  { href: '/map',        labelKey: 'nav.map',           icon: Map },
-  { href: '/ebay',       labelKey: 'nav.ebay',          icon: ShoppingBag },
 ]
 
-const TECH_NAV_HREFS = ['/dashboard', '/projects', '/finances', '/orders', '/inventory', '/lots', '/defects', '/contacts', '/ebay']
+const TECH_NAV_HREFS = ['/dashboard', '/projects', '/finances', '/orders', '/inventory', '/lots', '/contacts']
 const VIEWER_NAV_HREFS = ['/dashboard', '/analytics']
 
 function getNavItems(role: string | null): NavItem[] {
@@ -178,11 +175,37 @@ function AdminMenu({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
-function NotificationBell({ stockCount, ordersCount, lowStockItems }: { stockCount: number; ordersCount: number; lowStockItems: InventoryItem[] }) {
+const DISMISS_TTL_MS = 8 * 60 * 60 * 1000
+
+function loadDismissed(): string[] {
+  try {
+    const raw = localStorage.getItem('stock_alerts_dismissed')
+    if (!raw) return []
+    const parsed: { id: string; time: number }[] = JSON.parse(raw)
+    const now = Date.now()
+    return parsed.filter(d => now - d.time < DISMISS_TTL_MS).map(d => d.id)
+  } catch { return [] }
+}
+
+function saveDismissed(ids: string[]) {
+  const now = Date.now()
+  localStorage.setItem('stock_alerts_dismissed', JSON.stringify(ids.map(id => ({ id, time: now }))))
+}
+
+function NotificationBell({ ordersCount, lowStockItems }: { ordersCount: number; lowStockItems: InventoryItem[] }) {
   const { t } = useTranslation()
   const [, navigate] = useLocation()
   const [open, setOpen] = useState(false)
-  const total = stockCount + ordersCount
+  const [dismissed, setDismissed] = useState<string[]>(() => loadDismissed())
+
+  const visibleAlerts = lowStockItems.filter(item => !dismissed.includes(item.id))
+  const total = visibleAlerts.length + ordersCount
+
+  function dismissAlert(id: string) {
+    const next = [...dismissed, id]
+    setDismissed(next)
+    saveDismissed(next)
+  }
 
   useEffect(() => {
     if (!open) return
@@ -223,25 +246,36 @@ function NotificationBell({ stockCount, ordersCount, lowStockItems }: { stockCou
               <p className="text-sm text-text-muted text-center py-8">{t('notifications_panel.empty')}</p>
             ) : (
               <div className="p-2 space-y-1">
-                {lowStockItems.map(item => (
-                  <div key={item.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-surface transition-colors">
-                    <div className="h-8 w-8 rounded-full bg-danger/10 flex items-center justify-center shrink-0">
-                      <AlertTriangle className="h-4 w-4 text-danger" />
+                {visibleAlerts.map(item => {
+                  const params = new URLSearchParams({ new: 'true', part: item.item_name })
+                  if (item.supplier) params.set('supplier', item.supplier)
+                  return (
+                    <div key={item.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-surface transition-colors">
+                      <div className="h-8 w-8 rounded-full bg-danger/10 flex items-center justify-center shrink-0">
+                        <AlertTriangle className="h-4 w-4 text-danger" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-text-primary truncate">{item.item_name}</p>
+                        <p className="text-xs text-text-muted">
+                          {t('notifications_panel.low_stock_body', { count: item.quantity, min: item.min_stock })}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => { navigate(`/orders?${params.toString()}`); setOpen(false) }}
+                        className="text-xs font-medium text-accent hover:underline shrink-0"
+                      >
+                        {t('notifications_panel.order_now')}
+                      </button>
+                      <button
+                        onClick={() => dismissAlert(item.id)}
+                        className="p-0.5 text-text-muted hover:text-text-primary transition-colors shrink-0"
+                        title={t('common.dismiss')}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-text-primary truncate">{item.item_name}</p>
-                      <p className="text-xs text-text-muted">
-                        {t('notifications_panel.low_stock_body', { count: item.quantity, min: item.min_stock })}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => { navigate('/orders/new'); setOpen(false) }}
-                      className="text-xs font-medium text-accent hover:underline shrink-0"
-                    >
-                      {t('notifications_panel.order_now')}
-                    </button>
-                  </div>
-                ))}
+                  )
+                })}
                 {ordersCount > 0 && (
                   <Link href="/orders">
                     <span onClick={() => setOpen(false)} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-surface transition-colors cursor-pointer">
@@ -363,7 +397,7 @@ export function Layout({ children }: LayoutProps) {
                 </div>
                 <p className="text-xs text-text-muted truncate">{user?.email}</p>
               </div>
-              <NotificationBell stockCount={lowStockCount} ordersCount={inTransitCount} lowStockItems={lowStockItems} />
+              <NotificationBell ordersCount={inTransitCount} lowStockItems={lowStockItems} />
             </div>
 
             {isAdmin && <AdminMenu onNavigate={() => setMobileOpen(false)} />}
@@ -421,7 +455,7 @@ export function Layout({ children }: LayoutProps) {
           </div>
           <div className="flex items-center gap-2">
             <LanguageSelector compact />
-            <NotificationBell stockCount={lowStockCount} ordersCount={inTransitCount} lowStockItems={lowStockItems} />
+            <NotificationBell ordersCount={inTransitCount} lowStockItems={lowStockItems} />
             <button onClick={() => setMobileOpen(!mobileOpen)} className="text-text-muted hover:text-text-primary p-1">
               {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>

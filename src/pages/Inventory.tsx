@@ -197,6 +197,7 @@ export function Inventory() {
   const [suggestedSlug, setSuggestedSlug] = useState<string | null>(null)
   const [suggestionDismissed, setSuggestionDismissed] = useState(false)
   const [newPhotos, setNewPhotos] = useState<File[]>([])
+  const [existingPhotos, setExistingPhotos] = useState<string[]>([])
   const { categories: subCategories } = useCategories('inventory')
   const targetLang = (i18n.language.startsWith('en') ? 'en' : 'pt') as 'pt' | 'en'
 
@@ -263,6 +264,7 @@ export function Inventory() {
     setSuggestedSlug(null)
     setSuggestionDismissed(false)
     setNewPhotos([])
+    setExistingPhotos([])
     reset({
       category: 'Peças', quantity: 0, min_stock: 5, unit_cost: 0,
       item_context: 'new', condition_tested: false, entry_date: today,
@@ -278,6 +280,8 @@ export function Inventory() {
     const map: Record<string, string> = {}
     if (data) for (const row of data) if (row.field_key && row.value != null) map[row.field_key] = row.value
     setDynValues(map)
+    setNewPhotos([])
+    setExistingPhotos(item.photos ?? [])
     reset({
       item_name: item.item_name,
       category: item.category,
@@ -301,7 +305,7 @@ export function Inventory() {
     setModalOpen(true)
   }
 
-  async function compressImageFile(file: File): Promise<Blob> {
+  function compressToBase64(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
       const img = new Image()
       const url = URL.createObjectURL(file)
@@ -316,9 +320,8 @@ export function Inventory() {
         }
         const canvas = document.createElement('canvas')
         canvas.width = width; canvas.height = height
-        const ctx = canvas.getContext('2d')!
-        ctx.drawImage(img, 0, 0, width, height)
-        canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Compression failed')), 'image/jpeg', 0.75)
+        canvas.getContext('2d')!.drawImage(img, 0, 0, width, height)
+        resolve(canvas.toDataURL('image/jpeg', 0.7))
       }
       img.onerror = reject
       img.src = url
@@ -347,31 +350,20 @@ export function Inventory() {
       supplier_ref: data.supplier_ref || null,
       category_slug: dynCategorySlug || null,
     }
+
+    const newBase64s: string[] = []
+    for (const file of newPhotos) {
+      try { newBase64s.push(await compressToBase64(file)) } catch { /* skip */ }
+    }
+
     if (editing) {
-      await update.mutateAsync({ id: editing.id, ...payload })
+      const photos = [...existingPhotos, ...newBase64s]
+      await update.mutateAsync({ id: editing.id, ...payload, photos })
       await saveItemFieldValues(editing.id, 'inventory', dynValues)
     } else {
-      const newItem = await create.mutateAsync(payload as Parameters<typeof create.mutateAsync>[0])
+      const newItem = await create.mutateAsync({ ...payload, photos: newBase64s } as Parameters<typeof create.mutateAsync>[0])
       if (newItem?.id) {
         await saveItemFieldValues(newItem.id, 'inventory', dynValues)
-        if (newPhotos.length > 0) {
-          const { data: { user } } = await supabase.auth.getUser()
-          const uploadedUrls: string[] = []
-          for (const file of newPhotos) {
-            try {
-              const blob = await compressImageFile(file)
-              const path = `${user!.id}/${newItem.id}/${Date.now()}.jpg`
-              const { error } = await supabase.storage.from('inventory-photos').upload(path, blob, { contentType: 'image/jpeg' })
-              if (!error) {
-                const { data: { publicUrl } } = supabase.storage.from('inventory-photos').getPublicUrl(path)
-                uploadedUrls.push(publicUrl)
-              }
-            } catch { /* skip failed uploads */ }
-          }
-          if (uploadedUrls.length > 0) {
-            await update.mutateAsync({ id: newItem.id, photos: uploadedUrls })
-          }
-        }
       }
     }
     setModalOpen(false)
@@ -659,44 +651,46 @@ export function Inventory() {
               <Textarea {...register('notes')} rows={2} />
             </div>
 
-            {/* Fotos (apenas para novo item) */}
-            {!editing && (
-              <div className="space-y-1.5">
-                <Label>{t('inventory_form.photos_section', { defaultValue: 'Fotos' })}</Label>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {newPhotos.map((file, i) => (
-                    <div key={i} className="relative">
-                      <img
-                        src={URL.createObjectURL(file)}
-                        alt=""
-                        className="h-20 w-20 rounded-lg object-cover border border-border"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setNewPhotos(p => p.filter((_, idx) => idx !== i))}
-                        className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-danger text-white flex items-center justify-center text-xs hover:bg-danger/80"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                  {newPhotos.length < 3 && (
-                    <label className="h-20 w-20 rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center text-text-muted hover:border-accent/40 hover:text-accent transition-colors cursor-pointer">
-                      <span className="text-lg">+</span>
-                      <span className="text-[10px]">{t('inventory_form.add_photo', { defaultValue: '+ Foto' })}</span>
-                      <input type="file" accept="image/*" className="hidden"
-                        onChange={e => {
-                          const file = e.target.files?.[0]
-                          if (file) setNewPhotos(p => [...p, file])
-                          e.target.value = ''
-                        }}
-                      />
-                    </label>
-                  )}
-                </div>
-                <p className="text-[10px] text-text-muted">{t('inventory_form.photos_hint', { defaultValue: 'Máx. 3 fotos · Comprimidas automaticamente' })}</p>
+            {/* Fotos */}
+            <div className="space-y-1.5">
+              <Label>{t('inventory_form.photos_section', { defaultValue: 'Fotos' })}</Label>
+              <div className="flex items-center gap-2 flex-wrap">
+                {existingPhotos.map((src, i) => (
+                  <div key={`ex-${i}`} className="relative">
+                    <img src={src} alt="" className="h-20 w-20 rounded-lg object-cover border border-border" />
+                    <button
+                      type="button"
+                      onClick={() => setExistingPhotos(p => p.filter((_, idx) => idx !== i))}
+                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-danger text-white flex items-center justify-center text-xs hover:bg-danger/80"
+                    >×</button>
+                  </div>
+                ))}
+                {newPhotos.map((file, i) => (
+                  <div key={`new-${i}`} className="relative">
+                    <img src={URL.createObjectURL(file)} alt="" className="h-20 w-20 rounded-lg object-cover border border-border" />
+                    <button
+                      type="button"
+                      onClick={() => setNewPhotos(p => p.filter((_, idx) => idx !== i))}
+                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-danger text-white flex items-center justify-center text-xs hover:bg-danger/80"
+                    >×</button>
+                  </div>
+                ))}
+                {(existingPhotos.length + newPhotos.length) < 3 && (
+                  <label className="h-20 w-20 rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center text-text-muted hover:border-accent/40 hover:text-accent transition-colors cursor-pointer">
+                    <span className="text-lg">+</span>
+                    <span className="text-[10px]">{t('inventory_form.add_photo', { defaultValue: '+ Foto' })}</span>
+                    <input type="file" accept="image/*" className="hidden"
+                      onChange={e => {
+                        const file = e.target.files?.[0]
+                        if (file) setNewPhotos(p => [...p, file])
+                        e.target.value = ''
+                      }}
+                    />
+                  </label>
+                )}
               </div>
-            )}
+              <p className="text-[10px] text-text-muted">{t('inventory_form.photos_hint', { defaultValue: 'Máx. 3 fotos · Comprimidas automaticamente' })}</p>
+            </div>
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>

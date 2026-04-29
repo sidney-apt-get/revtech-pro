@@ -46,7 +46,7 @@ function BudgetBar({ value, target, color = 'accent' }: { value: number; target:
 
 export function Finances() {
   const { t } = useTranslation()
-  useEffect(() => { document.title = 'Finanças — RevTech PRO' }, [])
+  useEffect(() => { document.title = t('page_titles.finances') + ' — RevTech PRO' }, [t])
   const { data: projects = [], isLoading: loadingProjects } = useProjects()
   const { data: expenses = [], isLoading: loadingExpenses } = useExpenses()
   const { data: goals = [] } = useFinancialGoals()
@@ -350,7 +350,7 @@ export function Finances() {
                 {currentGoal.revenue_target > 0 && (
                   <div>
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-text-muted">Receita</span>
+                      <span className="text-text-muted">{t('finances.progress.revenue')}</span>
                       <span className="text-text-primary">{fmtGBP(current.revenue)} / {fmtGBP(currentGoal.revenue_target)}</span>
                     </div>
                     <BudgetBar value={current.revenue} target={currentGoal.revenue_target} />
@@ -359,7 +359,7 @@ export function Finances() {
                 {currentGoal.profit_target > 0 && (
                   <div>
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-text-muted">Lucro</span>
+                      <span className="text-text-muted">{t('finances.progress.profit')}</span>
                       <span className="text-text-primary">{fmtGBP(current.profit)} / {fmtGBP(currentGoal.profit_target)}</span>
                     </div>
                     <BudgetBar value={current.profit} target={currentGoal.profit_target} color="success" />
@@ -368,7 +368,7 @@ export function Finances() {
                 {currentGoal.expenses_budget > 0 && (
                   <div>
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-text-muted">Despesas</span>
+                      <span className="text-text-muted">{t('finances.progress.expenses')}</span>
                       <span className={cn('font-medium', current.otherExpenses > currentGoal.expenses_budget ? 'text-danger' : 'text-text-primary')}>
                         {fmtGBP(current.otherExpenses)} / {fmtGBP(currentGoal.expenses_budget)}
                       </span>
@@ -385,16 +385,16 @@ export function Finances() {
             <div className="rounded-xl border border-warning/20 bg-warning/5 px-4 py-3 flex items-start gap-2">
               <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
               <p className="text-xs text-warning">
-                <span className="font-semibold">Estimativa de imposto (referência):</span>{' '}
-                20% sobre {fmtGBP(current.profit)} lucro ≈ <span className="font-bold">{fmtGBP(current.profit * 0.2)}</span>.
-                Consulta um contabilista para valores reais.
+                <span className="font-semibold">{t('finances.taxEstimate')}:</span>{' '}
+                20% {t('finances.on')} {fmtGBP(current.profit)} ≈ <span className="font-bold">{fmtGBP(current.profit * 0.2)}</span>.
+                {' '}{t('finances.consultAccountant')}
               </p>
             </div>
           )}
 
           {/* Chart */}
           <Card>
-            <CardHeader><CardTitle className="text-sm">Receita vs Despesas — últimos 6 meses</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-sm">{t('finances.chart6Months')}</CardTitle></CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={monthlyData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
@@ -403,9 +403,9 @@ export function Finances() {
                   <YAxis tick={{ fontSize: 10, fill: '#9AA0AC' }} />
                   <Tooltip contentStyle={{ background: '#252836', border: '1px solid #2E3141', borderRadius: 8, fontSize: 12 }} labelStyle={{ color: '#E8EAED' }} cursor={{ fill: 'rgba(79,142,247,0.05)' }} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="revenue" name="Receita" fill="#4F8EF7" radius={[3, 3, 0, 0]} maxBarSize={24} />
-                  <Bar dataKey="totalExpenses" name="Despesas" fill="#F75F5F" radius={[3, 3, 0, 0]} maxBarSize={24} />
-                  <Bar dataKey="profit" name="Lucro" fill="#4CAF82" radius={[3, 3, 0, 0]} maxBarSize={24} />
+                  <Bar dataKey="revenue" name={t('finances.progress.revenue')} fill="#4F8EF7" radius={[3, 3, 0, 0]} maxBarSize={24} />
+                  <Bar dataKey="totalExpenses" name={t('finances.tabs.expenses')} fill="#F75F5F" radius={[3, 3, 0, 0]} maxBarSize={24} />
+                  <Bar dataKey="profit" name={t('finances.progress.profit')} fill="#4CAF82" radius={[3, 3, 0, 0]} maxBarSize={24} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -416,10 +416,10 @@ export function Finances() {
         <TabsContent value="despesas" className="space-y-4 mt-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-text-muted">
-              Total este mês: <span className="text-text-primary font-semibold">{fmtGBP(currentExpenses.reduce((s, e) => s + e.amount, 0))}</span>
+              {t('finances.totalThisMonth')}: <span className="text-text-primary font-semibold">{fmtGBP(currentExpenses.reduce((s, e) => s + e.amount, 0))}</span>
             </p>
             <Button size="sm" onClick={() => setExpenseModal(true)}>
-              <Plus className="h-4 w-4" /> Nova Despesa
+              <Plus className="h-4 w-4" /> {t('finances.newExpense')}
             </Button>
           </div>
 
@@ -427,7 +427,7 @@ export function Finances() {
             {/* Pie chart */}
             {expByCategory.length > 0 && (
               <Card>
-                <CardHeader><CardTitle className="text-sm">Por Categoria</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="text-sm">{t('finances.byCategory')}</CardTitle></CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={180}>
                     <PieChart>
@@ -445,11 +445,11 @@ export function Finances() {
 
             {/* Recurring estimate */}
             <Card>
-              <CardHeader><CardTitle className="text-sm">Despesas Fixas Estimadas/Mês</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm">{t('finances.fixedExpenses')}</CardTitle></CardHeader>
               <CardContent>
                 <div className="space-y-1.5">
                   {expenses.filter(e => e.is_recurring).length === 0 && (
-                    <p className="text-xs text-text-muted py-3 text-center">Sem despesas recorrentes registadas</p>
+                    <p className="text-xs text-text-muted py-3 text-center">{t('finances.noRecurring')}</p>
                   )}
                   {expenses.filter(e => e.is_recurring).map(e => (
                     <div key={e.id} className="flex items-center justify-between text-xs">
@@ -459,7 +459,7 @@ export function Finances() {
                   ))}
                   {expenses.filter(e => e.is_recurring).length > 0 && (
                     <div className="border-t border-border pt-2 flex justify-between text-xs font-semibold">
-                      <span className="text-text-muted">Total fixo</span>
+                      <span className="text-text-muted">{t('finances.totalFixed')}</span>
                       <span className="text-text-primary">{fmtGBP(expenses.filter(e => e.is_recurring).reduce((s, e) => s + e.amount, 0))}</span>
                     </div>
                   )}
@@ -474,14 +474,14 @@ export function Finances() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border bg-surface">
-                    {['Data', 'Categoria', 'Descrição', 'Valor', ''].map(h => (
+                    {[t('finances.expense.date'), t('finances.expense.category'), t('finances.expense.description'), t('finances.expense.amount'), ''].map(h => (
                       <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold text-text-muted uppercase tracking-wider">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="bg-card divide-y divide-border">
                   {expenses.length === 0 ? (
-                    <tr><td colSpan={5} className="text-center py-10 text-text-muted text-sm">Sem despesas registadas</td></tr>
+                    <tr><td colSpan={5} className="text-center py-10 text-text-muted text-sm">{t('finances.noExpensesRecorded')}</td></tr>
                   ) : (
                     expenses.map(e => (
                       <tr key={e.id} className="hover:bg-surface/50 transition-colors">
@@ -489,7 +489,7 @@ export function Finances() {
                         <td className="px-4 py-2.5 text-xs text-text-muted">{e.category}</td>
                         <td className="px-4 py-2.5 text-xs text-text-primary">
                           {e.description}
-                          {e.is_recurring && <span className="ml-1.5 text-[10px] text-accent border border-accent/20 px-1 rounded">recorrente</span>}
+                          {e.is_recurring && <span className="ml-1.5 text-[10px] text-accent border border-accent/20 px-1 rounded">{t('finances.recurringBadge')}</span>}
                         </td>
                         <td className="px-4 py-2.5 text-sm font-semibold text-danger">{fmtGBP(e.amount)}</td>
                         <td className="px-4 py-2.5">
@@ -509,13 +509,13 @@ export function Finances() {
         {/* ABA 3 — METAS */}
         <TabsContent value="metas" className="space-y-4 mt-4">
           <Card>
-            <CardHeader><CardTitle className="text-sm">Meta para {format(now, 'MMMM yyyy', { locale: pt })}</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-sm">{t('finances.goalsFor', { month: format(now, 'MMMM yyyy', { locale: pt }) })}</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { label: 'Receita alvo (£)', key: 'revenue_target' },
-                  { label: 'Lucro alvo (£)', key: 'profit_target' },
-                  { label: 'Orçamento despesas (£)', key: 'expenses_budget' },
+                  { label: t('finances.goal.revenueTarget'), key: 'revenue_target' },
+                  { label: t('finances.goal.profitTarget'), key: 'profit_target' },
+                  { label: t('finances.goal.expensesBudget'), key: 'expenses_budget' },
                 ].map(f => (
                   <div key={f.key} className="space-y-1.5">
                     <Label className="text-xs">{f.label}</Label>
@@ -530,14 +530,14 @@ export function Finances() {
                 ))}
               </div>
               <Button size="sm" onClick={handleSaveGoal} disabled={upsertGoal.isPending}>
-                {upsertGoal.isPending ? 'A guardar...' : 'Guardar meta'}
+                {upsertGoal.isPending ? t('common.saving') : t('finances.goal.save')}
               </Button>
             </CardContent>
           </Card>
 
           {/* Historical goals vs actual */}
           <Card>
-            <CardHeader><CardTitle className="text-sm">Histórico Metas vs Real</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-sm">{t('finances.goalsHistory')}</CardTitle></CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {monthlyData.slice().reverse().map(m => {
@@ -549,7 +549,7 @@ export function Finances() {
                       {goal.revenue_target > 0 && (
                         <div>
                           <div className="flex justify-between text-xs mb-0.5">
-                            <span className="text-text-muted">Receita</span>
+                            <span className="text-text-muted">{t('finances.progress.revenue')}</span>
                             <span>{fmtGBP(m.revenue)} / {fmtGBP(goal.revenue_target)}</span>
                           </div>
                           <BudgetBar value={m.revenue} target={goal.revenue_target} />
@@ -559,7 +559,7 @@ export function Finances() {
                   )
                 }).filter(Boolean)}
                 {goals.length === 0 && (
-                  <p className="text-xs text-text-muted text-center py-4">Sem metas definidas ainda</p>
+                  <p className="text-xs text-text-muted text-center py-4">{t('finances.noGoals')}</p>
                 )}
               </div>
             </CardContent>
@@ -571,16 +571,16 @@ export function Finances() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Stock pronto */}
             <Card>
-              <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Lightbulb className="h-4 w-4 text-warning" />Potencial do Stock Actual</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Lightbulb className="h-4 w-4 text-warning" />{t('finances.stockPotentialTitle')}</CardTitle></CardHeader>
               <CardContent className="space-y-2">
                 <p className="text-xs text-text-muted">{readyToSell.length} equipamento{readyToSell.length !== 1 ? 's' : ''} pronto{readyToSell.length !== 1 ? 's' : ''} para venda</p>
                 <div className="space-y-1.5 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-text-muted text-xs">Receita potencial</span>
+                    <span className="text-text-muted text-xs">{t('finances.potentialRevenue')}</span>
                     <span className="text-success font-bold">{fmtGBP(potentialRevenue)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-text-muted text-xs">Lucro potencial</span>
+                    <span className="text-text-muted text-xs">{t('finances.potentialProfit')}</span>
                     <span className={cn('font-bold', potentialProfit >= 0 ? 'text-success' : 'text-danger')}>{fmtGBP(potentialProfit)}</span>
                   </div>
                 </div>
@@ -597,15 +597,15 @@ export function Finances() {
 
             {/* Stats & Pace */}
             <Card>
-              <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Target className="h-4 w-4 text-accent" />Velocidade & Médias</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Target className="h-4 w-4 text-accent" />{t('finances.speedAverages')}</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-lg bg-surface border border-border p-3 text-center">
-                    <p className="text-xs text-text-muted">Custo médio/reparação</p>
+                    <p className="text-xs text-text-muted">{t('finances.avgRepairCost')}</p>
                     <p className="text-base font-bold text-text-primary mt-1">{fmtGBP(avgCost)}</p>
                   </div>
                   <div className="rounded-lg bg-surface border border-border p-3 text-center">
-                    <p className="text-xs text-text-muted">Lucro médio/venda</p>
+                    <p className="text-xs text-text-muted">{t('finances.avgProfitSale')}</p>
                     <p className={cn('text-base font-bold mt-1', avgProfit >= 0 ? 'text-success' : 'text-danger')}>{fmtGBP(avgProfit)}</p>
                   </div>
                 </div>
@@ -613,7 +613,7 @@ export function Finances() {
                 {daysToTarget !== null && (
                   <div className={cn('rounded-xl border px-4 py-3', daysToTarget <= 0 ? 'border-success/30 bg-success/5' : 'border-accent/20 bg-accent/5')}>
                     {daysToTarget <= 0 ? (
-                      <p className="text-sm text-success font-semibold">🎉 Meta de receita atingida este mês!</p>
+                      <p className="text-sm text-success font-semibold">{t('finances.goalReached')}</p>
                     ) : (
                       <p className="text-sm text-text-primary">
                         Ao ritmo actual (<span className="text-accent font-medium">{fmtGBP(dailyRate)}/dia</span>),
@@ -625,9 +625,9 @@ export function Finances() {
                 )}
 
                 <div className="text-xs text-text-muted space-y-1">
-                  <p>Taxa diária este mês: <span className="text-text-primary">{fmtGBP(dailyRate)}/dia</span></p>
-                  <p>Receita acumulada mês: <span className="text-text-primary">{fmtGBP(current.revenue)}</span></p>
-                  {soldAll.length > 0 && <p>Total equipamentos vendidos: <span className="text-text-primary">{soldAll.length}</span></p>}
+                  <p>{t('finances.dailyRate')}: <span className="text-text-primary">{fmtGBP(dailyRate)}/dia</span></p>
+                  <p>{t('finances.monthlyRevenuePace')}: <span className="text-text-primary">{fmtGBP(current.revenue)}</span></p>
+                  {soldAll.length > 0 && <p>{t('finances.totalEquipmentSold')}: <span className="text-text-primary">{soldAll.length}</span></p>}
                 </div>
               </CardContent>
             </Card>
@@ -638,26 +638,26 @@ export function Finances() {
       {/* Modal Nova Despesa */}
       <Dialog open={expenseModal} onOpenChange={o => !o && setExpenseModal(false)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Nova Despesa</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{t('finances.newExpense')}</DialogTitle></DialogHeader>
           <div className="p-6 pt-4 space-y-4">
             <div className="space-y-1.5">
-              <Label>Categoria</Label>
+              <Label>{t('finances.expense.category')}</Label>
               <Select value={expForm.category} onValueChange={v => setExpForm(f => ({ ...f, category: v as typeof EXPENSE_CATEGORIES[number] }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{EXPENSE_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Descrição</Label>
-              <Input value={expForm.description} onChange={e => setExpForm(f => ({ ...f, description: e.target.value }))} placeholder="ex: Pasta térmica Arctic" />
+              <Label>{t('finances.expense.description')}</Label>
+              <Input value={expForm.description} onChange={e => setExpForm(f => ({ ...f, description: e.target.value }))} placeholder={t('finances.expense.descriptionPlaceholder')} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Valor (£)</Label>
+                <Label>{t('finances.expense.amount')}</Label>
                 <Input type="number" step="0.01" value={expForm.amount} onChange={e => setExpForm(f => ({ ...f, amount: e.target.value }))} placeholder="0.00" />
               </div>
               <div className="space-y-1.5">
-                <Label>Data</Label>
+                <Label>{t('finances.expense.date')}</Label>
                 <Input type="date" value={expForm.date} onChange={e => setExpForm(f => ({ ...f, date: e.target.value }))} />
               </div>
             </div>
@@ -669,19 +669,19 @@ export function Finances() {
                 onChange={e => setExpForm(f => ({ ...f, is_recurring: e.target.checked }))}
                 className="rounded"
               />
-              <Label htmlFor="recurring" className="cursor-pointer text-sm">Despesa recorrente mensal</Label>
+              <Label htmlFor="recurring" className="cursor-pointer text-sm">{t('finances.expense.recurring')}</Label>
             </div>
             {expForm.is_recurring && (
               <div className="space-y-1.5">
-                <Label>Dia do mês que repete</Label>
-                <Input type="number" min="1" max="31" value={expForm.recurring_day} onChange={e => setExpForm(f => ({ ...f, recurring_day: e.target.value }))} placeholder="ex: 1" />
+                <Label>{t('finances.expense.recurringDay')}</Label>
+                <Input type="number" min="1" max="31" value={expForm.recurring_day} onChange={e => setExpForm(f => ({ ...f, recurring_day: e.target.value }))} placeholder={t('finances.expense.recurringDayPlaceholder')} />
               </div>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setExpenseModal(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setExpenseModal(false)}>{t('common.cancel')}</Button>
             <Button onClick={handleCreateExpense} disabled={!expForm.description || !expForm.amount || createExpense.isPending}>
-              {createExpense.isPending ? 'A guardar...' : 'Adicionar'}
+              {createExpense.isPending ? t('common.saving') : t('finances.expense.add')}
             </Button>
           </DialogFooter>
         </DialogContent>

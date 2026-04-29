@@ -24,13 +24,30 @@ const SUPPLIERS_LINKS = [
   { name: 'AliExpress', url: 'https://www.aliexpress.com' },
 ]
 
-function OrderCard({ order, onUpdateStatus, onDelete }: {
+function OrderCard({ order, onUpdateStatus, onDelete, linkedProject }: {
   order: PartsOrder
   onUpdateStatus: (id: string, status: PartsOrder['status']) => void
   onDelete: (id: string) => void
+  linkedProject?: Project
 }) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
+
+  function DestinationBadge() {
+    if (order.status !== 'Entregue') return null
+    if (linkedProject) {
+      return (
+        <span className="text-[10px] font-medium text-accent bg-accent/10 border border-accent/20 rounded-full px-2 py-0.5">
+          → {linkedProject.ticket_number ?? linkedProject.equipment}
+        </span>
+      )
+    }
+    return (
+      <span className="text-[10px] font-medium text-success bg-success/10 border border-success/20 rounded-full px-2 py-0.5">
+        → {t('orders.dest_inventory')}
+      </span>
+    )
+  }
 
   return (
     <Card className="hover:border-accent/30 transition-colors">
@@ -42,6 +59,7 @@ function OrderCard({ order, onUpdateStatus, onDelete }: {
                 {t(`orderStatusMap.${order.status}`, { defaultValue: order.status })}
               </span>
               <span className="text-xs text-text-muted">{order.supplier}</span>
+              <DestinationBadge />
             </div>
             <p className="text-sm font-semibold text-text-primary mt-1">{order.part_name}</p>
             <p className="text-xs text-text-muted">{t('orders.fields.quantity')}: {order.quantity} · {order.total_cost != null ? fmtGBP(order.total_cost) : '—'}</p>
@@ -107,7 +125,7 @@ function OrderCard({ order, onUpdateStatus, onDelete }: {
   )
 }
 
-function AddOrderModal({ onClose }: { onClose: () => void }) {
+function AddOrderModal({ onClose, initialValues }: { onClose: () => void; initialValues?: { part?: string; supplier?: string; cost?: string } }) {
   const { t } = useTranslation()
   const createOrder = useCreateOrder()
   const { data: projects = [] } = useProjects()
@@ -115,6 +133,9 @@ function AddOrderModal({ onClose }: { onClose: () => void }) {
     status: 'Encomendado',
     quantity: 1,
     ordered_at: new Date().toISOString().split('T')[0],
+    part_name: initialValues?.part ?? '',
+    supplier: initialValues?.supplier ?? '',
+    unit_cost: initialValues?.cost ? Number(initialValues.cost) : undefined,
   })
 
   function set(k: string, v: unknown) { setForm(f => ({ ...f, [k]: v })) }
@@ -278,7 +299,7 @@ function ReceivedOrderModal({
           </div>
           <div className="overflow-y-auto flex-1">
             {activeProjects.length === 0 ? (
-              <p className="text-center py-8 text-text-muted text-sm">Nenhum projecto activo</p>
+              <p className="text-center py-8 text-text-muted text-sm">{t('orders.noActiveProjects')}</p>
             ) : (
               activeProjects.map(p => (
                 <button key={p.id} onClick={() => onUseInProject(p)}
@@ -342,7 +363,7 @@ function ReceivedOrderModal({
 
 export function PartsOrders() {
   const { t } = useTranslation()
-  useEffect(() => { document.title = 'Encomendas — RevTech PRO' }, [])
+  useEffect(() => { document.title = t('page_titles.orders') + ' — RevTech PRO' }, [t])
   const { data: orders = [], isLoading } = useOrders()
   const { data: projects = [] } = useProjects()
   const updateOrder = useUpdateOrder()
@@ -352,10 +373,24 @@ export function PartsOrders() {
   const [filterStatus, setFilterStatus] = useState('')
   const [filterSupplier, setFilterSupplier] = useState('')
   const [showAdd, setShowAdd] = useState(false)
+  const [addInitialValues, setAddInitialValues] = useState<{ part?: string; supplier?: string; cost?: string } | undefined>()
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [deleteInput, setDeleteInput] = useState('')
   const [receivedOrder, setReceivedOrder] = useState<PartsOrder | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('new') === 'true') {
+      setAddInitialValues({
+        part: params.get('part') ?? undefined,
+        supplier: params.get('supplier') ?? undefined,
+        cost: params.get('cost') ?? undefined,
+      })
+      setShowAdd(true)
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
 
   useEffect(() => {
     if (!toast) return
@@ -486,12 +521,12 @@ export function PartsOrders() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(o => (
-            <OrderCard key={o.id} order={o} onUpdateStatus={handleStatusChange} onDelete={id => { setDeleteTarget(id); setDeleteInput('') }} />
+            <OrderCard key={o.id} order={o} onUpdateStatus={handleStatusChange} onDelete={id => { setDeleteTarget(id); setDeleteInput('') }} linkedProject={o.project_id ? projects.find(p => p.id === o.project_id) : undefined} />
           ))}
         </div>
       )}
 
-      {showAdd && <AddOrderModal onClose={() => setShowAdd(false)} />}
+      {showAdd && <AddOrderModal onClose={() => { setShowAdd(false); setAddInitialValues(undefined) }} initialValues={addInitialValues} />}
 
       {receivedOrder && (
         <ReceivedOrderModal
@@ -506,21 +541,21 @@ export function PartsOrders() {
       {deleteTarget && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 px-4" onClick={() => { setDeleteTarget(null); setDeleteInput('') }}>
           <div className="bg-card border border-border rounded-xl shadow-2xl p-6 w-full max-w-sm space-y-4" onClick={e => e.stopPropagation()}>
-            <h2 className="text-base font-semibold text-text-primary">Eliminar encomenda</h2>
+            <h2 className="text-base font-semibold text-text-primary">{t('orders.deleteTitle')}</h2>
             <p className="text-sm text-text-muted">
-              Tens a certeza que queres eliminar <span className="font-medium text-text-primary">{orders.find(o => o.id === deleteTarget)?.part_name}</span>? Esta acção é irreversível.
+              {t('delete.will_delete')}: <span className="font-medium text-text-primary">{orders.find(o => o.id === deleteTarget)?.part_name}</span>. {t('delete.irreversible')}
             </p>
-            <p className="text-xs text-text-muted">Escreve <span className="font-mono font-bold text-danger">ELIMINAR</span> para confirmar.</p>
-            <input autoFocus value={deleteInput} onChange={e => setDeleteInput(e.target.value)} placeholder="ELIMINAR"
+            <p className="text-xs text-text-muted">{t('delete.instruction')} <span className="font-mono font-bold text-danger">{t('delete.confirm_word')}</span>.</p>
+            <input autoFocus value={deleteInput} onChange={e => setDeleteInput(e.target.value)} placeholder={t('delete.confirm_word')}
               className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-danger" />
             <div className="flex justify-end gap-2">
-              <button onClick={() => { setDeleteTarget(null); setDeleteInput('') }} className="rounded-lg border border-border px-4 py-2 text-sm text-text-muted hover:text-text-primary transition-colors">Cancelar</button>
+              <button onClick={() => { setDeleteTarget(null); setDeleteInput('') }} className="rounded-lg border border-border px-4 py-2 text-sm text-text-muted hover:text-text-primary transition-colors">{t('common.cancel')}</button>
               <button
-                disabled={deleteInput !== 'ELIMINAR' || deleteOrder.isPending}
+                disabled={deleteInput !== t('delete.confirm_word') || deleteOrder.isPending}
                 onClick={() => { deleteOrder.mutate(deleteTarget!); setDeleteTarget(null); setDeleteInput('') }}
                 className="rounded-lg bg-danger px-4 py-2 text-sm font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-danger/90 transition-colors"
               >
-                {deleteOrder.isPending ? 'A eliminar...' : 'Eliminar'}
+                {deleteOrder.isPending ? t('common.deleting') : t('common.delete')}
               </button>
             </div>
           </div>

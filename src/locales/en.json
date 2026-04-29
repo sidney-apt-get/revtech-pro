@@ -111,7 +111,8 @@
     "required": "Required",
     "noProject": "No project",
     "collapse": "Collapse",
-    "expand": "Expand"
+    "expand": "Expand",
+    "dismiss": "Dismiss"
   },
   "page_titles": {
     "dashboard": "Dashboard",
@@ -600,7 +601,8 @@
     "ignore_desc": "Just mark as delivered",
     "select_project": "Select a Project",
     "added_to_inventory": "Part added to inventory",
-    "added_to_project": "Part added to project"
+    "added_to_project": "Part added to project",
+    "dest_inventory": "Inventory"
   },
   "defects": {
     "title": "Defect Database",
@@ -1050,7 +1052,8 @@
     "diagnostico": "Diagnosis",
     "reparacao": "Repair",
     "concluido": "Completed",
-    "entrega": "Delivery"
+    "entrega": "Delivery",
+    "equipmentHistory": "History for this equipment"
   },
   "inventory_detail": {
     "notFound": "Item not found",

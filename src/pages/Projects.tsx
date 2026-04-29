@@ -12,12 +12,6 @@ import { Plus, Kanban, Filter, Search, TrendingUp, TrendingDown, ArrowUpDown, Li
 type View = 'list' | 'kanban'
 type SortBy = 'date_desc' | 'date_asc' | 'profit_desc' | 'value_desc'
 
-const SORT_LABELS: Record<SortBy, string> = {
-  date_desc: 'Data ↓',
-  date_asc: 'Data ↑',
-  profit_desc: 'Lucro ↓',
-  value_desc: 'Valor ↓',
-}
 
 function ProjectRow({ project, onEdit }: { project: Project; onEdit: (p: Project) => void }) {
   const { t } = useTranslation()
@@ -80,7 +74,14 @@ function ProjectRow({ project, onEdit }: { project: Project; onEdit: (p: Project
 
 export function Projects() {
   const { t } = useTranslation()
-  useEffect(() => { document.title = 'Projectos — RevTech PRO' }, [])
+  useEffect(() => { document.title = t('page_titles.projects') + ' — RevTech PRO' }, [t])
+
+  const SORT_LABELS: Record<SortBy, string> = {
+    date_desc: t('projects.sort.date_desc'),
+    date_asc: t('projects.sort.date_asc'),
+    profit_desc: t('projects.sort.profit_desc'),
+    value_desc: t('projects.sort.value_desc'),
+  }
   const { data: projects = [], isLoading } = useProjects()
   const [view, setView] = useState<View>('list')
   const [filter, setFilter] = useState<ProjectStatus | 'all'>('all')
@@ -163,7 +164,7 @@ export function Projects() {
           <input
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(0) }}
-            placeholder="Pesquisar equipamento, ticket, série..."
+            placeholder={t('projects.searchPlaceholder')}
             className="w-full rounded-lg border border-border bg-surface pl-8 pr-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
           />
         </div>
@@ -223,12 +224,12 @@ export function Projects() {
               <thead className="sticky top-0 z-10 bg-card border-b border-border">
                 <tr>
                   <th className="px-3 py-2 text-xs font-medium text-text-muted hidden md:table-cell">Ticket</th>
-                  <th className="px-3 py-2 text-xs font-medium text-text-muted">Estado</th>
-                  <th className="px-3 py-2 text-xs font-medium text-text-muted">Equipamento</th>
-                  <th className="px-3 py-2 text-xs font-medium text-text-muted hidden md:table-cell">Defeito</th>
-                  <th className="px-3 py-2 text-xs font-medium text-text-muted hidden md:table-cell">Compra → Venda</th>
-                  <th className="px-3 py-2 text-xs font-medium text-text-muted">Lucro</th>
-                  <th className="px-3 py-2 text-xs font-medium text-text-muted hidden md:table-cell">Data</th>
+                  <th className="px-3 py-2 text-xs font-medium text-text-muted">{t('projects.table.status')}</th>
+                  <th className="px-3 py-2 text-xs font-medium text-text-muted">{t('projects.table.equipment')}</th>
+                  <th className="px-3 py-2 text-xs font-medium text-text-muted hidden md:table-cell">{t('projects.table.defect')}</th>
+                  <th className="px-3 py-2 text-xs font-medium text-text-muted hidden md:table-cell">{t('projects.table.buyToSell')}</th>
+                  <th className="px-3 py-2 text-xs font-medium text-text-muted">{t('projects.table.profit')}</th>
+                  <th className="px-3 py-2 text-xs font-medium text-text-muted hidden md:table-cell">{t('projects.table.date')}</th>
                   <th className="px-3 py-2 w-8" />
                 </tr>
               </thead>
@@ -243,7 +244,7 @@ export function Projects() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-card/50 rounded-b-xl">
               <p className="text-xs text-text-muted">
-                Mostrando {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} de {filtered.length} projectos
+                {t('projects.showing', { from: page * PAGE_SIZE + 1, to: Math.min((page + 1) * PAGE_SIZE, filtered.length), total: filtered.length })}
               </p>
               <div className="flex items-center gap-2">
                 <button
@@ -251,15 +252,15 @@ export function Projects() {
                   onClick={() => setPage(p => p - 1)}
                   className="px-3 py-1 rounded-lg border border-border text-xs text-text-muted hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
-                  ← Anterior
+                  {t('projects.previous')}
                 </button>
-                <span className="text-xs text-text-muted">Pág. {page + 1} de {totalPages}</span>
+                <span className="text-xs text-text-muted">{t('projects.pageOf', { current: page + 1, total: totalPages })}</span>
                 <button
                   disabled={page >= totalPages - 1}
                   onClick={() => setPage(p => p + 1)}
                   className="px-3 py-1 rounded-lg border border-border text-xs text-text-muted hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
-                  Próxima →
+                  {t('projects.nextPage')}
                 </button>
               </div>
             </div>
