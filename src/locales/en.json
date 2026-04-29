@@ -602,7 +602,11 @@
     "select_project": "Select a Project",
     "added_to_inventory": "Part added to inventory",
     "added_to_project": "Part added to project",
-    "dest_inventory": "Inventory"
+    "dest_inventory": "Inventory",
+    "linked_title": "Parts Orders",
+    "add_for_project": "Add Order for this Project",
+    "expected": "Expected",
+    "creating_for_project": "Creating order for project"
   },
   "defects": {
     "title": "Defect Database",
@@ -880,6 +884,16 @@
     "date": "Date",
     "estimatedItems": "Est. items",
     "perItem": "per item",
+    "from_lot": "From Purchase Lot",
+    "no_lot": "Not from a lot",
+    "price_auto_filled": "Purchase price auto-filled from lot cost per item",
+    "cost_per_item": "Cost/Item",
+    "items_created": "Items Created",
+    "total_invested": "Total Invested",
+    "profit": "Lot Profit",
+    "items_remaining": "items still to triage",
+    "projects_in_lot": "Projects in this lot",
+    "no_projects_yet": "No projects linked to this lot yet",
     "status": {
       "untriaged": "Untriaged",
       "in_progress": "In Progress",

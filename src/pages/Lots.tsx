@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLots, useCreateLot, useUpdateLot, useDeleteLot } from '@/hooks/useSmartCatalog'
+import { useProjects } from '@/hooks/useProjects'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -8,16 +9,17 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import type { Lot } from '@/lib/supabase'
-import { fmtGBP, fmtDate } from '@/lib/utils'
-import { Plus, Pencil, Trash2, Package, CheckCircle, Clock, AlertCircle } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { fmtGBP, fmtDate, STATUS_COLORS, cn } from '@/lib/utils'
+import { calcROI } from '@/lib/utils'
+import { Plus, Pencil, Trash2, Package, CheckCircle, Clock, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react'
+import { useLocation } from 'wouter'
 
 type LotStatus = Lot['status']
 
 const STATUS_CONFIG: Record<LotStatus, { label_pt: string; label_en: string; icon: typeof Clock; color: string }> = {
-  untriaged:   { label_pt: 'Não Triado',  label_en: 'Untriaged',   icon: AlertCircle,   color: 'text-warning border-warning/30 bg-warning/5' },
-  in_progress: { label_pt: 'Em Progresso',label_en: 'In Progress', icon: Clock,         color: 'text-accent border-accent/30 bg-accent/5' },
-  completed:   { label_pt: 'Concluído',   label_en: 'Completed',   icon: CheckCircle,   color: 'text-success border-success/30 bg-success/5' },
+  untriaged:   { label_pt: 'Não Triado',   label_en: 'Untriaged',   icon: AlertCircle, color: 'text-warning border-warning/30 bg-warning/5' },
+  in_progress: { label_pt: 'Em Progresso', label_en: 'In Progress', icon: Clock,        color: 'text-accent border-accent/30 bg-accent/5' },
+  completed:   { label_pt: 'Concluído',    label_en: 'Completed',   icon: CheckCircle,  color: 'text-success border-success/30 bg-success/5' },
 }
 
 type FormState = {
@@ -45,18 +47,26 @@ const DEFAULT_FORM: FormState = {
 export function Lots() {
   const { t, i18n } = useTranslation()
   const lang = i18n.language.startsWith('pt') ? 'pt' : 'en'
+  const [, navigate] = useLocation()
   const { data: lots = [], isLoading } = useLots()
+  const { data: allProjects = [] } = useProjects()
   const create = useCreateLot()
   const update = useUpdateLot()
   const remove = useDeleteLot()
 
+  useEffect(() => { document.title = t('nav.lots') + ' — RevTech PRO' }, [t])
+
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Lot | null>(null)
   const [form, setForm] = useState<FormState>(DEFAULT_FORM)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Lot | null>(null)
 
   function openNew() {
     setEditing(null)
-    setForm(DEFAULT_FORM)
+    const nextNum = lots.length + 1
+    const year = new Date().getFullYear()
+    setForm({ ...DEFAULT_FORM, lot_number: `L-${year}-${String(nextNum).padStart(3, '0')}` })
     setModalOpen(true)
   }
 
@@ -125,70 +135,156 @@ export function Lots() {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="space-y-3">
           {lots.map(lot => {
             const cfg = STATUS_CONFIG[lot.status]
             const Icon = cfg.icon
+            const lotProjects = allProjects.filter(p => p.lot_id === lot.id)
+            const estimated = lot.estimated_items ?? 0
+            const created = lotProjects.length
+            const progressPct = estimated > 0 ? Math.min(100, Math.round((created / estimated) * 100)) : 0
+            const costPerItem = estimated > 0 ? lot.purchase_price / estimated : 0
+            const isExpanded = expandedId === lot.id
+
+            const soldProjects = lotProjects.filter(p => p.status === 'Vendido')
+            const totalInvested = lotProjects.reduce((s, p) => s + p.purchase_price + p.parts_cost + p.shipping_in + p.shipping_out, 0)
+            const totalRevenue = soldProjects.reduce((s, p) => s + (p.sale_price ?? 0), 0)
+            const totalProfit = totalRevenue - totalInvested
+            const remaining = estimated > 0 ? Math.max(0, estimated - created) : null
+
             return (
-              <div key={lot.id} className="rounded-xl border border-border bg-card p-4 space-y-3 hover:border-accent/30 transition-colors">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-semibold text-text-primary flex items-center gap-1.5">
-                      📦 {lot.lot_number ? `#${lot.lot_number}` : t('lots.unnamed')}
-                    </p>
-                    {lot.supplier && <p className="text-xs text-text-muted mt-0.5">{lot.supplier}</p>}
-                  </div>
-                  <span className={cn('flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border', cfg.color)}>
-                    <Icon className="h-3 w-3" />
-                    {lang === 'pt' ? cfg.label_pt : cfg.label_en}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <span className="text-text-muted">{t('lots.purchasePrice')}: </span>
-                    <span className="font-semibold text-text-primary">{fmtGBP(lot.purchase_price)}</span>
-                  </div>
-                  <div>
-                    <span className="text-text-muted">{t('lots.date')}: </span>
-                    <span className="text-text-primary">{fmtDate(lot.purchase_date)}</span>
-                  </div>
-                  {lot.estimated_items && (
-                    <div className="col-span-2">
-                      <span className="text-text-muted">{t('lots.estimatedItems')}: </span>
-                      <span className="text-text-primary">{lot.estimated_items}</span>
-                      {lot.purchase_price > 0 && lot.estimated_items > 0 && (
-                        <span className="text-text-muted ml-1">
-                          ({fmtGBP(lot.purchase_price / lot.estimated_items)}/{t('lots.perItem')})
-                        </span>
-                      )}
+              <div key={lot.id} className="rounded-xl border border-border bg-card overflow-hidden hover:border-accent/30 transition-colors">
+                {/* Header row */}
+                <div
+                  className="flex items-center gap-4 p-4 cursor-pointer select-none"
+                  onClick={() => setExpandedId(isExpanded ? null : lot.id)}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-text-primary">
+                        📦 {lot.lot_number ? `#${lot.lot_number}` : t('lots.unnamed')}
+                      </p>
+                      <span className={cn('flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border', cfg.color)}>
+                        <Icon className="h-3 w-3" />
+                        {lang === 'pt' ? cfg.label_pt : cfg.label_en}
+                      </span>
                     </div>
-                  )}
+                    <div className="flex items-center gap-3 mt-0.5 text-xs text-text-muted flex-wrap">
+                      {lot.supplier && <span>{lot.supplier}</span>}
+                      <span>{fmtDate(lot.purchase_date)}</span>
+                      <span>{fmtGBP(lot.purchase_price)}</span>
+                      {costPerItem > 0 && <span>{fmtGBP(costPerItem)}/{t('lots.perItem')}</span>}
+                    </div>
+                  </div>
+
+                  {/* Progress */}
+                  <div className="hidden sm:flex flex-col items-end gap-1 shrink-0 min-w-[120px]">
+                    <p className="text-xs text-text-muted">
+                      {created}/{estimated > 0 ? estimated : '?'} {t('lots.items_created')}
+                    </p>
+                    {estimated > 0 && (
+                      <div className="w-28 h-1.5 rounded-full bg-surface border border-border overflow-hidden">
+                        <div
+                          className={cn('h-full rounded-full transition-all', progressPct >= 100 ? 'bg-success' : progressPct >= 50 ? 'bg-accent' : 'bg-warning')}
+                          style={{ width: `${progressPct}%` }}
+                        />
+                      </div>
+                    )}
+                    {totalProfit !== 0 && (
+                      <p className={cn('text-xs font-semibold', totalProfit >= 0 ? 'text-success' : 'text-danger')}>
+                        {totalProfit >= 0 ? '+' : ''}{fmtGBP(totalProfit)} {t('lots.profit')}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={e => { e.stopPropagation(); openEdit(lot) }}
+                      className="p-1.5 rounded hover:bg-surface text-text-muted hover:text-accent transition-colors"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={e => { e.stopPropagation(); setDeleteTarget(lot) }}
+                      className="p-1.5 rounded hover:bg-surface text-text-muted hover:text-danger transition-colors"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                    {isExpanded ? <ChevronUp className="h-4 w-4 text-text-muted" /> : <ChevronDown className="h-4 w-4 text-text-muted" />}
+                  </div>
                 </div>
 
-                {lot.description && (
-                  <p className="text-xs text-text-muted line-clamp-2">{lot.description}</p>
+                {/* Expanded content */}
+                {isExpanded && (
+                  <div className="border-t border-border bg-surface/50 p-4 space-y-4">
+                    {/* Stats summary */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {[
+                        { label: t('lots.cost_per_item'), value: fmtGBP(costPerItem) },
+                        { label: t('lots.items_created'), value: `${created}${estimated > 0 ? `/${estimated}` : ''}` },
+                        { label: t('lots.total_invested'), value: fmtGBP(totalInvested) },
+                        { label: t('lots.profit'), value: fmtGBP(totalProfit), colored: true, profit: totalProfit },
+                      ].map(({ label, value, colored, profit }) => (
+                        <div key={label} className="rounded-lg bg-card border border-border p-2.5 text-center">
+                          <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">{label}</p>
+                          <p className={cn('text-sm font-bold', colored ? (profit! >= 0 ? 'text-success' : 'text-danger') : 'text-text-primary')}>{value}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {remaining !== null && remaining > 0 && (
+                      <p className="text-xs text-warning flex items-center gap-1">
+                        <AlertCircle className="h-3.5 w-3.5" />
+                        {remaining} {t('lots.items_remaining')}
+                      </p>
+                    )}
+
+                    {/* Projects from this lot */}
+                    {lotProjects.length > 0 ? (
+                      <div className="space-y-1.5">
+                        <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">{t('lots.projects_in_lot')} ({lotProjects.length})</p>
+                        {lotProjects.map(p => {
+                          const { profit: sp } = calcROI(p)
+                          return (
+                            <button
+                              key={p.id}
+                              onClick={() => navigate(`/projects/${p.id}`)}
+                              className="w-full flex items-center justify-between gap-3 rounded-lg bg-card border border-border px-3 py-2 hover:border-accent/40 hover:bg-accent/5 transition-colors text-left"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium text-text-primary truncate">{p.equipment}</p>
+                                <p className="text-xs text-text-muted">{p.ticket_number ? `${p.ticket_number} · ` : ''}{fmtDate(p.received_at)}</p>
+                              </div>
+                              <div className="shrink-0 flex items-center gap-2">
+                                <span className={cn('text-[10px] font-medium rounded-full border px-2 py-0.5', STATUS_COLORS[p.status])}>
+                                  {t(`statusMap.${p.status}`, { defaultValue: p.status })}
+                                </span>
+                                {p.sale_price != null && (
+                                  <span className={cn('text-xs font-semibold', sp >= 0 ? 'text-success' : 'text-danger')}>
+                                    {sp >= 0 ? '+' : ''}{fmtGBP(sp)}
+                                  </span>
+                                )}
+                              </div>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-text-muted text-center py-2">{t('lots.no_projects_yet')}</p>
+                    )}
+
+                    {lot.notes && (
+                      <p className="text-xs text-text-muted italic border-t border-border pt-3">{lot.notes}</p>
+                    )}
+                  </div>
                 )}
-
-                <div className="flex items-center gap-2 pt-1 border-t border-border">
-                  <Button size="sm" variant="ghost" onClick={() => openEdit(lot)} className="h-7 px-2 gap-1 text-xs">
-                    <Pencil className="h-3.5 w-3.5" /> {t('common.edit')}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => remove.mutate(lot.id)}
-                    className="h-7 px-2 gap-1 text-xs text-danger hover:text-danger hover:bg-danger/10"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" /> {t('common.delete')}
-                  </Button>
-                </div>
               </div>
             )
           })}
         </div>
       )}
 
+      {/* Modal */}
       <Dialog open={modalOpen} onOpenChange={o => !o && setModalOpen(false)}>
         <DialogContent>
           <DialogHeader>
@@ -250,6 +346,25 @@ export function Lots() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete confirmation */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 px-4" onClick={() => setDeleteTarget(null)}>
+          <div className="bg-card border border-border rounded-xl shadow-2xl p-6 w-full max-w-sm space-y-4" onClick={e => e.stopPropagation()}>
+            <h2 className="text-base font-semibold text-text-primary">{t('common.delete')} #{deleteTarget.lot_number}</h2>
+            <p className="text-sm text-text-muted">{t('delete.irreversible')}</p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDeleteTarget(null)}>{t('common.cancel')}</Button>
+              <Button
+                variant="destructive"
+                onClick={() => { remove.mutate(deleteTarget.id); setDeleteTarget(null) }}
+              >
+                {t('common.delete')}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

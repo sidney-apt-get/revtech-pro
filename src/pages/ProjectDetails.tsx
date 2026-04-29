@@ -420,18 +420,30 @@ export function ProjectDetails() {
       )}
 
       {/* Linked orders */}
-      {linkedOrders.length > 0 && (
-        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-          <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wider">{t('project_detail.linkedOrdersTitle', { count: linkedOrders.length })}</h2>
+      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+            {t('orders.linked_title')} {linkedOrders.length > 0 && `(${linkedOrders.length})`}
+          </h2>
+        </div>
+        {linkedOrders.length > 0 ? (
           <div className="space-y-2">
             {linkedOrders.map(o => (
               <div key={o.id} className="flex items-center justify-between gap-3 rounded-lg bg-surface border border-border px-3 py-2">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-text-primary truncate">{o.part_name}</p>
-                  <p className="text-xs text-text-muted">{o.supplier} · Qtd: {o.quantity}{o.total_cost != null ? ` · ${fmtGBP(o.total_cost)}` : ''}</p>
+                  <p className="text-xs text-text-muted">
+                    {o.supplier} · {t('orders.fields.quantity')}: {o.quantity}
+                    {o.total_cost != null ? ` · ${fmtGBP(o.total_cost)}` : ''}
+                  </p>
+                  {o.expected_at && o.status !== 'Entregue' && (
+                    <p className="text-xs text-text-muted/70">{t('orders.expected')}: {fmtDate(o.expected_at)}</p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className={cn('text-[10px] font-medium rounded-full border px-2 py-0.5', ORDER_STATUS_COLORS[o.status])}>{o.status}</span>
+                  <span className={cn('text-[10px] font-medium rounded-full border px-2 py-0.5', ORDER_STATUS_COLORS[o.status])}>
+                    {t(`orderStatusMap.${o.status}`, { defaultValue: o.status })}
+                  </span>
                   {o.order_url && (
                     <a href={o.order_url} target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-accent transition-colors">
                       <ExternalLink className="h-3.5 w-3.5" />
@@ -441,8 +453,16 @@ export function ProjectDetails() {
               </div>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <p className="text-xs text-text-muted">{t('project_detail.noLinkedOrders')}</p>
+        )}
+        <button
+          onClick={() => navigate(`/orders?new=true&project=${project.id}&ticket=${project.ticket_number ?? ''}`)}
+          className="w-full py-2 text-sm text-accent border border-accent/30 rounded-lg hover:bg-accent/10 transition-colors"
+        >
+          + {t('orders.add_for_project')}
+        </button>
+      </div>
 
       {/* Timeline */}
       <div>

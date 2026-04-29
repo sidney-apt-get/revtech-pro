@@ -602,7 +602,11 @@
     "select_project": "Seleccionar Projecto",
     "added_to_inventory": "Peça adicionada ao inventário",
     "added_to_project": "Peça adicionada ao projecto",
-    "dest_inventory": "Inventário"
+    "dest_inventory": "Inventário",
+    "linked_title": "Encomendas de Peças",
+    "add_for_project": "Adicionar Encomenda a este Projecto",
+    "expected": "Previsto",
+    "creating_for_project": "A criar encomenda para o projecto"
   },
   "defects": {
     "title": "Base de Defeitos",
@@ -880,6 +884,16 @@
     "date": "Data",
     "estimatedItems": "Items estimados",
     "perItem": "por item",
+    "from_lot": "De Lote de Compra",
+    "no_lot": "Não pertence a um lote",
+    "price_auto_filled": "Preço de compra preenchido automaticamente pelo custo por item do lote",
+    "cost_per_item": "Custo/Item",
+    "items_created": "Items Criados",
+    "total_invested": "Total Investido",
+    "profit": "Lucro do Lote",
+    "items_remaining": "items ainda por triar",
+    "projects_in_lot": "Projectos neste lote",
+    "no_projects_yet": "Ainda sem projectos ligados a este lote",
     "status": {
       "untriaged": "Não Triado",
       "in_progress": "Em Progresso",

@@ -50,6 +50,7 @@ export type Project = {
   sold_at: string | null
   created_at: string
   updated_at: string
+  lot_id?: string | null
 }
 
 export type Expense = {

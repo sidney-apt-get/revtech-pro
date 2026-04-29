@@ -113,6 +113,14 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
   const [batteryHealthManual, setBatteryHealthManual] = useState<number | null>(null)
   const [categorySlug, setCategorySlug] = useState<string>('')
   const [dynValues, setDynValues] = useState<Record<string, string>>({})
+  const [lotId, setLotId] = useState<string>('')
+  const [activeLots, setActiveLots] = useState<Array<{ id: string; lot_number: string | null; supplier: string | null; purchase_price: number; estimated_items: number | null }>>([])
+
+  useEffect(() => {
+    supabase.from('lots').select('id, lot_number, supplier, purchase_price, estimated_items')
+      .neq('status', 'completed').order('created_at', { ascending: false })
+      .then(({ data }) => { if (data) setActiveLots(data) })
+  }, [])
 
   const { register, handleSubmit, watch, setValue, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema) as Resolver<FormData>,
@@ -191,6 +199,7 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
       setBatteryHealthManual(null)
       setCategorySlug('')
       setDynValues({})
+      setLotId('')
     }
   }, [project, reset, open])
 
@@ -234,6 +243,7 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
       notes: data.notes || null,
       received_at: project?.received_at ?? new Date().toISOString(),
       sold_at: data.status === 'Vendido' ? (project?.sold_at ?? new Date().toISOString()) : null,
+      lot_id: lotId || null,
       imei: data.imei || null,
       imei2: data.imei2 || null,
       battery_capacity_original: data.battery_capacity_original ?? null,
@@ -389,6 +399,41 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
             <F label={t('projects.modal.supplierLabel')}><Input {...register('supplier_name')} placeholder="Nome ou plataforma" /></F>
             <F label={t('projects.modal.buyerLabel')}><Input {...register('buyer_name')} placeholder="Nome do comprador" /></F>
             <F label={t('projects.modal.purchaseRefLabel')}><Input {...register('purchase_reference')} placeholder="Nº recibo, factura..." /></F>
+            {!project && activeLots.length > 0 && (
+              <div className="col-span-2 space-y-1.5">
+                <Label>{t('lots.from_lot')} <span className="text-text-muted text-xs">({t('common.optional')})</span></Label>
+                <select
+                  value={lotId}
+                  onChange={e => {
+                    const id = e.target.value
+                    setLotId(id)
+                    if (id) {
+                      const lot = activeLots.find(l => l.id === id)
+                      if (lot && (lot.estimated_items ?? 0) > 0) {
+                        const costPerItem = parseFloat((lot.purchase_price / lot.estimated_items!).toFixed(2))
+                        setValue('purchase_price', costPerItem)
+                        setRoiValues(p => ({ ...p, purchasePrice: costPerItem }))
+                      }
+                      if (lot?.supplier) {
+                        setValue('supplier_name', lot.supplier)
+                      }
+                    }
+                  }}
+                  className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                >
+                  <option value="">{t('lots.no_lot')}</option>
+                  {activeLots.map(lot => (
+                    <option key={lot.id} value={lot.id}>
+                      #{lot.lot_number ?? '—'} — {lot.supplier ?? '?'}
+                      {(lot.estimated_items ?? 0) > 0 ? ` (£${(lot.purchase_price / lot.estimated_items!).toFixed(2)}/item)` : ''}
+                    </option>
+                  ))}
+                </select>
+                {lotId && (
+                  <p className="text-xs text-accent">💡 {t('lots.price_auto_filled')}</p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Dynamic fields for selected category */}

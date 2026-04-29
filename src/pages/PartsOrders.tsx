@@ -4,7 +4,7 @@ import { sendTelegramNotification } from '@/lib/telegram'
 import { useOrders, useCreateOrder, useUpdateOrder, useDeleteOrder } from '@/hooks/useOrders'
 import { useProjects, useUpdateProject } from '@/hooks/useProjects'
 import { useCreateInventoryItem } from '@/hooks/useInventory'
-import { type PartsOrder, type Project } from '@/lib/supabase'
+import { supabase, type PartsOrder, type Project } from '@/lib/supabase'
 import { fmtDate, fmtGBP } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { Plus, X, ExternalLink, Trash2, Package, ChevronDown, ChevronUp, CheckCircle2, Wrench, ArrowRight } from 'lucide-react'
@@ -125,7 +125,7 @@ function OrderCard({ order, onUpdateStatus, onDelete, linkedProject }: {
   )
 }
 
-function AddOrderModal({ onClose, initialValues }: { onClose: () => void; initialValues?: { part?: string; supplier?: string; cost?: string } }) {
+function AddOrderModal({ onClose, initialValues }: { onClose: () => void; initialValues?: { part?: string; supplier?: string; cost?: string; project_id?: string; ticket?: string } }) {
   const { t } = useTranslation()
   const createOrder = useCreateOrder()
   const { data: projects = [] } = useProjects()
@@ -136,6 +136,7 @@ function AddOrderModal({ onClose, initialValues }: { onClose: () => void; initia
     part_name: initialValues?.part ?? '',
     supplier: initialValues?.supplier ?? '',
     unit_cost: initialValues?.cost ? Number(initialValues.cost) : undefined,
+    project_id: initialValues?.project_id ?? null,
   })
 
   function set(k: string, v: unknown) { setForm(f => ({ ...f, [k]: v })) }
@@ -171,6 +172,11 @@ function AddOrderModal({ onClose, initialValues }: { onClose: () => void; initia
           <h2 className="text-sm font-semibold text-text-primary">{t('orders.newOrder')}</h2>
           <button onClick={onClose}><X className="h-4 w-4 text-text-muted" /></button>
         </div>
+        {initialValues?.ticket && (
+          <div className="px-4 py-2 bg-accent/10 border-b border-accent/20 text-xs text-accent font-medium">
+            📋 {t('orders.creating_for_project')}: <span className="font-mono">{initialValues.ticket}</span>
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="p-4 space-y-3">
           <div className="flex gap-2 flex-wrap">
             {SUPPLIERS_LINKS.map(s => (
@@ -373,7 +379,7 @@ export function PartsOrders() {
   const [filterStatus, setFilterStatus] = useState('')
   const [filterSupplier, setFilterSupplier] = useState('')
   const [showAdd, setShowAdd] = useState(false)
-  const [addInitialValues, setAddInitialValues] = useState<{ part?: string; supplier?: string; cost?: string } | undefined>()
+  const [addInitialValues, setAddInitialValues] = useState<{ part?: string; supplier?: string; cost?: string; project_id?: string; ticket?: string } | undefined>()
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [deleteInput, setDeleteInput] = useState('')
   const [receivedOrder, setReceivedOrder] = useState<PartsOrder | null>(null)
@@ -386,6 +392,8 @@ export function PartsOrders() {
         part: params.get('part') ?? undefined,
         supplier: params.get('supplier') ?? undefined,
         cost: params.get('cost') ?? undefined,
+        project_id: params.get('project') ?? undefined,
+        ticket: params.get('ticket') ?? undefined,
       })
       setShowAdd(true)
       window.history.replaceState({}, '', window.location.pathname)
@@ -407,20 +415,59 @@ export function PartsOrders() {
   const totalPending = orders.filter(o => ['Encomendado', 'Em Trânsito'].includes(o.status)).length
   const totalCost = orders.filter(o => o.status !== 'Cancelado').reduce((s, o) => s + (o.total_cost ?? 0), 0)
 
-  function handleStatusChange(id: string, status: PartsOrder['status']) {
+  async function handleStatusChange(id: string, status: PartsOrder['status']) {
     const order = orders.find(o => o.id === id)
-    const update: Partial<PartsOrder> & { id: string } = { id, status }
+    const upd: Partial<PartsOrder> & { id: string } = { id, status }
     if (status === 'Entregue') {
-      update.delivered_at = new Date().toISOString().split('T')[0]
-      updateOrder.mutate(update)
+      upd.delivered_at = new Date().toISOString().split('T')[0]
+      updateOrder.mutate(upd)
       if (order) {
         setReceivedOrder(order)
         sendTelegramNotification(
           `📦 <b>Encomenda recebida</b>\n${order.part_name} de ${order.supplier}\nQty: ${order.quantity}${order.total_cost != null ? `\nTotal: £${order.total_cost.toFixed(2)}` : ''}`
         )
+        // Add cost to project parts_cost
+        if (order.project_id && (order.total_cost ?? 0) > 0) {
+          const { data: proj } = await supabase
+            .from('projects')
+            .select('parts_cost, ticket_number')
+            .eq('id', order.project_id)
+            .single()
+          if (proj) {
+            await supabase.from('projects')
+              .update({ parts_cost: (proj.parts_cost || 0) + (order.total_cost || 0) })
+              .eq('id', order.project_id)
+          }
+        }
+        // Auto-advance project to Em Manutenção if all orders delivered
+        if (order.project_id) {
+          const { data: pending } = await supabase
+            .from('parts_orders')
+            .select('id, status')
+            .eq('project_id', order.project_id)
+            .neq('id', id)
+            .neq('status', 'Entregue')
+            .neq('status', 'Cancelado')
+          if ((pending?.length ?? 0) === 0) {
+            const { data: proj } = await supabase
+              .from('projects')
+              .select('ticket_number, status')
+              .eq('id', order.project_id)
+              .single()
+            if (proj?.status === 'Aguardando Peças') {
+              await supabase.from('projects')
+                .update({ status: 'Em Manutenção' })
+                .eq('id', order.project_id)
+              updateProject.mutate({ id: order.project_id, status: 'Em Manutenção' })
+              sendTelegramNotification(
+                `🔧 <b>Todas as peças chegaram!</b>\nProjecto ${proj.ticket_number ?? order.project_id} movido para "Em Manutenção"`
+              )
+            }
+          }
+        }
       }
     } else {
-      updateOrder.mutate(update)
+      updateOrder.mutate(upd)
     }
   }
 
