@@ -164,7 +164,7 @@ export function InventoryDetail() {
   const stockLow = item.quantity <= item.min_stock
   const ctx = (item.item_context ?? 'new') as keyof typeof CONTEXT_BADGE
   const badge = CONTEXT_BADGE[ctx] ?? CONTEXT_BADGE.new
-  const photos = item.photos ?? []
+  const photos = Array.isArray(item.photos) ? item.photos : []
 
   const activeProjects = projects.filter(p =>
     p.status !== 'Vendido' && p.status !== 'Cancelado'

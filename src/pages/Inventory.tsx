@@ -16,11 +16,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { NumberInput } from '@/components/NumberInput'
 import { DeleteConfirmation } from '@/components/DeleteConfirmation'
-import { BarcodeScanner } from '@/components/BarcodeScanner'
+import { ScanButton } from '@/components/ScanButton'
 import { lookupBarcode } from '@/lib/productLookup'
 import type { InventoryItem } from '@/lib/supabase'
 import { fmtGBP, fmtDate } from '@/lib/utils'
-import { Plus, Pencil, Trash2, AlertTriangle, ScanLine, Package, Search } from 'lucide-react'
+import { Plus, Pencil, Trash2, AlertTriangle, Package, Search } from 'lucide-react'
 
 const categories = ['Peças', 'Consumíveis', 'Ferramentas', 'Patrimônio'] as const
 type Category = typeof categories[number]
@@ -158,7 +158,9 @@ const CATEGORY_KEYWORDS: { keywords: string[]; slug: string }[] = [
   { keywords: ['ipad', 'tablet apple'], slug: 'mobile-ipad' },
   { keywords: ['macbook', 'mac book'], slug: 'laptop-macbook-pro' },
   { keywords: ['imac'], slug: 'desktop-imac' },
-  { keywords: ['fonte', 'psu', 'power supply'], slug: 'desktop-psu' },
+  { keywords: ['fonte', 'psu', 'power supply', 'carregador', 'adaptador', 'fonte de alimentação'], slug: 'desktop-psu' },
+  { keywords: ['carregador portátil', 'fonte notebook', 'ac adapter laptop'], slug: 'laptop-charger' },
+  { keywords: ['cabo', 'fio', 'wire', 'connector', 'conector'], slug: 'generic-part' },
   { keywords: ['estanho', 'solda', 'solder'], slug: 'consumable-solder' },
   { keywords: ['fluxo', 'flux'], slug: 'consumable-flux' },
   { keywords: ['pasta térmica', 'thermal'], slug: 'consumable-thermal' },
@@ -191,7 +193,6 @@ export function Inventory() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<InventoryItem | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<InventoryItem | null>(null)
-  const [scannerOpen, setScannerOpen] = useState(false)
   const [dynCategorySlug, setDynCategorySlug] = useState('')
   const [dynValues, setDynValues] = useState<Record<string, string>>({})
   const [suggestedSlug, setSuggestedSlug] = useState<string | null>(null)
@@ -240,22 +241,6 @@ export function Inventory() {
   }, [tabItems, search])
 
   const lowCount = inventory.filter(i => i.quantity < i.min_stock).length
-
-  async function handleScanDetected(code: string) {
-    setScannerOpen(false)
-    const byBarcode = inventory.find(i => i.barcode === code)
-    if (byBarcode) { navigate(`/inventory/${byBarcode.id}`); return }
-    const byName = inventory.find(i => i.item_name.toLowerCase().includes(code.toLowerCase()))
-    if (byName) { navigate(`/inventory/${byName.id}`); return }
-    openNew()
-    setValue('barcode', code)
-    setValue('item_name', code)
-    const info = await lookupBarcode(code)
-    if (info) {
-      if (info.name) setValue('item_name', info.name)
-      if (info.brand) setValue('supplier', info.brand)
-    }
-  }
 
   function openNew() {
     setEditing(null)
@@ -392,13 +377,24 @@ export function Inventory() {
               className="w-full rounded-lg border border-border bg-surface pl-8 pr-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
             />
           </div>
-          <button
-            onClick={() => setScannerOpen(true)}
+          <ScanButton
+            label="📷 Scan"
             title={t('inventory.scan')}
-            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm text-text-muted hover:bg-surface hover:text-accent transition-colors shrink-0"
-          >
-            <ScanLine className="h-4 w-4" />
-          </button>
+            onScan={async (code) => {
+              const byBarcode = inventory.find(i => i.barcode === code)
+              if (byBarcode) { navigate(`/inventory/${byBarcode.id}`); return }
+              const byName = inventory.find(i => i.item_name.toLowerCase().includes(code.toLowerCase()))
+              if (byName) { navigate(`/inventory/${byName.id}`); return }
+              openNew()
+              setValue('barcode', code)
+              setValue('item_name', code)
+              const info = await lookupBarcode(code)
+              if (info) {
+                if (info.name) setValue('item_name', info.name)
+                if (info.brand) setValue('supplier', info.brand)
+              }
+            }}
+          />
           <Button onClick={openNew} size="sm" className="shrink-0">
             <Plus className="h-4 w-4" /> {t('inventory.new')}
           </Button>
@@ -718,14 +714,6 @@ export function Inventory() {
         loading={remove.isPending}
       />
 
-      {/* Barcode scanner */}
-      {scannerOpen && (
-        <BarcodeScanner
-          title={t('inventory.scan')}
-          onDetected={handleScanDetected}
-          onClose={() => setScannerOpen(false)}
-        />
-      )}
     </div>
   )
 }

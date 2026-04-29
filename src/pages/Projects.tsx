@@ -4,7 +4,9 @@ import { useLocation } from 'wouter'
 import { useProjects } from '@/hooks/useProjects'
 import { KanbanBoard } from '@/components/KanbanBoard'
 import { ProjectModal } from '@/components/ProjectModal'
+import { ScanButton } from '@/components/ScanButton'
 import { Button } from '@/components/ui/button'
+import { supabase } from '@/lib/supabase'
 import type { Project, ProjectStatus } from '@/lib/supabase'
 import { ALL_STATUSES, calcROI, fmtGBP, fmtDate, STATUS_COLORS, STATUS_DOT, cn } from '@/lib/utils'
 import { Plus, Kanban, Filter, Search, TrendingUp, TrendingDown, ArrowUpDown, List, Pencil } from 'lucide-react'
@@ -74,6 +76,7 @@ function ProjectRow({ project, onEdit }: { project: Project; onEdit: (p: Project
 
 export function Projects() {
   const { t } = useTranslation()
+  const [, navigate] = useLocation()
   useEffect(() => { document.title = t('page_titles.projects') + ' — RevTech PRO' }, [t])
 
   const SORT_LABELS: Record<SortBy, string> = {
@@ -150,6 +153,17 @@ export function Projects() {
               <Kanban className="h-4 w-4" />
             </button>
           </div>
+          <ScanButton
+            label="📷 Scan"
+            title="Scan Serial / Ticket"
+            onScan={(code) => {
+              supabase.from('projects')
+                .select('id')
+                .or(`serial_number.eq.${code},ticket_number.eq.${code},imei.eq.${code}`)
+                .single()
+                .then(({ data }) => { if (data) navigate(`/projects/${data.id}`) })
+            }}
+          />
           <Button onClick={handleNew} size="sm">
             <Plus className="h-4 w-4" />
             {t('common.new')}

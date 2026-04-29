@@ -378,6 +378,7 @@ export function PartsOrders() {
   const createInventoryItem = useCreateInventoryItem()
   const [filterStatus, setFilterStatus] = useState('')
   const [filterSupplier, setFilterSupplier] = useState('')
+  const [showCompleted, setShowCompleted] = useState(false)
   const [showAdd, setShowAdd] = useState(false)
   const [addInitialValues, setAddInitialValues] = useState<{ part?: string; supplier?: string; cost?: string; project_id?: string; ticket?: string } | undefined>()
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
@@ -407,12 +408,14 @@ export function PartsOrders() {
   }, [toast])
 
   const filtered = orders.filter(o => {
+    if (!showCompleted && (o.status === 'Entregue' || o.status === 'Cancelado')) return false
     if (filterStatus && o.status !== filterStatus) return false
     if (filterSupplier && !o.supplier.toLowerCase().includes(filterSupplier.toLowerCase())) return false
     return true
   })
 
-  const totalPending = orders.filter(o => ['Encomendado', 'Em Trânsito'].includes(o.status)).length
+  const completedCount = orders.filter(o => o.status === 'Entregue' || o.status === 'Cancelado').length
+
   const totalCost = orders.filter(o => o.status !== 'Cancelado').reduce((s, o) => s + (o.total_cost ?? 0), 0)
 
   async function handleStatusChange(id: string, status: PartsOrder['status']) {
@@ -512,15 +515,33 @@ export function PartsOrders() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">{t('orders.title')}</h1>
-          <p className="text-text-muted text-sm mt-0.5">{t('orders.pendingLabel', { count: totalPending })} · {fmtGBP(totalCost)} total</p>
+          <p className="text-text-muted text-sm mt-0.5">
+            {filtered.length} {t('orders.pendingLabel', { count: filtered.length }).replace(String(filtered.length), '').trim()}
+            {!showCompleted && completedCount > 0 && (
+              <span className="text-gray-500 ml-2">(+{completedCount} {t('orders.show_completed').toLowerCase()})</span>
+            )}
+            {' '}· {fmtGBP(totalCost)} total
+          </p>
         </div>
-        <button
-          onClick={() => setShowAdd(true)}
-          className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent/90 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          {t('orders.new')}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowCompleted(!showCompleted)}
+            className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+              showCompleted
+                ? 'border-accent text-accent bg-accent/10'
+                : 'border-border text-text-muted hover:border-accent/40'
+            }`}
+          >
+            {showCompleted ? t('orders.hiding_completed') : t('orders.show_completed')}
+          </button>
+          <button
+            onClick={() => setShowAdd(true)}
+            className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent/90 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            {t('orders.new')}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
