@@ -922,6 +922,42 @@
     "session_expires": "Session expires in {{time}}",
     "reconnect": "Reconnect phone"
   },
+  "stock_out": {
+    "title": "Stock Withdrawal",
+    "current_stock": "Current stock",
+    "units": "units",
+    "quantity_label": "Quantity to withdraw",
+    "reason_label": "Reason for withdrawal",
+    "reason_project": "Used in Project",
+    "reason_sold": "Sold",
+    "reason_broken": "Damaged/Lost",
+    "reason_adjustment": "Inventory Adjustment",
+    "select_project": "Select project...",
+    "sale_price": "Sale price (£)",
+    "notes": "Notes (optional)",
+    "confirm": "Confirm Withdrawal",
+    "cancel": "Cancel",
+    "success": "Withdrawal recorded successfully",
+    "low_stock_after": "Stock now below minimum — consider ordering"
+  },
+  "inventory_form": {
+    "photos_section": "Photos",
+    "photos_hint": "Max 3 photos · Auto-compressed",
+    "add_photo": "Add Photo",
+    "category_suggestion": "Suggested category:",
+    "confirm_suggestion": "Confirm",
+    "dismiss_suggestion": "Dismiss",
+    "subcategory_label": "Sub-category",
+    "subcategory_placeholder": "Select sub-category..."
+  },
+  "notifications_panel": {
+    "title": "Notifications",
+    "mark_all_read": "Mark all as read",
+    "empty": "No notifications",
+    "low_stock_title": "Low stock",
+    "low_stock_body": "{{count}} units — minimum: {{min}}",
+    "order_now": "Order Now"
+  },
   "serialHistory": {
     "title": "Serial Number History",
     "subtitle": "Search the history of any device by serial number, IMEI or barcode",

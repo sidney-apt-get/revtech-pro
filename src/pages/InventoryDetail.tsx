@@ -29,6 +29,8 @@ const EVENT_LABELS: Record<string, string> = {
   movement_in: 'Entrada de stock',
   movement_out: 'Usado em projecto',
   movement_sold: 'Vendido',
+  stock_out: 'Baixa de stock',
+  part_used: 'Peça usada em projecto',
   created: 'Item criado',
   updated: 'Item actualizado',
 }
@@ -109,7 +111,17 @@ export function InventoryDetail() {
   const [uploading, setUploading] = useState(false)
   const [history, setHistory] = useState<ItemHistory[]>([])
   const [noteTranslated, setNoteTranslated] = useState<string | null>(null)
+  const [nameTranslated, setNameTranslated] = useState<string | null>(null)
+  const [cannibalReasonTranslated, setCannibalReasonTranslated] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const [showStockOut, setShowStockOut] = useState(false)
+  const [stockOutQty, setStockOutQty] = useState(1)
+  const [stockOutReason, setStockOutReason] = useState('')
+  const [selectedProjectId, setSelectedProjectId] = useState('')
+  const [salePrice, setSalePrice] = useState(0)
+  const [stockOutNotes, setStockOutNotes] = useState('')
+  const [stockOutSuccess, setStockOutSuccess] = useState(false)
 
   const item = items.find(i => i.id === id) ?? null
   const sourceProject = item?.source_project_id ? projects.find(p => p.id === item!.source_project_id) ?? null : null
@@ -147,6 +159,69 @@ export function InventoryDetail() {
   const ctx = (item.item_context ?? 'new') as keyof typeof CONTEXT_BADGE
   const badge = CONTEXT_BADGE[ctx] ?? CONTEXT_BADGE.new
   const photos = item.photos ?? []
+
+  const activeProjects = projects.filter(p =>
+    p.status !== 'Vendido' && p.status !== 'Cancelado'
+  )
+
+  async function handleStockOut() {
+    if (!item || !stockOutReason || stockOutQty < 1) return
+    const newQty = Math.max(0, item.quantity - stockOutQty)
+    try {
+      await updateItem.mutateAsync({ id: item.id, quantity: newQty })
+      const { data: { user } } = await supabase.auth.getUser()
+      const { data: entry } = await supabase.from('item_history').insert({
+        item_id: item.id,
+        item_type: 'inventory',
+        event_type: 'stock_out',
+        event_data: {
+          quantity: stockOutQty,
+          reason: stockOutReason,
+          project_id: selectedProjectId || null,
+          sale_price: salePrice || null,
+          notes: stockOutNotes,
+        },
+        notes: stockOutNotes || null,
+        user_id: user?.id ?? null,
+      }).select().single()
+      if (entry) setHistory(prev => [entry as ItemHistory, ...prev])
+
+      if (stockOutReason === 'project' && selectedProjectId) {
+        const { data: proj } = await supabase.from('projects').select('parts_cost').eq('id', selectedProjectId).single()
+        const newPartsCost = ((proj?.parts_cost ?? 0) as number) + item.unit_cost * stockOutQty
+        await supabase.from('projects').update({ parts_cost: newPartsCost }).eq('id', selectedProjectId)
+        await supabase.from('item_history').insert({
+          item_id: selectedProjectId,
+          item_type: 'project',
+          event_type: 'part_used',
+          event_data: {
+            part_name: item.item_name,
+            quantity: stockOutQty,
+            cost: item.unit_cost * stockOutQty,
+            inventory_id: item.id,
+          },
+          user_id: user?.id ?? null,
+        })
+      }
+
+      if (newQty <= item.min_stock) {
+        sendTelegramNotification(
+          `⚠️ <b>Stock baixo após baixa</b>\n${item.item_name}: ${newQty} unidades restantes (mínimo: ${item.min_stock})`
+        ).catch(() => {})
+      }
+
+      setShowStockOut(false)
+      setStockOutQty(1)
+      setStockOutReason('')
+      setSelectedProjectId('')
+      setSalePrice(0)
+      setStockOutNotes('')
+      setStockOutSuccess(true)
+      setTimeout(() => setStockOutSuccess(false), 4000)
+    } catch (err) {
+      console.error('Stock out failed:', err)
+    }
+  }
 
   async function adjustQty(delta: number) {
     const from = item!.quantity
@@ -226,22 +301,39 @@ export function InventoryDetail() {
               <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-medium', badge.cls)}>{badge.label}</span>
               <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-[10px] text-text-muted">{item.category}</span>
             </div>
-            <h1 className="text-xl font-bold text-text-primary">{item.item_name}</h1>
+            <h1 className="text-xl font-bold text-text-primary">{nameTranslated ?? item.item_name}</h1>
+            <TranslateButton
+              value={nameTranslated ?? item.item_name}
+              targetLang={targetLang}
+              onTranslated={v => { setNameTranslated(v); updateItem.mutateAsync({ id: item.id, item_name: v }).catch(() => {}) }}
+            />
             {item.supplier && <p className="text-sm text-text-muted">{item.supplier}</p>}
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
+            onClick={() => { setShowStockOut(true); setStockOutQty(1); setStockOutReason(''); setSelectedProjectId(''); setSalePrice(0); setStockOutNotes('') }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-warning/40 bg-warning/5 hover:bg-warning/10 text-sm text-warning transition-colors"
+          >
+            📤 {t('stock_out.title')}
+          </button>
+          <button
             onClick={() => navigate('/inventory')}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-surface hover:bg-accent/5 hover:border-accent/40 text-sm text-text-muted hover:text-accent transition-colors"
           >
-            <Pencil className="h-3.5 w-3.5" /> Editar
+            <Pencil className="h-3.5 w-3.5" /> {t('common.edit')}
           </button>
           <button onClick={() => setDeleteOpen(true)} className="p-1.5 rounded-lg border border-border bg-surface text-text-muted hover:text-danger hover:border-danger/30 transition-colors">
             <Trash2 className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
+
+      {stockOutSuccess && (
+        <div className="rounded-lg bg-success/10 border border-success/20 px-4 py-3 text-sm text-success flex items-center gap-2">
+          ✓ {t('stock_out.success')}
+        </div>
+      )}
 
       {/* Stock cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -313,7 +405,16 @@ export function InventoryDetail() {
           <div className="rounded-xl border border-orange-500/20 bg-orange-500/5 p-4 space-y-3">
             <h2 className="text-xs font-semibold text-orange-400 uppercase tracking-wider">♻️ Origem — Reaproveitada</h2>
             <div className="grid grid-cols-1 gap-y-3">
-              {item.cannibalization_reason && <InfoRow label="Motivo" value={item.cannibalization_reason} />}
+              {item.cannibalization_reason && (
+                <div>
+                  <InfoRow label="Motivo" value={cannibalReasonTranslated ?? item.cannibalization_reason} />
+                  <TranslateButton
+                    value={cannibalReasonTranslated ?? item.cannibalization_reason}
+                    targetLang={targetLang}
+                    onTranslated={v => { setCannibalReasonTranslated(v); updateItem.mutateAsync({ id: item.id, cannibalization_reason: v }).catch(() => {}) }}
+                  />
+                </div>
+              )}
               <div>
                 <p className="text-[10px] text-text-muted uppercase tracking-wider mb-0.5">Testada</p>
                 <p className={cn('text-sm font-semibold', item.condition_tested ? 'text-success' : 'text-text-muted')}>
@@ -442,6 +543,113 @@ export function InventoryDetail() {
           </div>
         )}
       </div>
+
+      {/* Stock Out Modal */}
+      {showStockOut && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[9999] px-4" onClick={() => setShowStockOut(false)}>
+          <div className="bg-[#1A1D27] rounded-xl p-6 w-full max-w-sm border border-[#2E3141] space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-white font-bold text-lg">📤 {t('stock_out.title')} — {item.item_name}</h3>
+            <p className="text-gray-400 text-sm">
+              {t('stock_out.current_stock')}: <strong className="text-white">{item.quantity}</strong> {t('stock_out.units')}
+            </p>
+
+            <div className="space-y-1">
+              <label className="text-xs text-gray-400 block">{t('stock_out.quantity_label')}</label>
+              <input
+                type="number" min={1} max={item.quantity}
+                value={stockOutQty}
+                onChange={e => setStockOutQty(Math.min(item.quantity, Math.max(1, parseInt(e.target.value) || 1)))}
+                className="w-full bg-[#252836] border border-[#2E3141] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-[#4F8EF7]"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs text-gray-400 block">{t('stock_out.reason_label')}</label>
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { value: 'project', label: `🔧 ${t('stock_out.reason_project')}` },
+                  { value: 'sold',    label: `💰 ${t('stock_out.reason_sold')}` },
+                  { value: 'broken',  label: `💔 ${t('stock_out.reason_broken')}` },
+                  { value: 'adjustment', label: `✏️ ${t('stock_out.reason_adjustment')}` },
+                ] as const).map(r => (
+                  <button
+                    key={r.value}
+                    type="button"
+                    onClick={() => setStockOutReason(r.value)}
+                    className={`p-3 rounded-lg border text-xs text-left transition-colors ${
+                      stockOutReason === r.value
+                        ? 'border-[#4F8EF7] bg-[#4F8EF7]/10 text-white'
+                        : 'border-[#2E3141] text-gray-400 hover:border-gray-500'
+                    }`}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {stockOutReason === 'project' && (
+              <div className="space-y-1">
+                <label className="text-xs text-gray-400 block">{t('stock_out.select_project')}</label>
+                <select
+                  value={selectedProjectId}
+                  onChange={e => setSelectedProjectId(e.target.value)}
+                  className="w-full bg-[#252836] border border-[#2E3141] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-[#4F8EF7]"
+                >
+                  <option value="">{t('stock_out.select_project')}</option>
+                  {activeProjects.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.ticket_number ? `${p.ticket_number} — ` : ''}{p.equipment}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {stockOutReason === 'sold' && (
+              <div className="space-y-1">
+                <label className="text-xs text-gray-400 block">{t('stock_out.sale_price')}</label>
+                <input
+                  type="number" step="0.01" min={0}
+                  value={salePrice || ''}
+                  onChange={e => setSalePrice(parseFloat(e.target.value) || 0)}
+                  placeholder="0.00"
+                  className="w-full bg-[#252836] border border-[#2E3141] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-[#4F8EF7]"
+                />
+              </div>
+            )}
+
+            <div className="space-y-1">
+              <label className="text-xs text-gray-400 block">{t('stock_out.notes')}</label>
+              <input
+                type="text"
+                value={stockOutNotes}
+                onChange={e => setStockOutNotes(e.target.value)}
+                placeholder="..."
+                className="w-full bg-[#252836] border border-[#2E3141] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-[#4F8EF7]"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowStockOut(false)}
+                className="flex-1 bg-[#252836] text-gray-300 rounded-lg py-2 text-sm hover:bg-[#2E3141] transition-colors"
+              >
+                {t('stock_out.cancel')}
+              </button>
+              <button
+                type="button"
+                disabled={!stockOutReason || stockOutQty < 1 || updateItem.isPending}
+                onClick={handleStockOut}
+                className="flex-1 bg-[#4F8EF7] text-white rounded-lg py-2 text-sm font-semibold disabled:opacity-30 hover:bg-[#4F8EF7]/90 transition-colors"
+              >
+                {updateItem.isPending ? t('common.saving') : t('stock_out.confirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete confirmation */}
       {deleteOpen && (

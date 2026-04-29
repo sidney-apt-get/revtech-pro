@@ -922,6 +922,42 @@
     "session_expires": "Sessão expira em {{time}}",
     "reconnect": "Religar telemóvel"
   },
+  "stock_out": {
+    "title": "Dar Baixa de Stock",
+    "current_stock": "Stock actual",
+    "units": "unidades",
+    "quantity_label": "Quantidade a retirar",
+    "reason_label": "Motivo da baixa",
+    "reason_project": "Usado em Projecto",
+    "reason_sold": "Vendido",
+    "reason_broken": "Avariado/Perdido",
+    "reason_adjustment": "Ajuste de Inventário",
+    "select_project": "Selecciona projecto...",
+    "sale_price": "Preço de venda (£)",
+    "notes": "Notas (opcional)",
+    "confirm": "Confirmar Baixa",
+    "cancel": "Cancelar",
+    "success": "Baixa registada com sucesso",
+    "low_stock_after": "Stock abaixo do mínimo — considera encomendar"
+  },
+  "inventory_form": {
+    "photos_section": "Fotos",
+    "photos_hint": "Máx. 3 fotos · Comprimidas automaticamente",
+    "add_photo": "+ Foto",
+    "category_suggestion": "Categoria sugerida:",
+    "confirm_suggestion": "Confirmar",
+    "dismiss_suggestion": "Ignorar",
+    "subcategory_label": "Sub-categoria",
+    "subcategory_placeholder": "Selecciona sub-categoria..."
+  },
+  "notifications_panel": {
+    "title": "Notificações",
+    "mark_all_read": "Marcar todas como lidas",
+    "empty": "Nenhuma notificação",
+    "low_stock_title": "Stock baixo",
+    "low_stock_body": "{{count}} unidades — mínimo: {{min}}",
+    "order_now": "Encomendar"
+  },
   "serialHistory": {
     "title": "Histórico por Número de Série",
     "subtitle": "Pesquisa o historial de qualquer equipamento pelo seu serial, IMEI ou código de barras",

@@ -137,6 +137,46 @@ function filterByTab(items: InventoryItem[], tab: ContextTab): InventoryItem[] {
 
 const today = new Date().toISOString().split('T')[0]
 
+const CATEGORY_KEYWORDS: { keywords: string[]; slug: string }[] = [
+  { keywords: ['ssd', 'nvme', 'sata', 'disco'], slug: 'laptop-ssd' },
+  { keywords: ['ram', 'memória', 'ddr', 'dimm'], slug: 'laptop-ram' },
+  { keywords: ['cpu', 'processador', 'intel', 'amd', 'ryzen', 'core'], slug: 'desktop-cpu' },
+  { keywords: ['gpu', 'gráfica', 'nvidia', 'radeon', 'gtx', 'rtx'], slug: 'desktop-gpu' },
+  { keywords: ['ecrã', 'display', 'lcd', 'oled', 'painel'], slug: 'laptop-screen' },
+  { keywords: ['bateria', 'battery', 'acumulador'], slug: 'laptop-battery' },
+  { keywords: ['placa-mãe', 'motherboard', 'mainboard'], slug: 'desktop-motherboard' },
+  { keywords: ['válvula', 'tube', 'el34', '6l6', 'kt88', 'ecc'], slug: 'audio-tubes' },
+  { keywords: ['amplificador', 'amplifier', 'amp', 'marantz', 'pioneer', 'sansui'], slug: 'audio-amplifier' },
+  { keywords: ['gira-discos', 'turntable', 'vinil', 'technics'], slug: 'audio-turntable' },
+  { keywords: ['coluna', 'speaker', 'woofer', 'tweeter'], slug: 'audio-speakers' },
+  { keywords: ['playstation', 'ps4', 'ps5', 'ps3'], slug: 'console-playstation' },
+  { keywords: ['xbox', 'series x', 'series s'], slug: 'console-xbox' },
+  { keywords: ['nintendo', 'switch', 'wii'], slug: 'console-nintendo-home' },
+  { keywords: ['comando', 'controller', 'dualsense', 'dualshock'], slug: 'console-controller' },
+  { keywords: ['iphone', 'ios'], slug: 'mobile-iphone' },
+  { keywords: ['samsung', 'android', 'pixel', 'oneplus'], slug: 'mobile-android-flagship' },
+  { keywords: ['ipad', 'tablet apple'], slug: 'mobile-ipad' },
+  { keywords: ['macbook', 'mac book'], slug: 'laptop-macbook-pro' },
+  { keywords: ['imac'], slug: 'desktop-imac' },
+  { keywords: ['fonte', 'psu', 'power supply'], slug: 'desktop-psu' },
+  { keywords: ['estanho', 'solda', 'solder'], slug: 'consumable-solder' },
+  { keywords: ['fluxo', 'flux'], slug: 'consumable-flux' },
+  { keywords: ['pasta térmica', 'thermal'], slug: 'consumable-thermal' },
+  { keywords: ['osciloscópio', 'oscilloscope'], slug: 'tool-oscilloscope' },
+  { keywords: ['multímetro', 'multimeter'], slug: 'tool-multimeter' },
+  { keywords: ['monitor'], slug: 'peripheral-monitor' },
+  { keywords: ['teclado', 'keyboard'], slug: 'peripheral-keyboard' },
+  { keywords: ['impressora', 'printer'], slug: 'tool-printer' },
+]
+
+function suggestCategory(itemName: string): string | null {
+  const name = itemName.toLowerCase()
+  for (const mapping of CATEGORY_KEYWORDS) {
+    if (mapping.keywords.some(k => name.includes(k))) return mapping.slug
+  }
+  return null
+}
+
 export function Inventory() {
   const { t, i18n } = useTranslation()
   const [, navigate] = useLocation()
@@ -154,6 +194,9 @@ export function Inventory() {
   const [scannerOpen, setScannerOpen] = useState(false)
   const [dynCategorySlug, setDynCategorySlug] = useState('')
   const [dynValues, setDynValues] = useState<Record<string, string>>({})
+  const [suggestedSlug, setSuggestedSlug] = useState<string | null>(null)
+  const [suggestionDismissed, setSuggestionDismissed] = useState(false)
+  const [newPhotos, setNewPhotos] = useState<File[]>([])
   const { categories: subCategories } = useCategories('inventory')
   const targetLang = (i18n.language.startsWith('en') ? 'en' : 'pt') as 'pt' | 'en'
 
@@ -166,7 +209,22 @@ export function Inventory() {
   })
 
   const watchedContext = watch('item_context')
+  const watchedItemName = watch('item_name')
   const isToolOrAsset = watch('category') === 'Ferramentas' || watch('category') === 'Patrimônio'
+
+  useEffect(() => {
+    if (!watchedItemName || watchedItemName.length < 3) { setSuggestedSlug(null); return }
+    const timer = setTimeout(() => {
+      const slug = suggestCategory(watchedItemName)
+      if (slug && slug !== dynCategorySlug) {
+        setSuggestedSlug(slug)
+        setSuggestionDismissed(false)
+      } else {
+        setSuggestedSlug(null)
+      }
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [watchedItemName, dynCategorySlug])
 
   const tabItems = filterByTab(inventory, activeTab)
   const filteredItems = useMemo(() => {
@@ -202,6 +260,9 @@ export function Inventory() {
     setEditing(null)
     setDynCategorySlug('')
     setDynValues({})
+    setSuggestedSlug(null)
+    setSuggestionDismissed(false)
+    setNewPhotos([])
     reset({
       category: 'Peças', quantity: 0, min_stock: 5, unit_cost: 0,
       item_context: 'new', condition_tested: false, entry_date: today,
@@ -240,6 +301,30 @@ export function Inventory() {
     setModalOpen(true)
   }
 
+  async function compressImageFile(file: File): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      const url = URL.createObjectURL(file)
+      img.onload = () => {
+        URL.revokeObjectURL(url)
+        const MAX_W = 800, MAX_H = 600
+        let { width, height } = img
+        if (width > MAX_W || height > MAX_H) {
+          const ratio = Math.min(MAX_W / width, MAX_H / height)
+          width = Math.round(width * ratio)
+          height = Math.round(height * ratio)
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = width; canvas.height = height
+        const ctx = canvas.getContext('2d')!
+        ctx.drawImage(img, 0, 0, width, height)
+        canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Compression failed')), 'image/jpeg', 0.75)
+      }
+      img.onerror = reject
+      img.src = url
+    })
+  }
+
   async function onSubmit(data: FormData) {
     const payload = {
       item_name: data.item_name,
@@ -267,7 +352,27 @@ export function Inventory() {
       await saveItemFieldValues(editing.id, 'inventory', dynValues)
     } else {
       const newItem = await create.mutateAsync(payload as Parameters<typeof create.mutateAsync>[0])
-      if (newItem?.id) await saveItemFieldValues(newItem.id, 'inventory', dynValues)
+      if (newItem?.id) {
+        await saveItemFieldValues(newItem.id, 'inventory', dynValues)
+        if (newPhotos.length > 0) {
+          const { data: { user } } = await supabase.auth.getUser()
+          const uploadedUrls: string[] = []
+          for (const file of newPhotos) {
+            try {
+              const blob = await compressImageFile(file)
+              const path = `${user!.id}/${newItem.id}/${Date.now()}.jpg`
+              const { error } = await supabase.storage.from('inventory-photos').upload(path, blob, { contentType: 'image/jpeg' })
+              if (!error) {
+                const { data: { publicUrl } } = supabase.storage.from('inventory-photos').getPublicUrl(path)
+                uploadedUrls.push(publicUrl)
+              }
+            } catch { /* skip failed uploads */ }
+          }
+          if (uploadedUrls.length > 0) {
+            await update.mutateAsync({ id: newItem.id, photos: uploadedUrls })
+          }
+        }
+      }
     }
     setModalOpen(false)
   }
@@ -429,19 +534,39 @@ export function Inventory() {
             {/* Sub-categoria */}
             {subCategories.length > 0 && (
               <div className="space-y-1.5">
-                <Label>Sub-categoria</Label>
+                <Label>{t('inventory_form.subcategory_label', { defaultValue: 'Sub-categoria' })}</Label>
                 <select
                   value={dynCategorySlug}
-                  onChange={e => { setDynCategorySlug(e.target.value); setDynValues({}) }}
+                  onChange={e => { setDynCategorySlug(e.target.value); setDynValues({}); setSuggestedSlug(null) }}
                   className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
                 >
-                  <option value="">— Nenhuma —</option>
-                  {subCategories.map(c => (
-                    <option key={c.slug} value={c.slug}>
-                      {c.icon ? `${c.icon} ` : ''}{targetLang === 'en' ? c.name_en : c.name_pt}
-                    </option>
-                  ))}
+                  <option value="">— {t('inventory_form.subcategory_placeholder', { defaultValue: 'Nenhuma' })} —</option>
+                  {[...subCategories]
+                    .sort((a, b) => (targetLang === 'en' ? a.name_en : a.name_pt).localeCompare(targetLang === 'en' ? b.name_en : b.name_pt))
+                    .map(c => (
+                      <option key={c.slug} value={c.slug}>
+                        {targetLang === 'en' ? c.name_en : c.name_pt}
+                      </option>
+                    ))}
                 </select>
+                {suggestedSlug && !suggestionDismissed && !dynCategorySlug && (() => {
+                  const cat = subCategories.find(c => c.slug === suggestedSlug)
+                  if (!cat) return null
+                  return (
+                    <div className="flex items-center gap-2 rounded-lg bg-accent/5 border border-accent/20 px-3 py-2 text-xs">
+                      <span className="text-text-muted">{t('inventory_form.category_suggestion', { defaultValue: 'Categoria sugerida:' })}</span>
+                      <span className="font-semibold text-accent">{targetLang === 'en' ? cat.name_en : cat.name_pt}</span>
+                      <button type="button" onClick={() => { setDynCategorySlug(suggestedSlug); setSuggestedSlug(null) }}
+                        className="ml-auto text-accent font-semibold hover:underline">
+                        {t('inventory_form.confirm_suggestion', { defaultValue: 'Confirmar' })}
+                      </button>
+                      <button type="button" onClick={() => setSuggestionDismissed(true)}
+                        className="text-text-muted hover:text-text-primary">
+                        {t('inventory_form.dismiss_suggestion', { defaultValue: 'Ignorar' })}
+                      </button>
+                    </div>
+                  )
+                })()}
               </div>
             )}
 
@@ -533,6 +658,45 @@ export function Inventory() {
               <Label>Notas</Label>
               <Textarea {...register('notes')} rows={2} />
             </div>
+
+            {/* Fotos (apenas para novo item) */}
+            {!editing && (
+              <div className="space-y-1.5">
+                <Label>{t('inventory_form.photos_section', { defaultValue: 'Fotos' })}</Label>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {newPhotos.map((file, i) => (
+                    <div key={i} className="relative">
+                      <img
+                        src={URL.createObjectURL(file)}
+                        alt=""
+                        className="h-20 w-20 rounded-lg object-cover border border-border"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setNewPhotos(p => p.filter((_, idx) => idx !== i))}
+                        className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-danger text-white flex items-center justify-center text-xs hover:bg-danger/80"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  {newPhotos.length < 3 && (
+                    <label className="h-20 w-20 rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center text-text-muted hover:border-accent/40 hover:text-accent transition-colors cursor-pointer">
+                      <span className="text-lg">+</span>
+                      <span className="text-[10px]">{t('inventory_form.add_photo', { defaultValue: '+ Foto' })}</span>
+                      <input type="file" accept="image/*" className="hidden"
+                        onChange={e => {
+                          const file = e.target.files?.[0]
+                          if (file) setNewPhotos(p => [...p, file])
+                          e.target.value = ''
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
+                <p className="text-[10px] text-text-muted">{t('inventory_form.photos_hint', { defaultValue: 'Máx. 3 fotos · Comprimidas automaticamente' })}</p>
+              </div>
+            )}
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>

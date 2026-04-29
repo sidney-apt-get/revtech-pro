@@ -60,3 +60,8 @@ export function useLowStockCount() {
   const { data } = useInventory()
   return data?.filter(i => i.quantity < i.min_stock).length ?? 0
 }
+
+export function useLowStockItems() {
+  const { data } = useInventory()
+  return data?.filter(i => i.quantity <= i.min_stock) ?? []
+}

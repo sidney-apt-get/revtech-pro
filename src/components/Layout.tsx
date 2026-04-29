@@ -7,9 +7,9 @@ import {
   ShoppingCart, Database, FileText, Settings, Bell,
   Shield, ChevronDown, ChevronUp, UserCog, ShoppingBag, Tag, History, ShieldCheck, PoundSterling, Layers,
 } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { supabase, type InventoryItem } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
-import { useLowStockCount } from '@/hooks/useInventory'
+import { useLowStockCount, useLowStockItems } from '@/hooks/useInventory'
 import { useInTransitCount } from '@/hooks/useOrders'
 import { useSettings } from '@/contexts/SettingsContext'
 import { useRole } from '@/contexts/RoleContext'
@@ -178,61 +178,87 @@ function AdminMenu({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
-function NotificationBell({ stockCount, ordersCount }: { stockCount: number; ordersCount: number }) {
+function NotificationBell({ stockCount, ordersCount, lowStockItems }: { stockCount: number; ordersCount: number; lowStockItems: InventoryItem[] }) {
   const { t } = useTranslation()
+  const [, navigate] = useLocation()
   const [open, setOpen] = useState(false)
   const total = stockCount + ordersCount
 
+  useEffect(() => {
+    if (!open) return
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setOpen(false) }
+    function onClick(e: MouseEvent) {
+      const target = e.target as Element
+      if (!target.closest('[data-notification-panel]')) setOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('mousedown', onClick)
+    return () => { document.removeEventListener('keydown', onKey); document.removeEventListener('mousedown', onClick) }
+  }, [open])
+
   return (
-    <div className="relative">
+    <div data-notification-panel className="relative">
       <button
         onClick={() => setOpen(o => !o)}
         className="relative p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-surface transition-colors"
       >
         <Bell className="h-4 w-4" />
         {total > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 h-4 w-4 flex items-center justify-center rounded-full bg-danger text-white text-xs font-bold">
+          <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-0.5 flex items-center justify-center rounded-full bg-danger text-white text-[10px] font-bold">
             {total > 9 ? '9+' : total}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-8 z-50 w-72 rounded-xl border border-border bg-card shadow-2xl p-2">
-          <p className="text-xs font-semibold text-text-muted px-2 py-1.5">{t('notifications.title')}</p>
-          {total === 0 ? (
-            <p className="text-xs text-text-muted px-2 py-3 text-center">{t('notifications.none')}</p>
-          ) : (
-            <div className="space-y-1">
-              {stockCount > 0 && (
-                <Link href="/inventory">
-                  <span onClick={() => setOpen(false)} className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-surface cursor-pointer transition-colors">
-                    <div className="h-7 w-7 rounded-full bg-warning/20 flex items-center justify-center shrink-0">
-                      <Package className="h-3.5 w-3.5 text-warning" />
+        <div className="fixed right-4 top-4 z-[9999] w-[360px] max-h-[400px] rounded-xl border border-border bg-card shadow-2xl flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+            <p className="text-sm font-semibold text-text-primary">{t('notifications_panel.title')}</p>
+            <button onClick={() => setOpen(false)} className="p-0.5 text-text-muted hover:text-text-primary transition-colors">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <div className="overflow-y-auto flex-1">
+            {total === 0 ? (
+              <p className="text-sm text-text-muted text-center py-8">{t('notifications_panel.empty')}</p>
+            ) : (
+              <div className="p-2 space-y-1">
+                {lowStockItems.map(item => (
+                  <div key={item.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-surface transition-colors">
+                    <div className="h-8 w-8 rounded-full bg-danger/10 flex items-center justify-center shrink-0">
+                      <AlertTriangle className="h-4 w-4 text-danger" />
                     </div>
-                    <p className="text-xs text-text-primary">
-                      <span className="font-semibold">{stockCount}</span> {t('notifications.lowStock_other', { count: stockCount })}
-                    </p>
-                  </span>
-                </Link>
-              )}
-              {ordersCount > 0 && (
-                <Link href="/orders">
-                  <span onClick={() => setOpen(false)} className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-surface cursor-pointer transition-colors">
-                    <div className="h-7 w-7 rounded-full bg-orange-500/20 flex items-center justify-center shrink-0">
-                      <ShoppingCart className="h-3.5 w-3.5 text-orange-400" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-text-primary truncate">{item.item_name}</p>
+                      <p className="text-xs text-text-muted">
+                        {t('notifications_panel.low_stock_body', { count: item.quantity, min: item.min_stock })}
+                      </p>
                     </div>
-                    <p className="text-xs text-text-primary">
-                      <span className="font-semibold">{ordersCount}</span> {t('notifications.inTransit_other', { count: ordersCount })}
-                    </p>
-                  </span>
-                </Link>
-              )}
-            </div>
-          )}
-          <button onClick={() => setOpen(false)} className="absolute top-2 right-2 p-0.5 text-text-muted hover:text-text-primary">
-            <X className="h-3 w-3" />
-          </button>
+                    <button
+                      onClick={() => { navigate('/orders/new'); setOpen(false) }}
+                      className="text-xs font-medium text-accent hover:underline shrink-0"
+                    >
+                      {t('notifications_panel.order_now')}
+                    </button>
+                  </div>
+                ))}
+                {ordersCount > 0 && (
+                  <Link href="/orders">
+                    <span onClick={() => setOpen(false)} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-surface transition-colors cursor-pointer">
+                      <div className="h-8 w-8 rounded-full bg-orange-500/20 flex items-center justify-center shrink-0">
+                        <ShoppingCart className="h-4 w-4 text-orange-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-text-primary">
+                          <span className="font-semibold">{ordersCount}</span> {t('notifications.inTransit_other', { count: ordersCount })}
+                        </p>
+                      </div>
+                    </span>
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -247,6 +273,7 @@ export function Layout({ children }: LayoutProps) {
   const { settings } = useSettings()
   const { role, isAdmin } = useRole()
   const lowStockCount = useLowStockCount()
+  const lowStockItems = useLowStockItems()
   const inTransitCount = useInTransitCount()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [bottomExpanded, setBottomExpanded] = useState(() =>
@@ -336,7 +363,7 @@ export function Layout({ children }: LayoutProps) {
                 </div>
                 <p className="text-xs text-text-muted truncate">{user?.email}</p>
               </div>
-              <NotificationBell stockCount={lowStockCount} ordersCount={inTransitCount} />
+              <NotificationBell stockCount={lowStockCount} ordersCount={inTransitCount} lowStockItems={lowStockItems} />
             </div>
 
             {isAdmin && <AdminMenu onNavigate={() => setMobileOpen(false)} />}
@@ -394,7 +421,7 @@ export function Layout({ children }: LayoutProps) {
           </div>
           <div className="flex items-center gap-2">
             <LanguageSelector compact />
-            <NotificationBell stockCount={lowStockCount} ordersCount={inTransitCount} />
+            <NotificationBell stockCount={lowStockCount} ordersCount={inTransitCount} lowStockItems={lowStockItems} />
             <button onClick={() => setMobileOpen(!mobileOpen)} className="text-text-muted hover:text-text-primary p-1">
               {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
