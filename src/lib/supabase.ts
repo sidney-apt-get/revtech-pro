@@ -332,3 +332,16 @@ export type Warranty = {
   claimed_at: string | null
   created_at: string
 }
+
+export type ScannerSession = {
+  id: string
+  token: string
+  user_id: string | null
+  status: 'waiting' | 'paired' | 'scanning' | 'result'
+  result_type: 'barcode' | 'photo' | 'cancelled' | null
+  result_value: string | null
+  ai_result: Record<string, unknown> | null
+  paired_at: string | null
+  expires_at: string
+  created_at: string
+}

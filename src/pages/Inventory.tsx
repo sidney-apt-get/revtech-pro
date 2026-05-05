@@ -16,8 +16,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { NumberInput } from '@/components/NumberInput'
 import { DeleteConfirmation } from '@/components/DeleteConfirmation'
-import { ScanButton } from '@/components/ScanButton'
+import { ScannerButton } from '@/components/ScannerButton'
 import { lookupBarcode } from '@/lib/productLookup'
+import { analyzeWithGemini } from '@/lib/aiAnalysis'
 import type { InventoryItem } from '@/lib/supabase'
 import { fmtGBP, fmtDate } from '@/lib/utils'
 import { Plus, Pencil, Trash2, AlertTriangle, Package, Search } from 'lucide-react'
@@ -242,6 +243,16 @@ export function Inventory() {
 
   const lowCount = inventory.filter(i => i.quantity < i.min_stock).length
 
+  async function handleAIPhoto(dataUrl: string) {
+    const base64 = dataUrl.split(',')[1]
+    const mimeType = dataUrl.match(/data:(.*?);/)?.[1] || 'image/jpeg'
+    const result = await analyzeWithGemini(base64, mimeType)
+    if (!result) return
+    if (result.brand && result.model) setValue('item_name', `${result.brand} ${result.model}`.trim())
+    else if (result.brand) setValue('item_name', result.brand)
+    if (result.brand) setValue('supplier', result.brand)
+  }
+
   function openNew() {
     setEditing(null)
     setDynCategorySlug('')
@@ -377,18 +388,18 @@ export function Inventory() {
               className="w-full rounded-lg border border-border bg-surface pl-8 pr-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
             />
           </div>
-          <ScanButton
-            label="📷 Scan"
-            title={t('inventory.scan')}
-            onScan={async (code) => {
-              const byBarcode = inventory.find(i => i.barcode === code)
+          <ScannerButton
+            label="📱 Scan"
+            onResult={async (value, type) => {
+              if (type !== 'barcode') return
+              const byBarcode = inventory.find(i => i.barcode === value)
               if (byBarcode) { navigate(`/inventory/${byBarcode.id}`); return }
-              const byName = inventory.find(i => i.item_name.toLowerCase().includes(code.toLowerCase()))
+              const byName = inventory.find(i => i.item_name.toLowerCase().includes(value.toLowerCase()))
               if (byName) { navigate(`/inventory/${byName.id}`); return }
               openNew()
-              setValue('barcode', code)
-              setValue('item_name', code)
-              const info = await lookupBarcode(code)
+              setValue('barcode', value)
+              setValue('item_name', value)
+              const info = await lookupBarcode(value)
               if (info) {
                 if (info.name) setValue('item_name', info.name)
                 if (info.brand) setValue('supplier', info.brand)
@@ -613,7 +624,23 @@ export function Inventory() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>{t('inventory.barcode')}</Label>
-                <Input {...register('barcode')} placeholder="EAN / SKU" />
+                <div className="flex gap-1.5">
+                  <Input {...register('barcode')} placeholder="EAN / SKU" className="flex-1" />
+                  <ScannerButton
+                    label="📱"
+                    onResult={async (value, type) => {
+                      if (type === 'barcode') {
+                        setValue('barcode', value)
+                        const info = await lookupBarcode(value)
+                        if (info) {
+                          if (info.name) setValue('item_name', info.name)
+                          if (info.brand) setValue('supplier', info.brand)
+                        }
+                      }
+                      if (type === 'photo') handleAIPhoto(value)
+                    }}
+                  />
+                </div>
               </div>
               <div className="space-y-1.5">
                 <Label>{t('inventory.supplier_ref')}</Label>

@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { ROICalculator } from './ROICalculator'
 import { FinancialInput } from './FinancialInput'
 import { BarcodeScanner } from './BarcodeScanner'
+import { ScannerButton } from './ScannerButton'
 import { WarrantyModal } from './WarrantyModal'
 import { PhotoUpload } from './PhotoUpload'
 import { DynamicFields } from './DynamicFields'
@@ -25,6 +26,7 @@ import { sendTelegramNotification } from '@/lib/telegram'
 import type { Project } from '@/lib/supabase'
 import { ALL_STATUSES } from '@/lib/utils'
 import { lookupBarcode } from '@/lib/productLookup'
+import { analyzeWithGemini } from '@/lib/aiAnalysis'
 import { ScanLine, Loader2, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react'
 
 const STORAGE_OPTIONS = [16, 32, 64, 128, 256, 512, 1024]
@@ -222,6 +224,21 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
 
   const calcHealth = capOrig && capCur && capOrig > 0 ? Math.min(100, Math.round((capCur / capOrig) * 100)) : null
 
+  async function handleAIAnalysis(dataUrl: string) {
+    const base64 = dataUrl.split(',')[1]
+    const mimeType = dataUrl.match(/data:(.*?);/)?.[1] || 'image/jpeg'
+    const result = await analyzeWithGemini(base64, mimeType)
+    if (!result) return
+    if (result.brand) setValue('brand', result.brand)
+    if (result.model) setValue('model', result.model)
+    if (result.imei) setValue('imei', result.imei)
+    if (result.serial_number) setValue('serial_number', result.serial_number)
+    if (result.storage_gb) setValue('storage_gb', result.storage_gb)
+    if (result.ram_gb) setValue('ram_gb', result.ram_gb)
+    if (result.condition_grade) setValue('condition_grade', result.condition_grade as 'A' | 'B' | 'C' | 'D' | 'Para peças')
+    if (result.suggested_defect && !watch('defect_description')) setValue('defect_description', result.suggested_defect)
+  }
+
   async function onSubmit(data: FormData) {
     const payload = {
       equipment: data.equipment,
@@ -369,11 +386,15 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
                 <button
                   type="button"
                   onClick={() => setShowScanner(true)}
-                  title="Scanner"
+                  title="Scanner câmara"
                   className="px-2 rounded-lg border border-border bg-surface text-text-muted hover:text-accent hover:border-accent/40 transition-colors"
                 >
                   <ScanLine className="h-4 w-4" />
                 </button>
+                <ScannerButton
+                  label="📱"
+                  onResult={(value) => setValue('serial_number', value)}
+                />
               </div>
             </div>
             <div className="space-y-1.5">
@@ -491,6 +512,13 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
                     <Label>IMEI 1</Label>
                     <div className="flex gap-1.5">
                       <Input {...register('imei')} placeholder={t('projects.modal.imeiShort')} maxLength={15} className="flex-1 font-mono text-xs" />
+                      <ScannerButton
+                        label="📱"
+                        onResult={(value, type) => {
+                          if (type === 'barcode') setValue('imei', value)
+                          if (type === 'photo') handleAIAnalysis(value)
+                        }}
+                      />
                       {watch('imei') && watch('imei')!.length === 15 && (
                         <a
                           href={`https://www.imei.info/?imei=${watch('imei')}`}

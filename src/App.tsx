@@ -25,6 +25,7 @@ import { Finances } from '@/pages/Finances'
 import { Lots } from '@/pages/Lots'
 import { InventoryDetail } from '@/pages/InventoryDetail'
 import MobileScanner from '@/pages/MobileScanner'
+import MobileScanPage from '@/pages/MobileScanPage'
 import AuthCallback from '@/pages/AuthCallback'
 import { SettingsProvider } from '@/contexts/SettingsContext'
 import { RoleProvider } from '@/contexts/RoleContext'
@@ -80,6 +81,7 @@ export default function App() {
           </Route>
           <Route path="/auth/callback" component={AuthCallback} />
           <Route path="/mobile-scanner" component={MobileScanner} />
+          <Route path="/scan/:token" component={MobileScanPage} />
           <Route path="/dashboard">
             <Protected><Dashboard /></Protected>
           </Route>

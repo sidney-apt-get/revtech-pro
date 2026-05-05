@@ -4,7 +4,7 @@ import { useLocation } from 'wouter'
 import { useProjects } from '@/hooks/useProjects'
 import { KanbanBoard } from '@/components/KanbanBoard'
 import { ProjectModal } from '@/components/ProjectModal'
-import { ScanButton } from '@/components/ScanButton'
+import { ScannerButton } from '@/components/ScannerButton'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase'
 import type { Project, ProjectStatus } from '@/lib/supabase'
@@ -153,13 +153,13 @@ export function Projects() {
               <Kanban className="h-4 w-4" />
             </button>
           </div>
-          <ScanButton
-            label="📷 Scan"
-            title="Scan Serial / Ticket"
-            onScan={(code) => {
+          <ScannerButton
+            label="📱 Scan"
+            onResult={(value, type) => {
+              if (type !== 'barcode') return
               supabase.from('projects')
                 .select('id')
-                .or(`serial_number.eq.${code},ticket_number.eq.${code},imei.eq.${code}`)
+                .or(`serial_number.eq.${value},ticket_number.eq.${value},imei.eq.${value}`)
                 .single()
                 .then(({ data }) => { if (data) navigate(`/projects/${data.id}`) })
             }}
