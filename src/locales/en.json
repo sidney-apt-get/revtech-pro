@@ -1227,5 +1227,17 @@
     "brand": "Brand",
     "model": "Model",
     "category": "Category"
+  },
+  "ai_photo": {
+    "button": "Analyse Photo",
+    "analysing": "Analysing...",
+    "section_title": "AI Identification",
+    "section_desc": "Take a photo or choose from gallery — fields fill automatically",
+    "high_confidence": "High confidence",
+    "medium_confidence": "Verify data",
+    "low_confidence": "Verify manually",
+    "editable_hint": "All fields are editable",
+    "error": "Could not identify product",
+    "error_generic": "Error analysing photo"
   }
 }

@@ -19,6 +19,7 @@ import { DeleteConfirmation } from '@/components/DeleteConfirmation'
 import type { InventoryItem } from '@/lib/supabase'
 import { fmtGBP, fmtDate } from '@/lib/utils'
 import { Plus, Pencil, Trash2, AlertTriangle, Package, Search } from 'lucide-react'
+import { PhotoAnalyzeButton } from '@/components/PhotoAnalyzeButton'
 
 const categories = ['Peças', 'Consumíveis', 'Ferramentas', 'Patrimônio'] as const
 type Category = typeof categories[number]
@@ -444,6 +445,24 @@ export function Inventory() {
           </DialogHeader>
 
           <form onSubmit={handleSubmit(onSubmit)} className="p-4 pt-2 space-y-4">
+            {/* AI Photo Analysis */}
+            <div className="rounded-xl border border-accent/20 bg-accent/5 p-3 space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-text-primary">{t('ai_photo.section_title')}</p>
+                  <p className="text-xs text-text-muted mt-0.5">{t('ai_photo.section_desc')}</p>
+                </div>
+                <PhotoAnalyzeButton
+                  onResult={(result) => {
+                    if (result.brand && result.model) setValue('item_name', `${result.brand} ${result.model}`)
+                    else if (result.model) setValue('item_name', result.model)
+                    else if (result.brand) setValue('item_name', result.brand)
+                    if (result.category_slug) { setSuggestedSlug(result.category_slug); setSuggestionDismissed(false) }
+                  }}
+                />
+              </div>
+            </div>
+
             {/* Nome */}
             <div className="space-y-1.5">
               <Label>Nome do item *</Label>

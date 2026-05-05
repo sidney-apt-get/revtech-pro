@@ -1227,5 +1227,17 @@
     "brand": "Marca",
     "model": "Modelo",
     "category": "Categoria"
+  },
+  "ai_photo": {
+    "button": "Analisar Foto",
+    "analysing": "A analisar...",
+    "section_title": "Identificação por IA",
+    "section_desc": "Tira uma foto ou escolhe da galeria — campos preenchem automaticamente",
+    "high_confidence": "Alta confiança",
+    "medium_confidence": "Verifica os dados",
+    "low_confidence": "Verifica manualmente",
+    "editable_hint": "Todos os campos são editáveis",
+    "error": "Não foi possível identificar o produto",
+    "error_generic": "Erro ao analisar a foto"
   }
 }

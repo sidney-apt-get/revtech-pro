@@ -24,6 +24,7 @@ import { sendTelegramNotification } from '@/lib/telegram'
 import type { Project } from '@/lib/supabase'
 import { ALL_STATUSES } from '@/lib/utils'
 import { getCategoryIcon } from '@/lib/categoryIcons'
+import { PhotoAnalyzeButton, type AIPhotoResult } from './PhotoAnalyzeButton'
 import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react'
 
 const STORAGE_OPTIONS = [16, 32, 64, 128, 256, 512, 1024]
@@ -110,6 +111,8 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
   const [dynValues, setDynValues] = useState<Record<string, string>>({})
   const [lotId, setLotId] = useState<string>('')
   const [activeLots, setActiveLots] = useState<Array<{ id: string; lot_number: string | null; supplier: string | null; purchase_price: number; estimated_items: number | null }>>([])
+  const [aiPhoto, setAiPhoto] = useState<AIPhotoResult | null>(null)
+  const [aiMessage, setAiMessage] = useState<string | null>(null)
 
   useEffect(() => {
     supabase.from('lots').select('id, lot_number, supplier, purchase_price, estimated_items')
@@ -129,7 +132,7 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
   })
 
   useEffect(() => {
-    if (!open) setLocalPhotos([])
+    if (!open) { setLocalPhotos([]); setAiPhoto(null); setAiMessage(null) }
   }, [open])
 
   useEffect(() => {
@@ -295,6 +298,47 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
           <DialogTitle>{project ? t('projects.modal.editTitle') : t('projects.modal.newTitle')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="p-6 pt-4 space-y-5">
+
+          {/* AI Photo Analysis */}
+          <div className="rounded-xl border border-accent/20 bg-accent/5 p-3 space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-text-primary">{t('ai_photo.section_title')}</p>
+                <p className="text-xs text-text-muted mt-0.5">{t('ai_photo.section_desc')}</p>
+              </div>
+              <PhotoAnalyzeButton
+                onResult={(result: AIPhotoResult) => {
+                  if (result.brand && result.model) setValue('equipment', `${result.brand} ${result.model}`)
+                  else if (result.model) setValue('equipment', result.model)
+                  else if (result.brand) setValue('equipment', result.brand)
+                  if (result.brand) setValue('brand', result.brand)
+                  if (result.model) setValue('model', result.model)
+                  if (result.serial_number) setValue('serial_number', result.serial_number)
+                  if (result.imei) setValue('imei', result.imei)
+                  if (result.color) setValue('device_color', result.color)
+                  if (result.storage_gb) setValue('storage_gb', result.storage_gb)
+                  if (result.ram_gb) setValue('ram_gb', result.ram_gb)
+                  if (result.battery_mah) { setValue('battery_capacity_original', result.battery_mah); setCapOrig(result.battery_mah) }
+                  if (result.suggested_defect) setValue('defect_description', result.suggested_defect)
+                  if (result.condition_grade) setValue('condition_grade', result.condition_grade as FormData['condition_grade'])
+                  if (result.notes) setValue('notes', result.notes)
+                  if (result.category_slug) setCategorySlug(result.category_slug)
+                  const hasDevice = !!(result.imei || result.battery_mah || result.condition_grade || result.storage_gb || result.ram_gb)
+                  if (hasDevice) setDeviceOpen(true)
+                  const conf = result.confidence ?? 0
+                  const msg = conf >= 80 ? t('ai_photo.high_confidence') : conf >= 50 ? t('ai_photo.medium_confidence') : t('ai_photo.low_confidence')
+                  setAiPhoto(result)
+                  setAiMessage(`${msg} (${conf}%)`)
+                }}
+              />
+            </div>
+            {aiPhoto && (
+              <div className="rounded-lg bg-accent/10 border border-accent/20 px-3 py-2 text-xs text-accent flex items-center justify-between gap-2">
+                <span>{aiMessage} — {t('ai_photo.editable_hint')}</span>
+                <button type="button" onClick={() => setAiPhoto(null)} className="text-text-muted hover:text-text-primary shrink-0">✕</button>
+              </div>
+            )}
+          </div>
 
           {/* Categoria do equipamento */}
           <div className="space-y-1.5">

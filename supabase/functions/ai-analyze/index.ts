@@ -127,6 +127,14 @@ ${body.text}`
     }
 
     const result = JSON.parse(jsonMatch[0])
+    // PhotoAnalyzeButton uses type:'analyze_image' and expects { result: ... }
+    // analyzeWithGemini (SmartCameraButton) calls without type and expects direct object
+    if (body.type === 'analyze_image') {
+      return new Response(
+        JSON.stringify({ result }),
+        { headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
+      )
+    }
     return new Response(
       JSON.stringify(result),
       { headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
