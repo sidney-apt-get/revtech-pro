@@ -5,10 +5,9 @@ import { usePhotosByProjects } from '@/hooks/useProjectPhotos'
 import { lookupBarcode, type ProductInfo } from '@/lib/productLookup'
 import { calcROI, fmtGBP, fmtDate } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { BarcodeScanner } from '@/components/BarcodeScanner'
 import {
   Search, AlertTriangle, Clock, TrendingUp, TrendingDown,
-  ScanLine, Loader2, Package, Star,
+  Loader2, Package, Star,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { differenceInDays } from 'date-fns'
@@ -27,7 +26,6 @@ export function SerialHistory() {
   const { t } = useTranslation()
   const { data: projects = [], isLoading } = useProjects()
   const [query, setQuery] = useState('')
-  const [scannerOpen, setScannerOpen] = useState(false)
   const [productInfo, setProductInfo] = useState<ProductInfo | null>(null)
   const [lookingUp, setLookingUp] = useState(false)
 
@@ -52,19 +50,6 @@ export function SerialHistory() {
 
   const allResultIds = results.map(p => p.id)
   const { data: allPhotos = [] } = usePhotosByProjects(allResultIds)
-
-  async function handleScan(code: string) {
-    setQuery(code)
-    setScannerOpen(false)
-    setProductInfo(null)
-    setLookingUp(true)
-    try {
-      const info = await lookupBarcode(code)
-      if (info) setProductInfo(info)
-    } finally {
-      setLookingUp(false)
-    }
-  }
 
   async function handleSearch(q: string) {
     setQuery(q)
@@ -107,13 +92,6 @@ export function SerialHistory() {
                 <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-accent" />
               )}
             </div>
-            <button
-              onClick={() => setScannerOpen(true)}
-              title={t('serialHistory.scanBarcode')}
-              className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm text-text-muted hover:bg-surface hover:text-accent transition-colors"
-            >
-              <ScanLine className="h-4 w-4" />
-            </button>
           </div>
           {query.length > 0 && query.length < 2 && (
             <p className="text-xs text-text-muted mt-2">{t('serialHistory.minChars')}</p>
@@ -344,13 +322,6 @@ export function SerialHistory() {
         )
       })}
 
-      {scannerOpen && (
-        <BarcodeScanner
-          title={t('serialHistory.scanBarcode')}
-          onScan={handleScan}
-          onClose={() => setScannerOpen(false)}
-        />
-      )}
     </div>
   )
 }

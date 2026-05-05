@@ -12,8 +12,6 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { ROICalculator } from './ROICalculator'
 import { FinancialInput } from './FinancialInput'
-import { BarcodeScanner } from './BarcodeScanner'
-import { ScannerButton } from './ScannerButton'
 import { WarrantyModal } from './WarrantyModal'
 import { PhotoUpload } from './PhotoUpload'
 import { DynamicFields } from './DynamicFields'
@@ -25,9 +23,8 @@ import { supabase } from '@/lib/supabase'
 import { sendTelegramNotification } from '@/lib/telegram'
 import type { Project } from '@/lib/supabase'
 import { ALL_STATUSES } from '@/lib/utils'
-import { lookupBarcode } from '@/lib/productLookup'
-import { analyzeWithGemini } from '@/lib/aiAnalysis'
-import { ScanLine, Loader2, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react'
+import { getCategoryIcon } from '@/lib/categoryIcons'
+import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react'
 
 const STORAGE_OPTIONS = [16, 32, 64, 128, 256, 512, 1024]
 const RAM_OPTIONS = [1, 2, 3, 4, 6, 8, 12, 16]
@@ -102,11 +99,7 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
   const update = useUpdateProject()
   const uploadPhoto = useUploadPhoto()
   const { categories } = useCategories('project')
-  const [showScanner, setShowScanner] = useState(false)
-  const [scanTarget, setScanTarget] = useState<'serial' | 'equipment'>('serial')
   const [warrantyProject, setWarrantyProject] = useState<{ id: string; equipment: string } | null>(null)
-  const [lookupLoading, setLookupLoading] = useState(false)
-  const [productImage, setProductImage] = useState<string | null>(null)
   const [deviceOpen, setDeviceOpen] = useState(false)
   const [localPhotos, setLocalPhotos] = useState<string[]>([])
   const [roiValues, setRoiValues] = useState({ purchasePrice: 0, partsCost: 0, shippingIn: 0, shippingOut: 0, salePrice: null as number | null })
@@ -193,7 +186,6 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
         })
     } else {
       reset({ status: 'Recebido', purchase_price: 0, parts_cost: 0, shipping_in: 0, shipping_out: 0 })
-      setProductImage(null)
       setDeviceOpen(false)
       setRoiValues({ purchasePrice: 0, partsCost: 0, shippingIn: 0, shippingOut: 0, salePrice: null })
       setCapOrig(null)
@@ -205,39 +197,7 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
     }
   }, [project, reset, open])
 
-  async function handleEquipmentScan(code: string) {
-    setShowScanner(false)
-    setValue('serial_number', code)
-    setLookupLoading(true)
-    try {
-      const info = await lookupBarcode(code)
-      if (info) {
-        if (info.name) setValue('equipment', info.name)
-        if (info.brand) setValue('brand', info.brand)
-        if (info.model) setValue('model', info.model)
-        if (info.imageUrl) setProductImage(info.imageUrl)
-      }
-    } finally {
-      setLookupLoading(false)
-    }
-  }
-
   const calcHealth = capOrig && capCur && capOrig > 0 ? Math.min(100, Math.round((capCur / capOrig) * 100)) : null
-
-  async function handleAIAnalysis(dataUrl: string) {
-    const base64 = dataUrl.split(',')[1]
-    const mimeType = dataUrl.match(/data:(.*?);/)?.[1] || 'image/jpeg'
-    const result = await analyzeWithGemini(base64, mimeType)
-    if (!result) return
-    if (result.brand) setValue('brand', result.brand)
-    if (result.model) setValue('model', result.model)
-    if (result.imei) setValue('imei', result.imei)
-    if (result.serial_number) setValue('serial_number', result.serial_number)
-    if (result.storage_gb) setValue('storage_gb', result.storage_gb)
-    if (result.ram_gb) setValue('ram_gb', result.ram_gb)
-    if (result.condition_grade) setValue('condition_grade', result.condition_grade as 'A' | 'B' | 'C' | 'D' | 'Para peças')
-    if (result.suggested_defect && !watch('defect_description')) setValue('defect_description', result.suggested_defect)
-  }
 
   async function onSubmit(data: FormData) {
     const payload = {
@@ -347,7 +307,7 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
               <option value="">{t('projects.modal.categoryPlaceholder')}</option>
               {categories.map(cat => (
                 <option key={cat.slug} value={cat.slug}>
-                  {cat.icon ? `${cat.icon} ` : ''}{cat.name_pt}
+                  {getCategoryIcon(cat.slug)} {cat.name_pt}
                 </option>
               ))}
             </select>
@@ -356,46 +316,14 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <F label={t('projects.modal.equipmentLabel')} error={errors.equipment?.message}>
-                <div className="flex gap-1.5 items-start">
-                  <div className="flex-1">
-                    <Input {...register('equipment')} placeholder="ex: MacBook Pro 2019" />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => { setScanTarget('equipment'); setShowScanner(true) }}
-                    title={t('projects.modal.scanProduct')}
-                    className="shrink-0 px-2 h-9 rounded-lg border border-border bg-surface text-text-muted hover:text-accent hover:border-accent/40 transition-colors flex items-center"
-                  >
-                    {lookupLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanLine className="h-4 w-4" />}
-                  </button>
-                  {productImage && (
-                    <img src={productImage} alt="Produto" className="h-9 w-9 rounded-lg object-cover border border-border shrink-0" />
-                  )}
-                </div>
-                {lookupLoading && (
-                  <p className="text-xs text-accent mt-1">{t('projects.modal.lookupLoading')}</p>
-                )}
+                <Input {...register('equipment')} placeholder="ex: MacBook Pro 2019" />
               </F>
             </div>
             <F label={t('projects.fields.brand')}><Input {...register('brand')} placeholder="Apple" /></F>
             <F label={t('projects.fields.model')}><Input {...register('model')} placeholder="A2159" /></F>
             <div className="space-y-1.5">
               <Label>{t('projects.modal.serialLabel')}</Label>
-              <div className="flex gap-1.5">
-                <Input {...register('serial_number')} placeholder="C02X..." className="flex-1" />
-                <button
-                  type="button"
-                  onClick={() => setShowScanner(true)}
-                  title="Scanner câmara"
-                  className="px-2 rounded-lg border border-border bg-surface text-text-muted hover:text-accent hover:border-accent/40 transition-colors"
-                >
-                  <ScanLine className="h-4 w-4" />
-                </button>
-                <ScannerButton
-                  label="📱"
-                  onResult={(value) => setValue('serial_number', value)}
-                />
-              </div>
+              <Input {...register('serial_number')} placeholder="C02X..." />
             </div>
             <div className="space-y-1.5">
               <Label>{t('projects.modal.statusLabel')}</Label>
@@ -512,13 +440,6 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
                     <Label>IMEI 1</Label>
                     <div className="flex gap-1.5">
                       <Input {...register('imei')} placeholder={t('projects.modal.imeiShort')} maxLength={15} className="flex-1 font-mono text-xs" />
-                      <ScannerButton
-                        label="📱"
-                        onResult={(value, type) => {
-                          if (type === 'barcode') setValue('imei', value)
-                          if (type === 'photo') handleAIAnalysis(value)
-                        }}
-                      />
                       {watch('imei') && watch('imei')!.length === 15 && (
                         <a
                           href={`https://www.imei.info/?imei=${watch('imei')}`}
@@ -658,13 +579,6 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
       </DialogContent>
     </Dialog>
 
-    {showScanner && (
-      <BarcodeScanner
-        title={scanTarget === 'equipment' ? t('projects.modal.scanProduct') : t('projects.modal.scanSerial')}
-        onScan={scanTarget === 'equipment' ? handleEquipmentScan : code => { setValue('serial_number', code); setShowScanner(false) }}
-        onClose={() => setShowScanner(false)}
-      />
-    )}
     {warrantyProject && (
       <WarrantyModal
         projectId={warrantyProject.id}

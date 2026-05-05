@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import type { GeminiResult } from '@/lib/aiAnalysis'
 import type { CategoryField } from '@/lib/supabase'
+import { getCategoryIcon } from '@/lib/categoryIcons'
 import { ChevronDown, ChevronUp, CheckCircle, AlertTriangle, XCircle, RotateCcw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -239,7 +240,7 @@ export function SmartFormSection({
           ✨ {t('ai.sectionTitle')}
           {confirmedSlug && selectedCategory && (
             <span className="text-accent font-medium text-xs">
-              {selectedCategory.icon} {lang === 'pt' ? selectedCategory.name_pt : selectedCategory.name_en}
+              {getCategoryIcon(selectedCategory.slug)} {lang === 'pt' ? selectedCategory.name_pt : selectedCategory.name_en}
             </span>
           )}
         </span>
@@ -292,7 +293,7 @@ export function SmartFormSection({
                   <span className="text-xs text-text-muted">{t('ai.detectedCategory')}:</span>
                   {selectedCategory && (
                     <span className="text-xs font-medium text-accent bg-accent/10 px-2 py-0.5 rounded-full">
-                      {selectedCategory.icon} {lang === 'pt' ? selectedCategory.name_pt : selectedCategory.name_en}
+                      {getCategoryIcon(selectedCategory.slug)} {lang === 'pt' ? selectedCategory.name_pt : selectedCategory.name_en}
                     </span>
                   )}
                   <button
@@ -318,7 +319,7 @@ export function SmartFormSection({
                         .filter(c => c.parent_slug !== null)
                         .map(c => (
                           <SelectItem key={c.slug} value={c.slug} className="text-xs">
-                            {c.icon} {lang === 'pt' ? c.name_pt : c.name_en}
+                            {getCategoryIcon(c.slug)} {lang === 'pt' ? c.name_pt : c.name_en}
                           </SelectItem>
                         ))}
                     </SelectContent>
@@ -345,7 +346,7 @@ export function SmartFormSection({
                     .filter(c => c.parent_slug !== null)
                     .map(c => (
                       <SelectItem key={c.slug} value={c.slug} className="text-xs">
-                        {c.icon} {lang === 'pt' ? c.name_pt : c.name_en}
+                        {getCategoryIcon(c.slug)} {lang === 'pt' ? c.name_pt : c.name_en}
                       </SelectItem>
                     ))}
                 </SelectContent>
