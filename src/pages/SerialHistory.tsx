@@ -347,7 +347,7 @@ export function SerialHistory() {
       {scannerOpen && (
         <BarcodeScanner
           title={t('serialHistory.scanBarcode')}
-          onDetected={handleScan}
+          onScan={handleScan}
           onClose={() => setScannerOpen(false)}
         />
       )}

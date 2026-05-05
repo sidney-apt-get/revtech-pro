@@ -45,6 +45,8 @@ serve(async (req) => {
     }
 
     const body = await req.json()
+    console.log('[AI Analyze] Request type:', body.type ?? 'image')
+    console.log('[AI Analyze] Has image:', !!body.imageBase64)
 
     // Translation request
     if (body.type === 'translate') {

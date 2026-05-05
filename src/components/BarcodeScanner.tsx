@@ -1,131 +1,251 @@
 import { useEffect, useRef, useState } from 'react'
 import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library'
-import { X, Camera, CameraOff, CheckCircle } from 'lucide-react'
 
 interface BarcodeScannerProps {
-  onDetected: (code: string) => void
+  onScan: (result: string) => void
   onClose: () => void
   title?: string
 }
 
-export function BarcodeScanner({ onDetected, onClose, title = 'Scanner' }: BarcodeScannerProps) {
+export function BarcodeScanner({ onScan, onClose, title = 'Scanner' }: BarcodeScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const readerRef = useRef<BrowserMultiFormatReader | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [detected, setDetected] = useState<string | null>(null)
-  const [cameras, setCameras] = useState<MediaDeviceInfo[]>([])
-  const [selectedCamera, setSelectedCamera] = useState<string | undefined>(undefined)
+  const [error, setError] = useState('')
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
+  const [selectedDevice, setSelectedDevice] = useState<string>('')
+  const [scanning, setScanning] = useState(false)
 
   useEffect(() => {
-    const codeReader = new BrowserMultiFormatReader()
-    readerRef.current = codeReader
+    const reader = new BrowserMultiFormatReader()
+    readerRef.current = reader
 
-    codeReader.listVideoInputDevices().then(devices => {
-      setCameras(devices)
-      // Prefer back camera on mobile
-      const back = devices.find(d => /back|rear|environment/i.test(d.label))
-      const defaultId = back?.deviceId ?? devices[0]?.deviceId
-      setSelectedCamera(defaultId)
-    }).catch(() => setError('Sem acesso à câmara'))
+    navigator.mediaDevices.enumerateDevices()
+      .then(allDevices => {
+        const videoInputDevices = allDevices.filter(d => d.kind === 'videoinput') as MediaDeviceInfo[]
+        setDevices(videoInputDevices)
 
-    return () => {
-      codeReader.reset()
-    }
-  }, [])
+        const backCamera = videoInputDevices.find(d =>
+          d.label.toLowerCase().includes('back') ||
+          d.label.toLowerCase().includes('rear') ||
+          d.label.toLowerCase().includes('environment') ||
+          d.label.toLowerCase().includes('traseira')
+        )
 
-  useEffect(() => {
-    if (!selectedCamera || !videoRef.current || !readerRef.current) return
-    const reader = readerRef.current
+        const deviceId =
+          backCamera?.deviceId ||
+          videoInputDevices[videoInputDevices.length - 1]?.deviceId ||
+          videoInputDevices[0]?.deviceId ||
+          ''
 
-    reader.decodeFromVideoDevice(selectedCamera, videoRef.current, (result, err) => {
-      if (result) {
-        const text = result.getText()
-        setDetected(text)
-        try { navigator.clipboard.writeText(text) } catch {}
-        reader.reset()
-        setTimeout(() => {
-          onDetected(text)
-          onClose()
-        }, 800)
-      }
-      if (err && !(err instanceof NotFoundException)) {
-        // ignore decode errors — normal when no barcode in frame
-      }
-    }).catch(() => setError('Não foi possível aceder à câmara. Verifica as permissões.'))
+        setSelectedDevice(deviceId)
+        startScanning(reader, deviceId)
+      })
+      .catch(err => {
+        console.error('Error listing cameras:', err)
+        setError('Não foi possível aceder às câmaras. Verifica as permissões.')
+      })
 
     return () => {
       reader.reset()
     }
-  }, [selectedCamera]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function startScanning(reader: BrowserMultiFormatReader, deviceId: string) {
+    if (!videoRef.current || !deviceId) return
+
+    setScanning(true)
+    setError('')
+
+    try {
+      await reader.decodeFromVideoDevice(deviceId, videoRef.current, (result, err: unknown) => {
+        if (result) {
+          const text = result.getText()
+          if (navigator.vibrate) navigator.vibrate(100)
+          onScan(text)
+          reader.reset()
+        }
+        if (err && !(err instanceof NotFoundException)) {
+          console.debug('Scan error:', err)
+        }
+      })
+    } catch (err: unknown) {
+      const e = err as { name?: string; message?: string }
+      console.error('Camera error:', err)
+      if (e.name === 'NotAllowedError') {
+        setError('Permissão de câmara negada. Vai às definições do browser e permite o acesso à câmara.')
+      } else if (e.name === 'NotFoundError') {
+        setError('Nenhuma câmara encontrada neste dispositivo.')
+      } else {
+        setError('Erro ao iniciar câmara: ' + (e.message ?? 'desconhecido'))
+      }
+      setScanning(false)
+    }
+  }
+
+  async function switchCamera(deviceId: string) {
+    if (!readerRef.current) return
+    readerRef.current.reset()
+    setSelectedDevice(deviceId)
+    await startScanning(readerRef.current, deviceId)
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={onClose}>
-      <div
-        className="relative w-full max-w-sm mx-4 rounded-2xl bg-card border border-border overflow-hidden shadow-2xl"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <div className="flex items-center gap-2">
-            <Camera className="h-4 w-4 text-accent" />
-            <span className="text-sm font-semibold text-text-primary">{title}</span>
-          </div>
-          <button onClick={onClose} className="p-1 rounded hover:bg-surface text-text-muted hover:text-text-primary transition-colors">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Camera feed */}
-        <div className="relative bg-black aspect-video">
-          <video ref={videoRef} className="w-full h-full object-cover" playsInline muted autoPlay />
-
-          {/* Crosshair overlay */}
-          {!detected && !error && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="w-48 h-32 border-2 border-accent/70 rounded-lg relative">
-                <span className="absolute -top-px -left-px w-4 h-4 border-t-2 border-l-2 border-accent rounded-tl" />
-                <span className="absolute -top-px -right-px w-4 h-4 border-t-2 border-r-2 border-accent rounded-tr" />
-                <span className="absolute -bottom-px -left-px w-4 h-4 border-b-2 border-l-2 border-accent rounded-bl" />
-                <span className="absolute -bottom-px -right-px w-4 h-4 border-b-2 border-r-2 border-accent rounded-br" />
-                {/* Scan line animation */}
-                <div className="absolute left-0 right-0 h-0.5 bg-accent/60 animate-[scan_2s_linear_infinite]" style={{ top: '50%' }} />
-              </div>
-            </div>
-          )}
-
-          {/* Detected overlay */}
-          {detected && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-success/20 backdrop-blur-sm">
-              <CheckCircle className="h-12 w-12 text-success mb-2" />
-              <p className="text-success font-semibold text-sm px-4 text-center break-all">{detected}</p>
-            </div>
-          )}
-
-          {/* Error overlay */}
-          {error && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60">
-              <CameraOff className="h-10 w-10 text-danger mb-2" />
-              <p className="text-danger text-xs text-center px-4">{error}</p>
-            </div>
-          )}
-        </div>
-
-        {/* Camera selector + hint */}
-        <div className="px-4 py-3 space-y-2">
-          {cameras.length > 1 && (
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      backgroundColor: 'black',
+      zIndex: 9999,
+      display: 'flex',
+      flexDirection: 'column',
+    }}>
+      {/* Header */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '16px',
+        backgroundColor: 'rgba(0,0,0,0.8)',
+      }}>
+        <h2 style={{ color: 'white', fontWeight: 'bold', fontSize: '18px', margin: 0 }}>
+          📷 {title}
+        </h2>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {devices.length > 1 && (
             <select
-              value={selectedCamera}
-              onChange={e => setSelectedCamera(e.target.value)}
-              className="w-full rounded-lg bg-surface border border-border px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
+              value={selectedDevice}
+              onChange={e => switchCamera(e.target.value)}
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.2)',
+                color: 'white',
+                border: '1px solid rgba(255,255,255,0.3)',
+                borderRadius: '8px',
+                padding: '4px 8px',
+                fontSize: '12px',
+              }}
             >
-              {cameras.map(c => (
-                <option key={c.deviceId} value={c.deviceId}>{c.label || `Câmara ${c.deviceId.slice(0, 6)}`}</option>
+              {devices.map((d, i) => (
+                <option key={d.deviceId} value={d.deviceId} style={{ color: 'black' }}>
+                  Câmara {i + 1}: {d.label.slice(0, 20) || `Câmara ${i + 1}`}
+                </option>
               ))}
             </select>
           )}
-          <p className="text-xs text-text-muted text-center">Aponta a câmara para um código de barras ou QR code</p>
+          <button
+            onClick={() => { readerRef.current?.reset(); onClose() }}
+            style={{
+              color: 'white',
+              fontSize: '24px',
+              width: '40px',
+              height: '40px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(255,255,255,0.2)',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            ✕
+          </button>
         </div>
       </div>
+
+      {/* Video */}
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+        <video
+          ref={videoRef}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          autoPlay
+          playsInline
+          muted
+        />
+
+        {/* Scan overlay */}
+        {scanning && !error && (
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+          }}>
+            <div style={{
+              width: '260px',
+              height: '260px',
+              border: '3px solid #4F8EF7',
+              borderRadius: '16px',
+              boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)',
+              position: 'relative',
+            }}>
+              {(['topLeft', 'topRight', 'bottomLeft', 'bottomRight'] as const).map(corner => (
+                <div key={corner} style={{
+                  position: 'absolute',
+                  width: '20px',
+                  height: '20px',
+                  borderColor: '#4F8EF7',
+                  borderStyle: 'solid',
+                  ...(corner === 'topLeft' && { top: -3, left: -3, borderWidth: '3px 0 0 3px', borderRadius: '4px 0 0 0' }),
+                  ...(corner === 'topRight' && { top: -3, right: -3, borderWidth: '3px 3px 0 0', borderRadius: '0 4px 0 0' }),
+                  ...(corner === 'bottomLeft' && { bottom: -3, left: -3, borderWidth: '0 0 3px 3px', borderRadius: '0 0 0 4px' }),
+                  ...(corner === 'bottomRight' && { bottom: -3, right: -3, borderWidth: '0 3px 3px 0', borderRadius: '0 0 4px 0' }),
+                }} />
+              ))}
+              <div style={{
+                position: 'absolute',
+                left: '10px',
+                right: '10px',
+                height: '2px',
+                backgroundColor: '#4F8EF7',
+                animation: 'scanLine 2s linear infinite',
+                top: '50%',
+              }} />
+            </div>
+          </div>
+        )}
+
+        {/* Bottom message */}
+        <div style={{
+          position: 'absolute',
+          bottom: '24px',
+          left: 0,
+          right: 0,
+          textAlign: 'center',
+        }}>
+          {error ? (
+            <div style={{
+              backgroundColor: 'rgba(239,68,68,0.9)',
+              color: 'white',
+              padding: '12px 16px',
+              borderRadius: '12px',
+              margin: '0 16px',
+              fontSize: '14px',
+            }}>
+              {error}
+            </div>
+          ) : (
+            <p style={{
+              color: 'white',
+              fontSize: '14px',
+              backgroundColor: 'rgba(0,0,0,0.6)',
+              padding: '8px 16px',
+              borderRadius: '20px',
+              display: 'inline-block',
+            }}>
+              Aponta para o código de barras, IMEI ou QR code
+            </p>
+          )}
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes scanLine {
+          0% { top: 10px; }
+          50% { top: calc(100% - 10px); }
+          100% { top: 10px; }
+        }
+      `}</style>
     </div>
   )
 }

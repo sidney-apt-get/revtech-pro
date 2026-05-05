@@ -29,7 +29,7 @@ export function ScanButton({ onScan, label, className, title = 'Escanear código
       </button>
       {open && (
         <BarcodeScanner
-          onDetected={code => { onScan(code); setOpen(false) }}
+          onScan={code => { onScan(code); setOpen(false) }}
           onClose={() => setOpen(false)}
         />
       )}

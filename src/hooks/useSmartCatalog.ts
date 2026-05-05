@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase, type Category, type CategoryField, type ItemFieldValue, type ItemHistory, type Lot, type CameraSession } from '@/lib/supabase'
+import { supabase, type Category, type CategoryField, type ItemFieldValue, type ItemHistory, type Lot } from '@/lib/supabase'
 
 // ── Categories ──────────────────────────────────────────────
 
@@ -224,42 +224,3 @@ export function useDeleteLot() {
   })
 }
 
-// ── Camera Sessions ───────────────────────────────────────────
-
-async function createCameraSession(payload: {
-  session_token: string
-  context: 'project' | 'inventory'
-  item_id?: string
-}): Promise<CameraSession> {
-  const { data: { user } } = await supabase.auth.getUser()
-  const { data, error } = await supabase
-    .from('camera_sessions')
-    .insert({ ...payload, user_id: user!.id })
-    .select()
-    .single()
-  if (error) throw error
-  return data
-}
-
-async function fetchCameraSession(token: string): Promise<CameraSession | null> {
-  const { data, error } = await supabase
-    .from('camera_sessions')
-    .select('*')
-    .eq('session_token', token)
-    .single()
-  if (error) return null
-  return data
-}
-
-export function useCameraSession(token: string | null) {
-  return useQuery({
-    queryKey: ['camera_session', token],
-    queryFn: () => fetchCameraSession(token!),
-    enabled: !!token,
-    refetchInterval: 3000,
-  })
-}
-
-export function useCreateCameraSession() {
-  return useMutation({ mutationFn: createCameraSession })
-}

@@ -27,7 +27,7 @@ export default function MobileScanner() {
       {scannerOpen && (
         <BarcodeScanner
           title="Scanner — RevTech"
-          onDetected={code => { setLastCode(code); setScannerOpen(false) }}
+          onScan={code => { setLastCode(code); setScannerOpen(false) }}
           onClose={() => setScannerOpen(false)}
         />
       )}

@@ -633,7 +633,7 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
     {showScanner && (
       <BarcodeScanner
         title={scanTarget === 'equipment' ? t('projects.modal.scanProduct') : t('projects.modal.scanSerial')}
-        onDetected={scanTarget === 'equipment' ? handleEquipmentScan : code => { setValue('serial_number', code); setShowScanner(false) }}
+        onScan={scanTarget === 'equipment' ? handleEquipmentScan : code => { setValue('serial_number', code); setShowScanner(false) }}
         onClose={() => setShowScanner(false)}
       />
     )}
