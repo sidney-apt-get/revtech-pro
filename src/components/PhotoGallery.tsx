@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useProjectPhotos, useUploadPhoto, useDeletePhoto, useUpdateCaption } from '@/hooks/useProjectPhotos'
 import type { ProjectPhoto, ProjectPhase } from '@/lib/supabase'
-import { Plus, X, ZoomIn, Trash2, Check, Loader2 } from 'lucide-react'
+import { Plus, X, ZoomIn, Trash2, Check, Loader2, AlertCircle } from 'lucide-react'
 
 const PHASES: { key: ProjectPhase; label: string; emoji: string }[] = [
   { key: 'recepcao',   label: 'Recepção',   emoji: '📥' },
@@ -28,6 +28,7 @@ export function PhotoGallery({ projectId, defaultPhase = 'recepcao' }: PhotoGall
   const [fullscreen, setFullscreen] = useState<ProjectPhoto | null>(null)
   const [editCaption, setEditCaption] = useState<{ id: string; value: string } | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const phasePhotos = photos.filter(p => p.phase === activePhase)
@@ -40,8 +41,12 @@ export function PhotoGallery({ projectId, defaultPhase = 'recepcao' }: PhotoGall
       return
     }
     setUploading(true)
+    setUploadError(null)
     try {
       await upload.mutateAsync({ projectId, phase: activePhase, file })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setUploadError(msg)
     } finally {
       setUploading(false)
       if (fileRef.current) fileRef.current.value = ''
@@ -92,6 +97,20 @@ export function PhotoGallery({ projectId, defaultPhase = 'recepcao' }: PhotoGall
           )
         })}
       </div>
+
+      {/* Upload error */}
+      {uploadError && (
+        <div className="flex items-start gap-2 rounded-lg bg-danger/10 border border-danger/30 px-3 py-2 text-xs text-danger">
+          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold">Erro ao guardar foto</p>
+            <p className="text-danger/80 mt-0.5">{uploadError}</p>
+          </div>
+          <button onClick={() => setUploadError(null)} className="ml-auto shrink-0 hover:opacity-70">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Grid */}
       <div className="grid grid-cols-3 gap-2">
@@ -147,7 +166,7 @@ export function PhotoGallery({ projectId, defaultPhase = 'recepcao' }: PhotoGall
         <p className="text-xs text-text-muted text-center py-1">Sem fotos nesta fase</p>
       )}
 
-      <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFile} />
+      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
 
       {/* Fullscreen */}
       {fullscreen && (
@@ -176,27 +195,4 @@ export function PhotoGallery({ projectId, defaultPhase = 'recepcao' }: PhotoGall
                     placeholder="Legenda..."
                     className="flex-1 rounded-lg bg-white/10 border border-white/20 px-3 py-1.5 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-white/40"
                     autoFocus
-                    onKeyDown={e => e.key === 'Enter' && handleSaveCaption()}
-                  />
-                  <button
-                    onClick={handleSaveCaption}
-                    className="px-3 py-1.5 rounded-lg bg-accent text-white hover:bg-accent/80 transition-colors"
-                  >
-                    <Check className="h-4 w-4" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setEditCaption({ id: fullscreen.id, value: fullscreen.caption ?? '' })}
-                  className="text-white/50 hover:text-white text-sm text-left w-full transition-colors"
-                >
-                  {fullscreen.caption || '+ Adicionar legenda'}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
+                    onKeyDown={e => e.key === 'Enter' && ha
