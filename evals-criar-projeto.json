@@ -1,0 +1,26 @@
+{
+  "skill_name": "criar-projeto",
+  "evals": [
+    {
+      "id": 1,
+      "name": "entrada-rapida-iphone",
+      "prompt": "/criar-projeto\n\nUSER: iPhone 13 Pro, não liga, comprei no eBay UK por £150, serial ABC123XYZ, vendedor português",
+      "expected_output": "Projeto criado com ticket RT-YYYYMMDD-XXXX contendo: equipamento=Telemóvel, marca=Apple, modelo=iPhone 13 Pro, serial=ABC123XYZ, defeito='não liga', preço=150, fornecedor=eBay UK, status=Recebido",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "entrada-estruturada-notebook",
+      "prompt": "/criar-projeto\n\nUSER: Equipamento: Notebook\nMarca: Dell\nModelo: XPS 13\nSerial: 4B3C2D1A\nDeferito: Não liga, faz barulho na ventoinha\nPreço: £120\nFornecedor: eBay UK",
+      "expected_output": "Projeto criado com ticket RT-YYYYMMDD-XXXX contendo: equipamento=Notebook, marca=Dell, modelo=XPS 13, serial=4B3C2D1A, defeito='Não liga, faz barulho na ventoinha', preço=120, fornecedor=eBay UK, status=Recebido",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "entrada-minima-consola",
+      "prompt": "/criar-projeto\n\nUSER: Nintendo Switch que não liga. Comprei em lote por £25. Não tenho serial.",
+      "expected_output": "Skill pergunta pelos dados faltantes (serial é opcional), cria projeto com: equipamento=Consola, marca=Nintendo, modelo=Switch, defeito='não liga', preço=25, status=Recebido, serial=NULL, fornecedor='Lote' ou desconhecido",
+      "files": []
+    }
+  ]
+}

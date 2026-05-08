@@ -1,0 +1,137 @@
+═══════════════════════════════════════════════════════════════════════════════
+        DOCUMENTAÇÃO E MEMÓRIA - REVTECH PRO
+        Sessão Claude - 8 de Maio de 2026
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ TAREFAS COMPLETADAS:
+
+1. DOCUMENTAÇÃO TÉCNICA COMPLETA
+   ├─ Documentacao_RevTech_PRO.md (Markdown - 4.2 KB)
+   ├─ Documentacao_RevTech_PRO.docx (Word - 39 KB)
+   └─ Local: C:\RevTech\revtech-new\RevTech PRO\
+
+2. UPLOAD PARA GOOGLE DRIVE
+   ├─ Criada pasta: RevTech PRO > Memória Claude
+   ├─ Criada pasta: RevTech > Memória Claude (backup)
+   └─ Documento: INDICE_Memoria_RevTech_PRO (Google Docs)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📋 CONTEÚDO DA DOCUMENTAÇÃO:
+
+SEÇÃO 1: VISÃO GERAL DO NEGÓCIO
+  • Modelo: Compra → Reparação → Revenda
+  • Proprietário: Sidney Nogueira
+  • Localização: Livingston, Scotland
+
+SEÇÃO 2: STACK TÉCNICO
+  • Frontend: React 19 + Vite + TypeScript + TailwindCSS
+  • Backend: Supabase (PostgreSQL)
+  • Deploy: Vercel + Supabase Edge Functions
+  • Autenticação: Google OAuth
+  • Localização: PT-BR e EN-GB
+
+SEÇÃO 3: BASE DE DADOS
+  • 22 migrações executadas (001-022)
+  • 23 tabelas principais (projects, inventory, defect_database, etc.)
+
+SEÇÃO 4: FUNCIONALIDADES
+  • 13+ funcionalidades ativas
+  • Kanban, inventário, finanças, notificações, analytics
+
+SEÇÃO 5: EDGE FUNCTIONS
+  • ai-analyze (Gemini Vision)
+  • telegram-notify (Notificações)
+
+SEÇÃO 6: PROBLEMAS CONHECIDOS
+  • Auto-preenchimento por foto (em teste)
+  • Encoding de emojis (corrigido)
+  • ⚠️ Google OAuth Secret comprometido (URGENTE!)
+
+SEÇÃO 7-9: Processo de deploy, credenciais, próximos passos
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📁 ARQUIVOS CRIADOS:
+
+LOCAL: C:\RevTech\revtech-new\RevTech PRO\
+├─ Documentacao_RevTech_PRO.md ........... 4.2 KB (Markdown - Recomendado)
+├─ Documentacao_RevTech_PRO.docx ........ 39 KB (Word - Formatado)
+├─ CLAUDE_CONTEXT.md ................... 7.2 KB (Contexto original)
+└─ fix_photos_bucket.sql ............... 2.4 KB (Script SQL)
+
+GOOGLE DRIVE:
+├─ INDICE_Memoria_RevTech_PRO (Google Doc)
+│  └─ URL: docs.google.com/document/d/19ShHrVqf0PvyR1UpLJrUdfP66yLpZaG2LpBjhXBCvS4/
+├─ Pasta: RevTech PRO > Memória Claude (criada)
+└─ Pasta: RevTech > Memória Claude (criada)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🔐 ALERTAS DE SEGURANÇA:
+
+⚠️ AÇÃO URGENTE REQUERIDA:
+   Google Client Secret foi partilhado publicamente!
+   
+   Passos:
+   1. Aceder a: console.cloud.google.com
+   2. Projeto: "My Project 7384"
+   3. Menu: "Credenciais > OAuth 2.0"
+   4. REVOGAR a credencial comprometida
+   5. GERAR nova credencial
+   6. ATUALIZAR .env.local com novo valor
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✨ COMO USAR A DOCUMENTAÇÃO:
+
+1. Para LEITURA RÁPIDA:
+   → Documentacao_RevTech_PRO.md (legível no VS Code, GitHub, etc.)
+
+2. Para APRESENTAÇÃO PROFISSIONAL:
+   → Documentacao_RevTech_PRO.docx (editar e imprimir em Word)
+
+3. Para REFERÊNCIA TÉCNICA:
+   → CLAUDE_CONTEXT.md (contexto detalhado)
+
+4. Para COMPARTILHAR ONLINE:
+   → INDICE_Memoria_RevTech_PRO no Google Drive
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📞 PRÓXIMOS PASSOS RECOMENDADOS:
+
+1. SEGURANÇA (URGENTE)
+   □ Revogar Google Client Secret comprometido
+
+2. VERIFICAÇÃO TÉCNICA
+   □ Corrigir encoding de categorias definitivamente
+   □ Confirmar auto-preenchimento por foto funciona
+   □ Testar edge functions (ai-analyze, telegram-notify)
+
+3. TESTES
+   □ Criar 2-3 projetos reais
+   □ Testar fluxo completo: compra → reparação → venda
+
+4. DOCUMENTAÇÃO
+   □ Manter CLAUDE_CONTEXT.md atualizado a cada sessão
+   □ Adicionar novos problemas conhecidos conforme aparecem
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📊 RESUMO ESTATÍSTICO:
+
+Tabelas de BD: 23
+Migrações: 22
+Funcionalidades Ativas: 13+
+Edge Functions: 2
+Problemas Conhecidos: 3
+Documentação: 7.2 KB (MD) + 39 KB (DOCX)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Data de Criação: 8 de Maio de 2026
+Status: ✅ COMPLETO E ATUALIZADO
+Versão: 1.0
+
+═══════════════════════════════════════════════════════════════════════════════

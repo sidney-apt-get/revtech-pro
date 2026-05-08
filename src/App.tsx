@@ -24,6 +24,7 @@ import { ProjectDetails } from '@/pages/ProjectDetails'
 import { Finances } from '@/pages/Finances'
 import { Lots } from '@/pages/Lots'
 import { InventoryDetail } from '@/pages/InventoryDetail'
+import { Assistant } from '@/pages/Assistant'
 import AuthCallback from '@/pages/AuthCallback'
 import { SettingsProvider } from '@/contexts/SettingsContext'
 import { RoleProvider } from '@/contexts/RoleContext'
@@ -80,6 +81,9 @@ export default function App() {
           <Route path="/auth/callback" component={AuthCallback} />
           <Route path="/dashboard">
             <Protected><Dashboard /></Protected>
+          </Route>
+          <Route path="/assistant">
+            <Protected><Assistant /></Protected>
           </Route>
           <Route path="/projects">
             <Protected><Projects /></Protected>

@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Wrench, Package, Users,
   BarChart3, LogOut, Menu, X, AlertTriangle,
   ShoppingCart, FileText, Settings, Bell,
-  Shield, ChevronDown, ChevronUp, UserCog, Tag, History, ShieldCheck, PoundSterling, Layers,
+  Shield, ChevronDown, ChevronUp, UserCog, Tag, History, ShieldCheck, PoundSterling, Layers, Wand2,
 } from 'lucide-react'
 import { supabase, type InventoryItem } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
@@ -25,6 +25,7 @@ type NavItem = {
 
 const ALL_NAV: NavItem[] = [
   { href: '/dashboard',  labelKey: 'nav.dashboard',    icon: LayoutDashboard },
+  { href: '/assistant',  labelKey: 'nav.assistant',    icon: Wand2 },
   { href: '/projects',   labelKey: 'nav.projects',      icon: Wrench },
   { href: '/finances',   labelKey: 'nav.finances',      icon: PoundSterling },
   { href: '/orders',     labelKey: 'nav.partsOrders',   icon: ShoppingCart,  badge: 'orders' },
@@ -35,7 +36,7 @@ const ALL_NAV: NavItem[] = [
   { href: '/analytics',  labelKey: 'nav.analytics',     icon: BarChart3 },
 ]
 
-const TECH_NAV_HREFS = ['/dashboard', '/projects', '/finances', '/orders', '/inventory', '/lots', '/contacts']
+const TECH_NAV_HREFS = ['/dashboard', '/assistant', '/projects', '/finances', '/orders', '/inventory', '/lots', '/contacts']
 const VIEWER_NAV_HREFS = ['/dashboard', '/analytics']
 
 function getNavItems(role: string | null): NavItem[] {

@@ -1,6 +1,7 @@
 {
   "nav": {
     "dashboard": "Dashboard",
+    "assistant": "Assistente",
     "projects": "Projectos",
     "partsOrders": "Encomendas de Peças",
     "inventory": "Inventário",

@@ -195,4 +195,27 @@ export function PhotoGallery({ projectId, defaultPhase = 'recepcao' }: PhotoGall
                     placeholder="Legenda..."
                     className="flex-1 rounded-lg bg-white/10 border border-white/20 px-3 py-1.5 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-white/40"
                     autoFocus
-                    onKeyDown={e => e.key === 'Enter' && ha
+                    onKeyDown={e => e.key === 'Enter' && handleSaveCaption()}
+                  />
+                  <button
+                    onClick={handleSaveCaption}
+                    className="px-3 py-1.5 rounded-lg bg-accent text-white hover:bg-accent/80 transition-colors"
+                  >
+                    <Check className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setEditCaption({ id: fullscreen.id, value: fullscreen.caption ?? '' })}
+                  className="text-white/50 hover:text-white text-sm text-left w-full transition-colors"
+                >
+                  {fullscreen.caption || '+ Adicionar legenda'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

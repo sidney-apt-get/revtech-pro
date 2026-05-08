@@ -1,6 +1,7 @@
 {
   "nav": {
     "dashboard": "Dashboard",
+    "assistant": "Assistant",
     "projects": "Projects",
     "partsOrders": "Parts Orders",
     "inventory": "Inventory",

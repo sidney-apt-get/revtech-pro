@@ -57,7 +57,7 @@ Text to translate:
 ${body.text}`
 
       const geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -79,43 +79,74 @@ ${body.text}`
       })
     }
 
-    const { imageBase64, mimeType = 'image/jpeg' } = body
-    if (!imageBase64) {
+    const { imageBase64: rawBase64, mimeType = 'image/jpeg' } = body
+    if (!rawBase64) {
       return new Response(
         JSON.stringify({ error: 'imageBase64 is required' }),
         { status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
       )
     }
 
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      {
+    const imageBase64 = rawBase64.replace(/^data:[^;]+;base64,/, '')
+
+    const payload = {
+      contents: [{
+        parts: [
+          { text: GEMINI_PROMPT },
+          { inline_data: { mime_type: mimeType, data: imageBase64 } },
+        ],
+      }],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
+    }
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`
+
+    console.log('[AI] Calling Gemini API...')
+    console.log('[AI] Model: gemini-2.5-flash')
+    console.log('[AI] Image size:', imageBase64.length)
+    console.log('[AI] Payload size:', JSON.stringify(payload).length)
+
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 25000)
+
+    let geminiRes: Response
+    try {
+      geminiRes = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { inlineData: { mimeType, data: imageBase64 } },
-              { text: GEMINI_PROMPT },
-            ],
-          }],
-          generationConfig: {
-            temperature: 0.1,
-            maxOutputTokens: 1024,
-          },
-        }),
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      })
+      clearTimeout(timeoutId)
+    } catch (err: any) {
+      clearTimeout(timeoutId)
+      if (err.name === 'AbortError') {
+        console.log('[AI] Request timed out after 25s')
+        return new Response(
+          JSON.stringify({ error: 'Gemini timeout' }),
+          { status: 504, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
+        )
       }
-    )
+      console.log('[AI] Fetch error:', err.message)
+      throw err
+    }
 
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text()
+    console.log('[AI] Gemini status:', geminiRes.status)
+    const responseText = await geminiRes.text()
+    console.log('[AI] Gemini response:', responseText.slice(0, 500))
+
+    if (geminiRes.status !== 200) {
       return new Response(
-        JSON.stringify({ error: `Gemini error ${geminiRes.status}`, detail: errText }),
+        JSON.stringify({
+          error: 'Gemini error',
+          status: geminiRes.status,
+          detail: responseText.slice(0, 200),
+        }),
         { status: 502, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
       )
     }
 
-    const data = await geminiRes.json()
+    const data = JSON.parse(responseText)
     const text: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
 
     const jsonMatch = text.match(/\{[\s\S]*\}/)
