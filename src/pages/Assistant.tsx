@@ -1,9 +1,7 @@
-import { useTranslation } from 'react-i18next'
 import { Wand2, Plus, Search, Settings, Clock } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 
 export function Assistant() {
-  const { t } = useTranslation()
 
   const skills = [
     {
