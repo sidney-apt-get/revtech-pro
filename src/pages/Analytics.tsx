@@ -7,7 +7,7 @@ import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell, Legend,
 } from 'recharts'
-import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns'
+import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, differenceInDays } from 'date-fns'
 import { enGB, pt } from 'date-fns/locale'
 import { TrendingUp, Clock, DollarSign, Target } from 'lucide-react'
 import { useAllTimeEntries } from '@/hooks/useTimeTracking'
@@ -70,11 +70,19 @@ export function Analytics() {
 
   const projectedProfit = useMemo(() => {
     return projects
-      .filter(p => p.status === 'Pronto para Venda')
+      .filter(p => p.status === 'Pronto para Venda' && p.sale_price != null && p.sale_price > 0)
       .reduce((s, p) => {
         const { profit } = calcROI(p)
         return s + profit
       }, 0)
+  }, [projects])
+
+  const avgRepairDays = useMemo(() => {
+    const times = projects
+      .filter(p => p.status === 'Vendido' && p.sold_at)
+      .map(p => differenceInDays(new Date(p.sold_at!), new Date(p.received_at)))
+      .filter(d => d >= 0)
+    return times.length > 0 ? Math.round(times.reduce((a, b) => a + b, 0) / times.length) : null
   }, [projects])
 
   const tooltipStyle = {
@@ -124,7 +132,7 @@ export function Analytics() {
           { label: t('analytics.avgTicket'), value: fmtGBP(avgTicket), icon: DollarSign },
           { label: t('analytics.profitProjection'), value: fmtGBP(projectedProfit), icon: Target, sub: t('analytics.readyToSell') },
           { label: t('analytics.totalSold'), value: String(projects.filter(p => p.status === 'Vendido').length), icon: TrendingUp },
-          { label: t('analytics.avgDays'), value: '—', icon: Clock, sub: t('analytics.comingSoon') },
+          { label: t('analytics.avgDays'), value: avgRepairDays !== null ? avgRepairDays + 'd' : '\u2014', icon: Clock, sub: avgRepairDays !== null ? t('analytics.daysToSell') : t('analytics.comingSoon') },
         ].map(({ label, value, icon: Icon, sub }) => (
           <Card key={label}>
             <CardContent className="p-5">

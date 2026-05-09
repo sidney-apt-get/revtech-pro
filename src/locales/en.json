@@ -677,7 +677,8 @@
     "hoursPerProject": "Hours per Project (Top 10)",
     "hoursByStatus": "Hours by Status (where most time is spent)",
     "deletedProject": "Project removed",
-    "hours": "Hours"
+    "hours": "Hours",
+    "daysToSell": "from purchase to sale"
   },
   "map": {
     "title": "Map & Platforms",
@@ -1003,7 +1004,9 @@
       "revenue": "Revenue",
       "profit": "Profit",
       "expenses": "Expenses"
-    }
+    },
+    "lotsCapital": "{{count}} lot(s) purchased in this period (untriaged)",
+    "lotsNotAllocated": "in capital not yet allocated to projects."
   },
   "warranties": {
     "title": "Warranty Management",

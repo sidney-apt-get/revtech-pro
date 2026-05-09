@@ -677,7 +677,8 @@
     "hoursPerProject": "Horas por Projecto (Top 10)",
     "hoursByStatus": "Horas por Estado (onde passa mais tempo)",
     "deletedProject": "Projecto removido",
-    "hours": "Horas"
+    "hours": "Horas",
+    "daysToSell": "da compra à venda"
   },
   "map": {
     "title": "Mapa & Plataformas",
@@ -1003,7 +1004,9 @@
       "revenue": "Receita",
       "profit": "Lucro",
       "expenses": "Despesas"
-    }
+    },
+    "lotsCapital": "{{count}} lote(s) comprado(s) neste período (não triado)",
+    "lotsNotAllocated": "em capital ainda não alocado a projectos."
   },
   "warranties": {
     "title": "Gestão de Garantias",

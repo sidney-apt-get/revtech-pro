@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useProjects } from '@/hooks/useProjects'
 import { useExpenses, useCreateExpense, useDeleteExpense, useFinancialGoals, useUpsertGoal } from '@/hooks/useFinances'
+import { useLots } from '@/hooks/useSmartCatalog'
 import { calcROI, fmtGBP } from '@/lib/utils'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -24,7 +25,7 @@ import {
   getMonth, getYear, differenceInDays,
   startOfWeek, endOfWeek, startOfYear, endOfYear, startOfDay, endOfDay,
 } from 'date-fns'
-import { pt } from 'date-fns/locale'
+import { pt, enGB } from 'date-fns/locale'
 
 type Period = 'today' | 'week' | 'month' | 'year' | 'custom'
 
@@ -45,11 +46,13 @@ function BudgetBar({ value, target, color = 'accent' }: { value: number; target:
 }
 
 export function Finances() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const locale = i18n.language === 'pt' ? pt : enGB
   useEffect(() => { document.title = t('page_titles.finances') + ' — RevTech PRO' }, [t])
   const { data: projects = [], isLoading: loadingProjects } = useProjects()
   const { data: expenses = [], isLoading: loadingExpenses } = useExpenses()
   const { data: goals = [] } = useFinancialGoals()
+  const { data: lots = [] } = useLots()
   const createExpense = useCreateExpense()
   const deleteExpense = useDeleteExpense()
   const upsertGoal = useUpsertGoal()
@@ -84,6 +87,12 @@ export function Finances() {
     const operationalExpenses = expenses
       .filter(e => { const d = parseISO(e.date); return d >= start && d <= end })
       .reduce((s, e) => s + e.amount, 0)
+    // Lots purchased in this period not yet allocated to individual projects
+    const lotsInPeriod = lots.filter(l => {
+      const d = parseISO(l.purchase_date)
+      return d >= start && d <= end && l.status === 'untriaged'
+    })
+    const lotsCost = lotsInPeriod.reduce((s, l) => s + l.purchase_price, 0)
     const grossProfit = revenue - directCosts
     const netProfit = grossProfit - operationalExpenses
     const margin = revenue > 0 ? (netProfit / revenue) * 100 : 0
@@ -95,8 +104,8 @@ export function Finances() {
       .sort((a, b) => b.profit - a.profit)
       .slice(0, 5)
 
-    return { revenue, directCosts, operationalExpenses, grossProfit, netProfit, margin, taxEstimate, soldProjects, top5 }
-  }, [projects, expenses, periodRange])
+    return { revenue, directCosts, operationalExpenses, grossProfit, netProfit, margin, taxEstimate, soldProjects, top5, lotsInPeriod, lotsCost }
+  }, [projects, expenses, lots, periodRange])
 
   const [expenseModal, setExpenseModal] = useState(false)
   const [expForm, setExpForm] = useState({
@@ -114,6 +123,16 @@ export function Finances() {
     profit_target: String(currentGoal?.profit_target ?? ''),
     expenses_budget: String(currentGoal?.expenses_budget ?? ''),
   })
+  // Sync goalForm when async goals data loads (form initialises before query resolves)
+  useEffect(() => {
+    if (currentGoal) {
+      setGoalForm({
+        revenue_target: String(currentGoal.revenue_target),
+        profit_target: String(currentGoal.profit_target),
+        expenses_budget: String(currentGoal.expenses_budget),
+      })
+    }
+  }, [currentGoal?.id])
 
   // Monthly aggregations (last 6 months)
   const monthlyData = useMemo(() => {
@@ -140,13 +159,13 @@ export function Finances() {
       const profit = revenue - totalExpenses
 
       return {
-        month: format(d, 'MMM', { locale: pt }),
+        month: format(d, 'MMM', { locale }),
         m, y,
         revenue,
         totalExpenses,
         otherExpenses,
         profit,
-        label: format(d, 'MMM yy', { locale: pt }),
+        label: format(d, 'MMM yy', { locale }),
       }
     })
   }, [projects, expenses])
@@ -171,7 +190,10 @@ export function Finances() {
   // Projections
   const readyToSell = projects.filter(p => p.status === 'Pronto para Venda')
   const potentialRevenue = readyToSell.reduce((s, p) => s + (p.sale_price ?? calcROI(p).cost * 1.5), 0)
-  const potentialProfit = readyToSell.reduce((s, p) => s + calcROI(p).profit, 0)
+  // Only count items that already have a sale_price (avoids negative phantom profit)
+  const potentialProfit = readyToSell
+    .filter(p => p.sale_price != null && p.sale_price > 0)
+    .reduce((s, p) => s + calcROI(p).profit, 0)
 
   const soldAll = projects.filter(p => p.status === 'Vendido' && p.sold_at)
   const avgCost = soldAll.length > 0
@@ -232,7 +254,7 @@ export function Finances() {
           <PoundSterling className="h-6 w-6 text-accent" />
           {t('finances.title')}
         </h1>
-        <p className="text-text-muted text-sm mt-0.5">{format(now, 'MMMM yyyy', { locale: pt })}</p>
+        <p className="text-text-muted text-sm mt-0.5">{format(now, 'MMMM yyyy', { locale })}</p>
       </div>
 
       {/* Period selector */}
@@ -294,14 +316,13 @@ export function Finances() {
         </Card>
       )}
 
-      {/* Tax estimate */}
-      {periodStats.netProfit > 0 && (
-        <div className="rounded-xl border border-warning/20 bg-warning/5 px-4 py-3 flex items-start gap-2">
-          <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
-          <p className="text-xs text-warning">
-            <span className="font-semibold">{t('finances.taxEstimate')}:</span>{' '}
-            20% {t('finances.on')} {fmtGBP(periodStats.netProfit)} ≈ <span className="font-bold">{fmtGBP(periodStats.taxEstimate)}</span>.
-            {' '}{t('finances.consultAccountant')}
+      {/* Lots purchased in period (capital not yet allocated to projects) */}
+      {periodStats.lotsInPeriod.length > 0 && (
+        <div className="rounded-xl border border-accent/20 bg-accent/5 px-4 py-3 flex items-start gap-2">
+          <Lightbulb className="h-4 w-4 text-accent shrink-0 mt-0.5" />
+          <p className="text-xs text-accent">
+            <span className="font-semibold">{t('finances.lotsCapital', { count: periodStats.lotsInPeriod.length })}:</span>{' '}
+            {fmtGBP(periodStats.lotsCost)} {t('finances.lotsNotAllocated')}
           </p>
         </div>
       )}
@@ -345,7 +366,7 @@ export function Finances() {
           {/* Progress vs goal */}
           {currentGoal && (
             <Card>
-              <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Target className="h-4 w-4 text-accent" />{t('finances.progressVsGoal')} ({format(now, 'MMMM', { locale: pt })})</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Target className="h-4 w-4 text-accent" />{t('finances.progressVsGoal')} ({format(now, 'MMMM', { locale })})</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 {currentGoal.revenue_target > 0 && (
                   <div>
@@ -509,7 +530,7 @@ export function Finances() {
         {/* ABA 3 — METAS */}
         <TabsContent value="metas" className="space-y-4 mt-4">
           <Card>
-            <CardHeader><CardTitle className="text-sm">{t('finances.goalsFor', { month: format(now, 'MMMM yyyy', { locale: pt }) })}</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-sm">{t('finances.goalsFor', { month: format(now, 'MMMM yyyy', { locale }) })}</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-3 gap-3">
                 {[

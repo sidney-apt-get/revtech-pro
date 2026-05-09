@@ -6,30 +6,74 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
-const GEMINI_PROMPT = `Analyse this image of an electronic device or component.
-Identify the product and return ONLY valid JSON with this exact structure (no text outside JSON):
-{
-  "category_slug": "(one of: audio-amplifier, audio-turntable, mobile-iphone, mobile-android-flagship, mobile-ipad, laptop-windows, laptop-macbook-pro, laptop-macbook-air, desktop-imac, desktop-windows-tower, console-playstation, console-xbox, console-nintendo-home, console-nintendo-portable, console-controller, desktop-cpu, desktop-gpu, laptop-ram, laptop-ssd, peripheral-monitor, audio-tubes, audio-capacitors, audio-belt, audio-needle, laptop-battery, laptop-screen, laptop-motherboard, desktop-motherboard, desktop-psu, console-optical, console-fan, mobile-screen, mobile-battery, mobile-motherboard, mobile-camera, mobile-charging-port, consumable-solder, consumable-thermal, tool-soldering, tool-multimeter, tool-oscilloscope, tool-hotair, generic-equipment, generic-part)",
-  "confidence": 0-100,
-  "brand": "string",
-  "model": "string",
-  "year_manufactured": number or null,
-  "color": "string or null",
-  "storage_gb": number or null,
-  "ram_gb": number or null,
-  "battery_mah": number or null,
-  "power_watts": number or null,
-  "screen_size_inches": number or null,
-  "cpu_model": "string or null",
-  "gpu_model": "string or null",
-  "serial_number": "string or null (only if visible on label)",
-  "imei": "string or null (only if visible)",
-  "visible_damage": ["array of visible damage descriptions"],
-  "suggested_defect": "string or null",
-  "condition_grade": "A, B, C, or D",
-  "notes": "string"
-}`
+// ── Category slugs ────────────────────────────────────────────────────────────
+const CATEGORY_SLUGS = [
+  'audio-amplifier', 'audio-turntable', 'audio-speakers', 'audio-tubes',
+  'mobile-iphone', 'mobile-android-flagship', 'mobile-ipad', 'mobile-ereader',
+  'mobile-screen', 'mobile-battery', 'mobile-motherboard', 'mobile-camera', 'mobile-charging-port',
+  'laptop-windows', 'laptop-macbook-pro', 'laptop-macbook-air',
+  'laptop-screen', 'laptop-battery', 'laptop-ram', 'laptop-ssd', 'laptop-charger', 'laptop-motherboard',
+  'desktop-imac', 'desktop-windows-tower', 'desktop-cpu', 'desktop-gpu', 'desktop-motherboard', 'desktop-psu',
+  'console-playstation', 'console-xbox', 'console-nintendo-home', 'console-nintendo-portable',
+  'console-controller', 'console-optical', 'console-fan',
+  'peripheral-monitor', 'peripheral-printer',
+  'consumable-solder', 'consumable-flux', 'consumable-thermal',
+  'tool-soldering', 'tool-multimeter', 'tool-oscilloscope', 'tool-hotair',
+  'generic-equipment', 'generic-part',
+].join(', ')
 
+// ── Structured JSON schema (Gemini responseSchema format) ─────────────────────
+// No nullable fields (causes issues in some Gemini versions)
+// No enum constraints (model uses prompt guidance instead)
+const ANALYSIS_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    category_slug:        { type: 'STRING',  description: `One of: ${CATEGORY_SLUGS}` },
+    confidence:           { type: 'NUMBER',  description: 'Identification confidence 0-100' },
+    brand:                { type: 'STRING',  description: 'Manufacturer brand name' },
+    model:                { type: 'STRING',  description: 'Specific model name and number' },
+    year_manufactured:    { type: 'NUMBER',  description: 'Year of manufacture, or 0 if unknown' },
+    color:                { type: 'STRING',  description: 'Main colour, or empty string if unknown' },
+    storage_gb:           { type: 'NUMBER',  description: 'Storage in GB, or 0 if not applicable' },
+    ram_gb:               { type: 'NUMBER',  description: 'RAM in GB, or 0 if not applicable' },
+    battery_mah:          { type: 'NUMBER',  description: 'Battery in mAh, or 0 if not applicable' },
+    power_watts:          { type: 'NUMBER',  description: 'Power in watts, or 0 if not applicable' },
+    screen_size_inches:   { type: 'NUMBER',  description: 'Screen diagonal in inches, or 0 if not applicable' },
+    cpu_model:            { type: 'STRING',  description: 'CPU model name, or empty string' },
+    gpu_model:            { type: 'STRING',  description: 'GPU model name, or empty string' },
+    serial_number:        { type: 'STRING',  description: 'Serial number if visible on label, else empty string' },
+    imei:                 { type: 'STRING',  description: 'IMEI if visible in image, else empty string' },
+    visible_damage:       { type: 'ARRAY',   items: { type: 'STRING' }, description: 'List of all visible damage items' },
+    suggested_defect:     { type: 'STRING',  description: 'Most likely functional fault, or empty string' },
+    condition_grade:      { type: 'STRING',  description: 'A (near-mint), B (light wear), C (visible damage), or D (heavy damage/non-functional)' },
+    estimated_value_gbp:  { type: 'NUMBER',  description: 'Current UK resale value in GBP for working refurbished unit, or 0 if unknown' },
+    repair_complexity:    { type: 'STRING',  description: 'simple, moderate, complex, or unknown' },
+    notes:                { type: 'STRING',  description: 'Expert observations, repair tips, common failure modes' },
+  },
+  required: [
+    'category_slug', 'confidence', 'brand', 'model', 'condition_grade',
+    'visible_damage', 'notes', 'estimated_value_gbp', 'repair_complexity'
+  ],
+}
+
+// ── Expert prompt ─────────────────────────────────────────────────────────────
+const GEMINI_IMAGE_PROMPT = `You are a senior electronics repair technician and appraiser with 20+ years of experience.
+You work for a UK repair shop that buys defective electronics, repairs them, and resells via CeX, Back Market, and eBay UK.
+
+Analyse this image of an electronic device or component with expert precision:
+
+1. IDENTIFICATION — Exact brand, model, variant/SKU. Use logos, ports, design, bezels, buttons, materials.
+2. SPECIFICATIONS — Extract visible specs; infer the rest from the confirmed model.
+3. CONDITION — Grade A/B/C/D: A=near-mint, B=light wear, C=visible damage, D=heavy damage/non-functional.
+4. DAMAGE — List every visible defect, scratch, crack, discolouration, missing part.
+5. REPAIR — If damaged: identify most probable fault and complexity (simple/moderate/complex/unknown).
+6. VALUATION — Current UK market value in GBP for a fully working refurbished unit (CeX/Back Market/eBay UK reference).
+7. LABELS — Transcribe serial number or IMEI exactly if visible on any label.
+
+Use 0 for numeric fields that don't apply. Use empty string for text fields that don't apply.
+Be accurate — a lower confidence score is better than a wrong answer.`
+
+// ── Main handler ──────────────────────────────────────────────────────────────
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: CORS_HEADERS })
@@ -45,18 +89,13 @@ serve(async (req) => {
     }
 
     const body = await req.json()
-    console.log('[AI Analyze] Request type:', body.type ?? 'image')
-    console.log('[AI Analyze] Has image:', !!body.imageBase64)
+    const requestType = body.type ?? 'analyze_image'
+    console.log('[AI Analyze] type:', requestType)
 
-    // Translation request
-    if (body.type === 'translate') {
-      const prompt = `Translate the following text to ${body.targetLanguage}.
-Return ONLY the translated text, nothing else. Do not add explanations or quotes.
-
-Text to translate:
-${body.text}`
-
-      const geminiRes = await fetch(
+    // ── TRANSLATION (flash — fast) ────────────────────────────────────────────
+    if (requestType === 'translate') {
+      const prompt = `Translate the following text to ${body.targetLanguage}.\nReturn ONLY the translated text, nothing else.\n\n${body.text}`
+      const r = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
         {
           method: 'POST',
@@ -67,114 +106,4 @@ ${body.text}`
           }),
         }
       )
-      if (!geminiRes.ok) {
-        return new Response(JSON.stringify({ error: 'Translation failed' }), {
-          status: 502, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-        })
-      }
-      const tData = await geminiRes.json()
-      const result = tData.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
-      return new Response(JSON.stringify({ result: result.trim() }), {
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-      })
-    }
-
-    const { imageBase64: rawBase64, mimeType = 'image/jpeg' } = body
-    if (!rawBase64) {
-      return new Response(
-        JSON.stringify({ error: 'imageBase64 is required' }),
-        { status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const imageBase64 = rawBase64.replace(/^data:[^;]+;base64,/, '')
-
-    const payload = {
-      contents: [{
-        parts: [
-          { text: GEMINI_PROMPT },
-          { inline_data: { mime_type: mimeType, data: imageBase64 } },
-        ],
-      }],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
-    }
-
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`
-
-    console.log('[AI] Calling Gemini API...')
-    console.log('[AI] Model: gemini-2.5-flash')
-    console.log('[AI] Image size:', imageBase64.length)
-    console.log('[AI] Payload size:', JSON.stringify(payload).length)
-
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 25000)
-
-    let geminiRes: Response
-    try {
-      geminiRes = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      })
-      clearTimeout(timeoutId)
-    } catch (err: any) {
-      clearTimeout(timeoutId)
-      if (err.name === 'AbortError') {
-        console.log('[AI] Request timed out after 25s')
-        return new Response(
-          JSON.stringify({ error: 'Gemini timeout' }),
-          { status: 504, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
-        )
-      }
-      console.log('[AI] Fetch error:', err.message)
-      throw err
-    }
-
-    console.log('[AI] Gemini status:', geminiRes.status)
-    const responseText = await geminiRes.text()
-    console.log('[AI] Gemini response:', responseText.slice(0, 500))
-
-    if (geminiRes.status !== 200) {
-      return new Response(
-        JSON.stringify({
-          error: 'Gemini error',
-          status: geminiRes.status,
-          detail: responseText.slice(0, 200),
-        }),
-        { status: 502, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const data = JSON.parse(responseText)
-    const text: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
-
-    const jsonMatch = text.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      return new Response(
-        JSON.stringify({ error: 'No JSON in Gemini response', raw: text }),
-        { status: 422, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const result = JSON.parse(jsonMatch[0])
-    // PhotoAnalyzeButton uses type:'analyze_image' and expects { result: ... }
-    // analyzeWithGemini (SmartCameraButton) calls without type and expects direct object
-    if (body.type === 'analyze_image') {
-      return new Response(
-        JSON.stringify({ result }),
-        { headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
-      )
-    }
-    return new Response(
-      JSON.stringify(result),
-      { headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
-    )
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    return new Response(
-      JSON.stringify({ error: message }),
-      { status: 500, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
-    )
-  }
-})
+    

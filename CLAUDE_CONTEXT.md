@@ -121,21 +121,36 @@ git add . && git commit -m "mensagem" && git push && vercel --prod --yes
 - Sistema de scanner/pareamento QR (não funcionou)
 - Chat IA flutuante (TechMasterChat)
 - Diagnósticos por IA (página separada)
+- Assistente de Bancada (removido em 09/05/2026 — commit 73b19f9b)
+  Nav entry removida de Layout.tsx; rota /assistant removida de App.tsx
+  Chaves "nav.assistant" ainda em pt.json e en.json (orphans inofensivos)
+  Chaves assistantTitle/assistantSubtitle ainda em translations.ts (orphan)
+
+## DEPLOY
+- git add . && git commit -m "mensagem" && git push origin master && vercel --prod --yes
+- Webhook Vercel estava partido em 09/05/2026 — resolvido forçando push manual
+- GitHub repo: sidney-apt-get/revtech-pro (branch: master)
+- Vercel project ID: prj_EyYiSap5kknzB6qDcu7zZUAf5CBn
+- Vercel team ID: team_G8yhDWDyXmrOLSWfNccwDvxV
 
 ## PROBLEMAS CONHECIDOS ACTUAIS
-1. Auto-preenchimento por foto (Gemini Vision) — em teste
-   A edge function ai-analyze retorna 200 mas o frontend
-   pode não estar a processar a resposta correctamente
-   Ficheiro: src/components/PhotoAnalyzeButton.tsx
-   Edge function: supabase/functions/ai-analyze/index.ts
-
-2. Categorias com encoding incorrecto no selector de
+1. Categorias com encoding incorrecto no selector de
    novo projecto — emojis aparecem como ðŸŽµ
    Ficheiro: src/pages/Projects.tsx
    Solução aplicada: categoryIcons.ts com ASCII
 
-3. Google Client Secret foi partilhado publicamente —
+2. Google Client Secret foi partilhado publicamente —
    REVOGAR em console.cloud.google.com
+
+## IDENTIFICAÇÃO POR IA — ESTADO ACTUAL (09/05/2026)
+- Modelo: gemini-2.5-pro (upgrade de gemini-2.5-flash)
+- JSON schema obrigatório com responseMimeType: application/json
+- Novos campos: estimated_value_gbp, repair_complexity
+- Timeout: 55s (era 25s) com thinkingBudget: 1024
+- Retry automático no frontend em caso de timeout
+- Resolução da imagem: 1280px (era 1024px)
+- Edge function: v13 deployada via Supabase MCP
+- Commit: 5ae91de — deploy Vercel: dpl_536gCMctoFuginmE2jnvocJtGNFv
 
 ## TAXONOMIA DE CATEGORIAS (slugs principais)
 audio, audio-amplifier, audio-turntable, audio-speakers,
@@ -146,24 +161,4 @@ desktop, desktop-imac, desktop-windows-tower,
 desktop-cpu, desktop-gpu, desktop-motherboard, desktop-psu,
 consoles, console-playstation, console-xbox,
 console-nintendo-home, console-nintendo-portable,
-console-controller, mobile, mobile-iphone,
-mobile-android-flagship, mobile-ipad, mobile-ereader,
-peripherals, peripheral-monitor, peripheral-printer,
-consumables, consumable-solder, consumable-flux,
-tools, tool-oscilloscope, tool-soldering,
-lots-category, generic
-
-## PARA NOVA SESSÃO DE DESENVOLVIMENTO
-1. Confirma que estás na pasta correcta:
-   cd C:\RevTech\revtech-new && git pull
-2. Lê este ficheiro para contexto completo
-3. Verifica o estado actual: git log --oneline -5
-4. Testa em: https://revtech-new.vercel.app
-5. Faz deploy: git push && vercel --prod --yes
-
-## PRÓXIMOS PASSOS SUGERIDOS
-- Corrigir encoding de categorias definitivamente
-- Confirmar que auto-preenchimento por foto funciona
-- Revogar Google Client Secret comprometido
-- Criar 2-3 projectos reais para testar o sistema
-- Testar fluxo completo: compra → reparação → venda
+console-c
