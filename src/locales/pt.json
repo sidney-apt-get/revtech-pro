@@ -113,7 +113,8 @@
     "noProject": "Sem projecto",
     "collapse": "Recolher",
     "expand": "Expandir",
-    "dismiss": "Dispensar"
+    "dismiss": "Dispensar",
+    "optional": "Opcional"
   },
   "page_titles": {
     "dashboard": "Dashboard",
@@ -1029,7 +1030,9 @@
       "title": "Registar Reclamação de Garantia",
       "desc": "Descreve o problema reportado pelo cliente:",
       "placeholder": "ex: Ecrã voltou a falhar após 2 meses...",
-      "register": "Registar"
+      "register": "Registar",
+      "description": "Descreve o problema reportado pelo cliente:",
+      "submit": "Registar"
     },
     "claimDetail": "Reclamação: {{description}}",
     "statusBadge": {

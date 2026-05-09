@@ -113,7 +113,8 @@
     "noProject": "No project",
     "collapse": "Collapse",
     "expand": "Expand",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "optional": "Optional"
   },
   "page_titles": {
     "dashboard": "Dashboard",
@@ -1029,7 +1030,9 @@
       "title": "Register Warranty Claim",
       "desc": "Describe the issue reported by the customer:",
       "placeholder": "e.g. Screen failed again after 2 months...",
-      "register": "Register"
+      "register": "Register",
+      "description": "Describe the issue reported by the customer:",
+      "submit": "Register"
     },
     "claimDetail": "Claim: {{description}}",
     "statusBadge": {
