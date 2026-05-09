@@ -1,0 +1,92 @@
+╔════════════════════════════════════════════════════════════════╗
+║     🚀 AGENTE TÉCNICO DE BANCADA - PRONTO PARA DEPLOY 🚀      ║
+╚════════════════════════════════════════════════════════════════╝
+
+✅ CÓDIGO JÁ FOI ATUALIZADO
+   Arquivo: src/pages/Assistant.tsx
+   Status: Pronto para usar
+
+🔑 CHAVE GEMINI DISPONÍVEL
+   AIzaSyDmeYxWC4F7VulP6F9hy2pgWix-f_yqb2I
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 O QUE FAZER AGORA:
+
+OPÇÃO 1 - SCRIPT AUTOMÁTICO (MAIS FÁCIL)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Abra PowerShell aqui nesta pasta
+2. Cole EXATAMENTE isto:
+
+$env:VERCEL_TOKEN = "vcp_33QJee9t0QnU06QeJajTyRYADG1iEE1W6HRePd8D1KUnzrQpF71ffzC5"
+.\deploy-assistente.ps1
+
+3. Espere terminar! (vai fazer tudo sozinho)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+OPÇÃO 2 - PASSOS MANUAIS (SEM SCRIPT)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Passo 1: Criar .env.local
+  → Crie arquivo ".env.local" na raiz do projeto
+  → Coloque dentro:
+    VITE_GEMINI_API_KEY=AIzaSyDmeYxWC4F7VulP6F9hy2pgWix-f_yqb2I
+
+Passo 2: Commit
+  → PowerShell aqui e rode:
+    git add src/pages/Assistant.tsx
+    git commit -m "feat: agente técnico com diagnóstico Gemini"
+    git push
+
+Passo 3: Vercel Environment
+  → Vá para https://vercel.com → RevTech → Settings
+  → Environment Variables
+  → Add: VITE_GEMINI_API_KEY = AIzaSyDmeYxWC4F7VulP6F9hy2pgWix-f_yqb2I
+  → Marque: Production
+
+Passo 4: Deploy
+  → PowerShell e rode:
+    npx vercel --prod --token vcp_33QJee9t0QnU06QeJajTyRYADG1iEE1W6HRePd8D1KUnzrQpF71ffzC5
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✨ PRONTO! O que você vai ter:
+
+  🔍 Diagnosticar
+     → Tire foto do equipamento
+     → IA analisa marca, modelo, danos
+     → Vê condição, defeitos, confiança
+
+  🔧 Guia de Reparo
+     → Automático baseado no diagnóstico
+     → Passos detalhados
+     → Estimativa de lucro
+     → Copie/compartilhe com equipe
+
+  📍 Tudo dentro do painel RevTech!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❓ DÚVIDAS?
+
+1. Vercel não faz deploy?
+   → Verifique se VITE_GEMINI_API_KEY está em Production no Vercel
+   → Verifique se o commit foi feito
+
+2. Foto não analisa?
+   → Verifique se a chave Gemini está configurada no Vercel
+   → Tente com foto mais clara
+   → Verifique logs no Vercel
+
+3. Aba Assistente não aparece?
+   → Faça refresh: Ctrl+Shift+R (hard refresh)
+   → Limpe cache do navegador
+   → Aguarde 2-3 minutos
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Arquivo detalhado: DEPLOY-ASSISTENTE.md
+
+Bora lá! 🚀
