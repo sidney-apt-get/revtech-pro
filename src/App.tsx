@@ -24,7 +24,6 @@ import { ProjectDetails } from '@/pages/ProjectDetails'
 import { Finances } from '@/pages/Finances'
 import { Lots } from '@/pages/Lots'
 import { InventoryDetail } from '@/pages/InventoryDetail'
-import { Assistant } from '@/pages/Assistant'
 import AuthCallback from '@/pages/AuthCallback'
 import { SettingsProvider } from '@/contexts/SettingsContext'
 import { RoleProvider } from '@/contexts/RoleContext'
@@ -34,7 +33,7 @@ function Spinner() {
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="space-y-4 text-center">
         <div className="h-10 w-10 rounded-full border-2 border-accent border-t-transparent animate-spin mx-auto" />
-        <p className="text-text-muted text-sm">Loading…</p>
+        <p className="text-text-muted text-sm">Loading RevTech PRO…</p>
       </div>
     </div>
   )
@@ -81,9 +80,6 @@ export default function App() {
           <Route path="/auth/callback" component={AuthCallback} />
           <Route path="/dashboard">
             <Protected><Dashboard /></Protected>
-          </Route>
-          <Route path="/assistant">
-            <Protected><Assistant /></Protected>
           </Route>
           <Route path="/projects">
             <Protected><Projects /></Protected>
