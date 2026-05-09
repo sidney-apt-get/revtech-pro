@@ -1,0 +1,4 @@
+BUILD_TIMESTAMP: 2026-05-09T10:58:00Z
+COMMIT: 4372e51
+BUILD_REASON: Força rebuild após remoção de Assistente
+STATUS: Aguardando redeploy do Vercel
