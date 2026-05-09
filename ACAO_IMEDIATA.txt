@@ -1,0 +1,90 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║                   ⚡ AÇÃO IMEDIATA REQUERIDA - 09/05/2026                      ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+🟢 TRABALHO COMPLETADO:
+   ✅ Assistante feature REMOVIDA do código
+   ✅ 4 commits pusheados para GitHub com sucesso
+   ✅ Código 100% correto localmente
+   ✅ Documentação completa criada
+
+🔴 PROBLEMA ENCONTRADO:
+   ❌ Vercel webhook não detecta commits novos
+   ❌ Site ainda mostra versão de 5 dias atrás
+   ❌ "Assistente" ainda visível no menu live
+   ❌ Requer intervenção manual no Vercel
+
+════════════════════════════════════════════════════════════════════════════════
+
+⚡ PRÓXIMO PASSO (Você faz agora):
+
+1️⃣  Abra: https://vercel.com/dashboard
+
+2️⃣  Escolha UMA das 3 opções abaixo:
+
+   OPÇÃO 1 (RECOMENDADO - 2 minutos):
+   ├─ Selecione projeto "revtech-new"
+   ├─ Clique em Settings → Git
+   ├─ Clique em "Disconnect GitHub"
+   ├─ Aguarde 5 segundos
+   ├─ Clique em "Connect GitHub"
+   └─ Vercel fará novo build automaticamente
+
+   OPÇÃO 2 (1 minuto):
+   ├─ Selecione projeto "revtech-new"
+   ├─ Clique em "Deployments"
+   ├─ Clique nos 3 pontos (...)
+   ├─ Selecione "Redeploy"
+   └─ Confirme redeploy
+
+   OPÇÃO 3 (5 minutos):
+   ├─ Settings → Git → Webhooks
+   ├─ Remova webhooks antigos
+   ├─ Crie novo webhook
+   └─ Salve configurações
+
+3️⃣  Aguarde 5-10 minutos para novo build
+
+4️⃣  Teste em: https://revtech-new.vercel.app/dashboard
+   ├─ Menu deve estar SEM "Assistente"
+   ├─ /assistant deve retornar erro 404
+   └─ Todos outros menus funcionam
+
+════════════════════════════════════════════════════════════════════════════════
+
+📚 DOCUMENTAÇÃO DISPONÍVEL:
+
+   • RESOLVER_PROBLEMA_VERCEL_MANUAL.md
+     → Guia passo-a-passo com screenshots
+     → 3 opções detalhadas
+     → Checklist de verificação
+
+   • CLAUDE_MEMORIA_VERCEL_DEPLOYMENT_ISSUE.md
+     → Análise técnica completa
+     → Root cause (webhook quebrado)
+     → Notas para futuras sessões
+
+   • VERIFICACAO_FINAL_09-05-2026.md
+     → Status do sistema atualizado
+     → Feature status
+     → Próximas ações
+
+════════════════════════════════════════════════════════════════════════════════
+
+⏱️  TEMPO ESTIMADO: 10-15 minutos total
+
+   5-10 min: Você no painel Vercel (escolher opção 1, 2 ou 3)
+   5-10 min: Vercel fazer build
+   1-2 min: Você testar o site
+
+════════════════════════════════════════════════════════════════════════════════
+
+✅ APÓS SUCESSO:
+
+   Avise quando o site estiver correto (sem "Assistente" no menu).
+   Então Claude irá:
+   - Marcar task como 100% completada
+   - Criar relatório final
+   - Atualizar memória do projeto
+
+════════════════════════════════════════════════════════════════════════════════

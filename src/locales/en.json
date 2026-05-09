@@ -1231,14 +1231,19 @@
   },
   "ai_photo": {
     "button": "Analyse Photo",
-    "analysing": "Analysing...",
+    "compressing": "Preparing image...",
+    "analysing": "Analysing with AI...",
+    "retrying": "Retrying...",
     "section_title": "AI Identification",
     "section_desc": "Take a photo or choose from gallery — fields fill automatically",
     "high_confidence": "High confidence",
     "medium_confidence": "Verify data",
     "low_confidence": "Verify manually",
     "editable_hint": "All fields are editable",
+    "estimated_value": "Estimated value",
+    "repair_complexity": "Repair complexity",
     "error": "Could not identify product",
-    "error_generic": "Error analysing photo"
+    "error_generic": "Error analysing photo",
+    "error_timeout": "Timed out. Try with a smaller image."
   }
 }

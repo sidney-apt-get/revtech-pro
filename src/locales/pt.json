@@ -1231,14 +1231,19 @@
   },
   "ai_photo": {
     "button": "Analisar Foto",
-    "analysing": "A analisar...",
+    "compressing": "A preparar imagem...",
+    "analysing": "A analisar com IA...",
+    "retrying": "A tentar novamente...",
     "section_title": "Identificação por IA",
     "section_desc": "Tira uma foto ou escolhe da galeria — campos preenchem automaticamente",
     "high_confidence": "Alta confiança",
     "medium_confidence": "Verifica os dados",
     "low_confidence": "Verifica manualmente",
     "editable_hint": "Todos os campos são editáveis",
+    "estimated_value": "Valor estimado",
+    "repair_complexity": "Complexidade de reparação",
     "error": "Não foi possível identificar o produto",
-    "error_generic": "Erro ao analisar a foto"
+    "error_generic": "Erro ao analisar a foto",
+    "error_timeout": "Tempo limite esgotado. Tenta com uma imagem mais pequena."
   }
 }

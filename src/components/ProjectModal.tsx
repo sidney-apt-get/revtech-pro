@@ -328,7 +328,8 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
                   const conf = result.confidence ?? 0
                   const msg = conf >= 80 ? t('ai_photo.high_confidence') : conf >= 50 ? t('ai_photo.medium_confidence') : t('ai_photo.low_confidence')
                   setAiPhoto(result)
-                  setAiMessage(`${msg} (${conf}%)`)
+                  const valuePart = result.estimated_value_gbp ? ` · £${result.estimated_value_gbp}` : ''
+                  setAiMessage(`${msg} (${conf}%)${valuePart}`)
                 }}
               />
             </div>
