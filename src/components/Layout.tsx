@@ -455,7 +455,6 @@ export function Layout({ children }: LayoutProps) {
             <span className="font-bold text-text-primary">{settings.company_name}</span>
           </div>
           <div className="flex items-center gap-2">
-            <LanguageSelector compact />
             <NotificationBell ordersCount={inTransitCount} lowStockItems={lowStockItems} />
             <button onClick={() => setMobileOpen(!mobileOpen)} className="text-text-muted hover:text-text-primary p-1">
               {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
