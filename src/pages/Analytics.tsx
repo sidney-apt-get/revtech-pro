@@ -1,13 +1,14 @@
 import { useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useProjects } from '@/hooks/useProjects'
+import { useExpenses } from '@/hooks/useFinances'
 import { calcROI, fmtGBP } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell, Legend,
 } from 'recharts'
-import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, differenceInDays } from 'date-fns'
+import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, differenceInDays, parseISO } from 'date-fns'
 import { enGB, pt } from 'date-fns/locale'
 import { TrendingUp, Clock, DollarSign, Target } from 'lucide-react'
 import { useAllTimeEntries } from '@/hooks/useTimeTracking'
@@ -17,6 +18,7 @@ export function Analytics() {
   const { t, i18n } = useTranslation()
   useEffect(() => { document.title = 'Analytics — RevTech PRO' }, [])
   const { data: projects = [] } = useProjects()
+  const { data: expenses = [] } = useExpenses()
   const { data: timeEntries = [] } = useAllTimeEntries()
   const { data: allProjects = [] } = useProjectsForTime()
   const locale = i18n.language === 'pt' ? pt : enGB
@@ -34,19 +36,23 @@ export function Analytics() {
         isWithinInterval(new Date(p.received_at), { start, end })
       )
       const revenue = soldInMonth.reduce((s, p) => s + (p.sale_price || 0), 0)
-      const cost = soldInMonth.reduce((s, p) =>
+      const directCost = soldInMonth.reduce((s, p) =>
         s + (p.purchase_price || 0) + (p.parts_cost || 0) + (p.shipping_in || 0) + (p.shipping_out || 0), 0)
+      // Despesas operacionais do mês (electricidade, ferramentas, etc.)
+      const opExpenses = expenses
+        .filter(e => isWithinInterval(parseISO(e.date), { start, end }))
+        .reduce((s, e) => s + e.amount, 0)
       const invested = receivedInMonth.reduce((s, p) =>
         s + (p.purchase_price || 0) + (p.parts_cost || 0) + (p.shipping_in || 0), 0)
       return {
         month: format(month, 'MMM', { locale }),
         receita: Number(revenue.toFixed(2)),
-        lucro: Number((revenue - cost).toFixed(2)),
+        lucro: Number((revenue - directCost - opExpenses).toFixed(2)),
         investido: Number(invested.toFixed(2)),
         count: soldInMonth.length,
       }
     })
-  }, [projects, locale])
+  }, [projects, expenses, locale])
 
   const topEquipment = useMemo(() => {
     const map = new Map<string, { count: number; totalProfit: number }>()

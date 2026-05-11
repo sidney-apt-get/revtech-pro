@@ -1,12 +1,14 @@
 import { useMemo } from 'react'
 import { useProjects } from './useProjects'
 import { useInventory } from './useInventory'
+import { useExpenses } from './useFinances'
 import { calcROI } from '@/lib/utils'
-import { startOfMonth, endOfMonth, isWithinInterval, differenceInDays, subMonths, startOfWeek, endOfWeek } from 'date-fns'
+import { startOfMonth, endOfMonth, isWithinInterval, differenceInDays, subMonths, startOfWeek, endOfWeek, parseISO } from 'date-fns'
 
 export function useDashboard() {
   const { data: projects = [] } = useProjects()
   const { data: inventory = [] } = useInventory()
+  const { data: expenses = [] } = useExpenses()
 
   return useMemo(() => {
     const now = new Date()
@@ -27,15 +29,17 @@ export function useDashboard() {
     const totalRevenue = soldThisMonth.reduce((s, p) => s + (p.sale_price || 0), 0)
     const totalCostSold = soldThisMonth.reduce((s, p) =>
       s + (p.purchase_price || 0) + (p.parts_cost || 0) + (p.shipping_in || 0) + (p.shipping_out || 0), 0)
-    const netProfit = totalRevenue - totalCostSold
 
-    const margins = soldThisMonth
-      .filter(p => p.sale_price && p.sale_price > 0)
-      .map(p => {
-        const cost = (p.purchase_price || 0) + (p.parts_cost || 0) + (p.shipping_in || 0) + (p.shipping_out || 0)
-        return ((p.sale_price! - cost) / p.sale_price!) * 100
-      })
-    const avgMargin = margins.length > 0 ? margins.reduce((a, b) => a + b, 0) / margins.length : 0
+    // Despesas operacionais do mês corrente (electricidade, subscrições, etc.)
+    const monthlyOpExpenses = expenses
+      .filter(e => isWithinInterval(parseISO(e.date), { start: monthStart, end: monthEnd }))
+      .reduce((s, e) => s + e.amount, 0)
+
+    const grossProfit = totalRevenue - totalCostSold
+    const netProfit = grossProfit - monthlyOpExpenses
+
+    // Margem líquida sobre receita total
+    const avgMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0
 
     // ── Operational KPIs ─────────────────────────────────────────────
     const activeProjects = projects.filter(p => !['Vendido', 'Cancelado'].includes(p.status))
@@ -81,15 +85,18 @@ export function useDashboard() {
         ticket: p.ticket_number,
       }))
 
-    // ── Monthly profit chart (last 6 months) ─────────────────────────
+    // ── Monthly profit chart (last 6 months) — lucro LÍQUIDO com despesas ──
     const monthlyProfit = Array.from({ length: 6 }, (_, i) => {
       const m = subMonths(now, 5 - i)
       const s = startOfMonth(m)
       const e = endOfMonth(m)
       const sold = projects.filter(p => p.status === 'Vendido' && p.sold_at && isWithinInterval(new Date(p.sold_at), { start: s, end: e }))
       const rev = sold.reduce((a, p) => a + (p.sale_price || 0), 0)
-      const cost = sold.reduce((a, p) => a + (p.purchase_price || 0) + (p.parts_cost || 0) + (p.shipping_in || 0) + (p.shipping_out || 0), 0)
-      return { monthDate: m, revenue: rev, profit: rev - cost, count: sold.length }
+      const directCost = sold.reduce((a, p) => a + (p.purchase_price || 0) + (p.parts_cost || 0) + (p.shipping_in || 0) + (p.shipping_out || 0), 0)
+      const opExpenses = expenses
+        .filter(exp => isWithinInterval(parseISO(exp.date), { start: s, end: e }))
+        .reduce((a, exp) => a + exp.amount, 0)
+      return { monthDate: m, revenue: rev, profit: rev - directCost - opExpenses, count: sold.length }
     })
 
     // ── Weekly projects created vs sold (last 8 weeks) ────────────────
@@ -131,5 +138,5 @@ export function useDashboard() {
       monthlyProfit,
       weeklyFlow,
     }
-  }, [projects, inventory])
+  }, [projects, inventory, expenses])
 }

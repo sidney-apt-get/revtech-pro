@@ -2,9 +2,10 @@ import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useProjects } from '@/hooks/useProjects'
 import { useOrders } from '@/hooks/useOrders'
+import { useExpenses } from '@/hooks/useFinances'
 import { generateMonthlyReport, generateAnnualReport, exportToCSV } from '@/lib/reports'
 import { calcROI, fmtGBP } from '@/lib/utils'
-import { format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns'
+import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns'
 import { enGB, pt } from 'date-fns/locale'
 import { FileDown, FileText, TrendingUp, TrendingDown, DollarSign, Activity } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -17,6 +18,7 @@ export function Reports() {
   const { t, i18n } = useTranslation()
   const { data: projects = [] } = useProjects()
   const { data: orders = [] } = useOrders()
+  const { data: expenses = [] } = useExpenses()
   const locale = i18n.language === 'pt' ? pt : enGB
   const currentYear = new Date().getFullYear()
   const currentMonth = new Date().getMonth()
@@ -49,23 +51,34 @@ export function Reports() {
       ? orders.filter(o => isWithinInterval(new Date(o.ordered_at), { start: monthStart, end: monthEnd }) && o.status !== 'Cancelado')
       : orders.filter(o => new Date(o.ordered_at).getFullYear() === selectedYear && o.status !== 'Cancelado')
 
+    // Despesas operacionais do período
+    const periodExpenses = reportType === 'monthly'
+      ? expenses.filter(e => isWithinInterval(parseISO(e.date), { start: monthStart, end: monthEnd }))
+      : expenses.filter(e => parseISO(e.date).getFullYear() === selectedYear)
+    const totalOpExpenses = periodExpenses.reduce((s, e) => s + e.amount, 0)
+
     const totalRevenue = periodProjects.reduce((s, p) => s + (p.sale_price ?? 0), 0)
     const totalCost = periodProjects.reduce((s, p) => s + calcROI(p).cost, 0)
     const totalPartsCost = periodOrders.reduce((s, o) => s + (o.total_cost ?? 0), 0)
-    const profit = totalRevenue - totalCost
+    const profit = totalRevenue - totalCost - totalOpExpenses
     const margin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0
 
-    return { totalRevenue, totalCost, totalPartsCost, profit, margin, periodProjects, periodOrders }
-  }, [projects, orders, selectedMonth, selectedYear, reportType])
+    return { totalRevenue, totalCost, totalPartsCost, totalOpExpenses, profit, margin, periodProjects, periodOrders }
+  }, [projects, orders, expenses, selectedMonth, selectedYear, reportType])
 
   const monthlyChart = useMemo(() => {
     return Array.from({ length: 12 }, (_, m) => {
+      const mStart = startOfMonth(new Date(selectedYear, m, 1))
+      const mEnd = endOfMonth(new Date(selectedYear, m, 1))
       const mp = projects.filter(p => p.status === 'Vendido' && p.sold_at && new Date(p.sold_at).getFullYear() === selectedYear && new Date(p.sold_at).getMonth() === m)
       const rev = mp.reduce((s, p) => s + (p.sale_price ?? 0), 0)
-      const cost = mp.reduce((s, p) => s + calcROI(p).cost, 0)
-      return { month: MONTHS_SHORT[m], revenue: rev, profit: rev - cost }
+      const directCost = mp.reduce((s, p) => s + calcROI(p).cost, 0)
+      const opExp = expenses
+        .filter(e => isWithinInterval(parseISO(e.date), { start: mStart, end: mEnd }))
+        .reduce((s, e) => s + e.amount, 0)
+      return { month: MONTHS_SHORT[m], revenue: rev, profit: rev - directCost - opExp }
     })
-  }, [projects, selectedYear, MONTHS_SHORT])
+  }, [projects, expenses, selectedYear, MONTHS_SHORT])
 
   function handleDownloadPDF() {
     if (reportType === 'monthly') {
@@ -157,7 +170,7 @@ export function Reports() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { title: t('reports.revenue'), value: fmtGBP(metrics.totalRevenue), icon: TrendingUp, color: 'text-success', bg: 'bg-success/15' },
-          { title: t('reports.costs'), value: fmtGBP(metrics.totalCost), icon: TrendingDown, color: 'text-danger', bg: 'bg-danger/15' },
+          { title: t('reports.costs'), value: fmtGBP(metrics.totalCost + metrics.totalOpExpenses), icon: TrendingDown, color: 'text-danger', bg: 'bg-danger/15' },
           { title: t('reports.profit'), value: fmtGBP(metrics.profit), icon: DollarSign, color: positive ? 'text-success' : 'text-danger', bg: positive ? 'bg-success/15' : 'bg-danger/15' },
           { title: t('reports.margin'), value: `${metrics.margin.toFixed(1)}%`, icon: Activity, color: 'text-accent', bg: 'bg-accent/15' },
         ].map(m => (
