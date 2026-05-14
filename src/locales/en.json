@@ -12,7 +12,8 @@
     "map": "Map & Platforms",
     "ebay": "eBay / Back Market",
     "finances": "Finances",
-    "lots": "Purchase Lots"
+    "lots": "Purchase Lots",
+    "rma": "RMA — Defects"
   },
   "admin": {
     "menu": "Admin",
@@ -113,7 +114,8 @@
     "noProject": "No project",
     "collapse": "Collapse",
     "expand": "Expand",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "optional": "Optional"
   },
   "page_titles": {
     "dashboard": "Dashboard",
@@ -130,7 +132,8 @@
     "ebay": "eBay / Back Market",
     "settings": "Settings",
     "serial_history": "Serial History",
-    "labels": "Price Labels"
+    "labels": "Price Labels",
+    "rma": "RMA — Defect Stock Control"
   },
   "delete": {
     "title": "Confirm deletion",
@@ -1029,7 +1032,9 @@
       "title": "Register Warranty Claim",
       "desc": "Describe the issue reported by the customer:",
       "placeholder": "e.g. Screen failed again after 2 months...",
-      "register": "Register"
+      "register": "Register",
+      "description": "Describe the issue reported by the customer:",
+      "submit": "Register"
     },
     "claimDetail": "Claim: {{description}}",
     "statusBadge": {
@@ -1248,5 +1253,88 @@
     "error": "Could not identify product",
     "error_generic": "Error analysing photo",
     "error_timeout": "Timed out. Try with a smaller image."
+  },
+  "rma": {
+    "title": "RMA — Defective Stock Control",
+    "new": "New RMA",
+    "open": "Open",
+    "closed": "Closed",
+    "show_closed": "Show closed",
+    "hide_closed": "Hide closed",
+    "write_offs": "Total Write-offs",
+    "recovered": "Recovered Value",
+    "filters": "Filter",
+    "clear_filters": "Clear filters",
+    "all_categories": "All categories",
+    "no_items": "No RMA items yet. Click \"New RMA\" to get started.",
+    "no_match": "No items match the active filters.",
+    "status_updated": "Status updated",
+    "sections": {
+      "product": "Product",
+      "origin": "Origin",
+      "defect": "Defect",
+      "status_decision": "Status & Decision",
+      "financial": "Financial",
+      "notes": "Internal notes"
+    },
+    "fields": {
+      "equipment": "Equipment",
+      "brand": "Brand",
+      "model": "Model",
+      "serial": "Serial Number",
+      "imei": "IMEI",
+      "supplier": "Supplier",
+      "purchase_price": "Purchase price (£)",
+      "purchase_date": "Purchase date",
+      "project": "Linked project",
+      "defect_desc": "Defect description",
+      "defect_cat": "Defect category",
+      "status": "RMA Status",
+      "destination": "Destination",
+      "destination_notes": "Destination notes",
+      "repair_cost": "Repair cost (£)",
+      "recovery_value": "Recovery value (£)",
+      "write_off": "Write-off (£)"
+    },
+    "placeholders": {
+      "equipment": "Laptop, Phone, Tablet...",
+      "brand": "Apple, HP...",
+      "model": "MacBook Air M1...",
+      "serial": "SN...",
+      "defect": "Describe the observed defect...",
+      "destination_notes": "E.g. sell on eBay for £XX...",
+      "notes": "Additional observations..."
+    },
+    "actions": {
+      "create": "Create RMA",
+      "save": "Save changes"
+    },
+    "status": {
+      "received": "Received",
+      "triage": "In Triage",
+      "pending_decision": "Pending Decision",
+      "in_repair": "In Repair",
+      "resolved": "Resolved",
+      "cannibalized": "Cannibalized",
+      "written_off": "Written Off"
+    },
+    "destination": {
+      "repair": "Repair and resell",
+      "resell": "Sell as-is",
+      "parts": "Cannibalize for parts",
+      "write_off": "Write off",
+      "pending": "To be decided"
+    },
+    "history": {
+      "title": "History",
+      "created": "RMA item created"
+    },
+    "no_project": "— No project —",
+    "select_category": "— Select —",
+    "telegram": {
+      "created": "New RMA created",
+      "updated": "RMA updated",
+      "status_changed": "RMA status updated"
+    }
   }
 }

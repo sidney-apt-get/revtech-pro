@@ -345,3 +345,51 @@ export type ScannerSession = {
   expires_at: string
   created_at: string
 }
+
+// RMA (Return Merchandise Authorization)
+
+export type RmaStatus =
+  | 'received'
+  | 'triage'
+  | 'pending_decision'
+  | 'in_repair'
+  | 'resolved'
+  | 'cannibalized'
+  | 'written_off'
+
+export type RmaDestination = 'repair' | 'resell' | 'parts' | 'write_off'
+
+export type RmaActivityEntry = {
+  ts: string
+  action: string
+  note?: string
+}
+
+export type RmaItem = {
+  id: string
+  user_id: string
+  rma_number: string | null
+  equipment: string
+  brand: string | null
+  model: string | null
+  serial_number: string | null
+  imei: string | null
+  supplier: string | null
+  purchase_price: number | null
+  purchase_date: string | null
+  status: RmaStatus
+  defect_description: string
+  defect_category: string | null
+  destination: RmaDestination | null
+  destination_notes: string | null
+  repair_cost: number | null
+  recovery_value: number | null
+  write_off_value: number | null
+  project_id: string | null
+  order_id: string | null
+  activity_log: RmaActivityEntry[]
+  notes: string | null
+  photo_urls: string[]
+  created_at: string
+  updated_at: string
+}

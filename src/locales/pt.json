@@ -12,7 +12,8 @@
     "map": "Mapa",
     "ebay": "eBay / Back Market",
     "finances": "Finanças",
-    "lots": "Lotes de Compra"
+    "lots": "Lotes de Compra",
+    "rma": "RMA — Defeitos"
   },
   "admin": {
     "menu": "Admin",
@@ -113,7 +114,8 @@
     "noProject": "Sem projecto",
     "collapse": "Recolher",
     "expand": "Expandir",
-    "dismiss": "Dispensar"
+    "dismiss": "Dispensar",
+    "optional": "Opcional"
   },
   "page_titles": {
     "dashboard": "Dashboard",
@@ -130,7 +132,8 @@
     "ebay": "eBay / Back Market",
     "settings": "Configurações",
     "serial_history": "Histórico Serial",
-    "labels": "Etiquetas de Preço"
+    "labels": "Etiquetas de Preço",
+    "rma": "RMA — Controlo de Defeitos"
   },
   "delete": {
     "title": "Confirmar eliminação",
@@ -1029,7 +1032,9 @@
       "title": "Registar Reclamação de Garantia",
       "desc": "Descreve o problema reportado pelo cliente:",
       "placeholder": "ex: Ecrã voltou a falhar após 2 meses...",
-      "register": "Registar"
+      "register": "Registar",
+      "description": "Descreve o problema reportado pelo cliente:",
+      "submit": "Registar"
     },
     "claimDetail": "Reclamação: {{description}}",
     "statusBadge": {
@@ -1248,5 +1253,88 @@
     "error": "Não foi possível identificar o produto",
     "error_generic": "Erro ao analisar a foto",
     "error_timeout": "Tempo limite esgotado. Tenta com uma imagem mais pequena."
+  },
+  "rma": {
+    "title": "RMA — Controlo de Estoque com Defeito",
+    "new": "Novo RMA",
+    "open": "Em Aberto",
+    "closed": "Fechados",
+    "show_closed": "Mostrar fechados",
+    "hide_closed": "Ocultar fechados",
+    "write_offs": "Total Write-offs",
+    "recovered": "Valor Recuperado",
+    "filters": "Filtrar",
+    "clear_filters": "Limpar filtros",
+    "all_categories": "Todas as categorias",
+    "no_items": "Ainda não há items RMA. Clica em \"Novo RMA\" para começar.",
+    "no_match": "Nenhum item corresponde aos filtros activos.",
+    "status_updated": "Estado actualizado",
+    "sections": {
+      "product": "Produto",
+      "origin": "Origem",
+      "defect": "Defeito",
+      "status_decision": "Estado & Decisão",
+      "financial": "Financeiro",
+      "notes": "Notas internas"
+    },
+    "fields": {
+      "equipment": "Equipamento",
+      "brand": "Marca",
+      "model": "Modelo",
+      "serial": "Número de Série",
+      "imei": "IMEI",
+      "supplier": "Fornecedor",
+      "purchase_price": "Preço pago (£)",
+      "purchase_date": "Data de compra",
+      "project": "Projecto associado",
+      "defect_desc": "Descrição do defeito",
+      "defect_cat": "Categoria do defeito",
+      "status": "Estado RMA",
+      "destination": "Destino",
+      "destination_notes": "Notas sobre destino",
+      "repair_cost": "Custo reparação (£)",
+      "recovery_value": "Valor recuperado (£)",
+      "write_off": "Write-off (£)"
+    },
+    "placeholders": {
+      "equipment": "Portátil, Telemóvel, Tablet...",
+      "brand": "Apple, HP...",
+      "model": "MacBook Air M1...",
+      "serial": "SN...",
+      "defect": "Descreve o defeito observado...",
+      "destination_notes": "Ex: vender no eBay por £XX...",
+      "notes": "Observações adicionais..."
+    },
+    "actions": {
+      "create": "Criar RMA",
+      "save": "Guardar alterações"
+    },
+    "status": {
+      "received": "Recebido",
+      "triage": "Em Triage",
+      "pending_decision": "Aguarda Decisão",
+      "in_repair": "Em Reparação",
+      "resolved": "Resolvido",
+      "cannibalized": "Canibalizado",
+      "written_off": "Abatido"
+    },
+    "destination": {
+      "repair": "Reparar e revender",
+      "resell": "Vender como está",
+      "parts": "Canibalizar para peças",
+      "write_off": "Abater (write-off)",
+      "pending": "A definir"
+    },
+    "history": {
+      "title": "Histórico",
+      "created": "Item RMA criado"
+    },
+    "no_project": "— Nenhum projecto —",
+    "select_category": "— Seleccionar —",
+    "telegram": {
+      "created": "Novo RMA criado",
+      "updated": "RMA actualizado",
+      "status_changed": "RMA actualizado"
+    }
   }
 }

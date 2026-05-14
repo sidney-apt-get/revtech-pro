@@ -24,6 +24,7 @@ import { ProjectDetails } from '@/pages/ProjectDetails'
 import { Finances } from '@/pages/Finances'
 import { Lots } from '@/pages/Lots'
 import { InventoryDetail } from '@/pages/InventoryDetail'
+import { RMA } from '@/pages/RMA'
 import AuthCallback from '@/pages/AuthCallback'
 import { SettingsProvider } from '@/contexts/SettingsContext'
 import { RoleProvider } from '@/contexts/RoleContext'
@@ -128,6 +129,9 @@ export default function App() {
           </Route>
           <Route path="/lots">
             <Protected><Lots /></Protected>
+          </Route>
+          <Route path="/rma">
+            <Protected><RMA /></Protected>
           </Route>
           {/* Admin-only routes — require isAdmin + PIN */}
           <Route path="/settings">
