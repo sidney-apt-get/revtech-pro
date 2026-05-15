@@ -5,17 +5,20 @@ import { useProjects, useUpdateProject, useDeleteProject } from '@/hooks/useProj
 import { useOrders } from '@/hooks/useOrders'
 import { autoUpdateDefectDatabase } from '@/hooks/useDefects'
 import { useItemFieldValues } from '@/hooks/useItemFieldValues'
+import { useProjectPhotos } from '@/hooks/useProjectPhotos'
+import { useInventory } from '@/hooks/useInventory'
+import { useProjectItems, useAddProjectItem, useRemoveProjectItem, type ProjectItemType } from '@/hooks/useProjectItems'
 import { sendTelegramNotification } from '@/lib/telegram'
 import { PhotoGallery } from '@/components/PhotoGallery'
 import { ProjectModal } from '@/components/ProjectModal'
 import { TranslateButton } from '@/components/TranslateButton'
 import { DynamicFieldsDisplay } from '@/components/DynamicFields'
 import { calcROI, fmtGBP, fmtDate, STATUS_COLORS, ALL_STATUSES, cn } from '@/lib/utils'
-import type { Project, ProjectPhase, ProjectStatus } from '@/lib/supabase'
+import type { Project, ProjectPhase, ProjectStatus, InventoryItem } from '@/lib/supabase'
 import {
   ArrowLeft, Pencil, CheckCircle2, Circle, Clock, Package,
   Wrench, ClipboardCheck, TrendingUp, TrendingDown, Camera,
-  Trash2, ChevronDown, ExternalLink, Search,
+  Trash2, ChevronDown, ExternalLink, Search, Plus, X, Box,
 } from 'lucide-react'
 import { differenceInDays } from 'date-fns'
 
@@ -134,6 +137,170 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   )
 }
 
+// ── Add Stock Item Modal ──────────────────────────────────────────────────────
+type ItemTypeOption = { value: ProjectItemType; labelKey: string; descKey: string }
+const ITEM_TYPE_OPTIONS: ItemTypeOption[] = [
+  { value: 'used',         labelKey: 'project_detail.itemType_used',         descKey: 'project_detail.itemType_used_desc' },
+  { value: 'cannibalized', labelKey: 'project_detail.itemType_cannibalized',  descKey: 'project_detail.itemType_cannibalized_desc' },
+  { value: 'harvested',    labelKey: 'project_detail.itemType_harvested',     descKey: 'project_detail.itemType_harvested_desc' },
+]
+
+function AddItemModal({
+  projectId,
+  onClose,
+}: { projectId: string; onClose: () => void }) {
+  const { t } = useTranslation()
+  const { data: inventory = [] } = useInventory()
+  const addItem = useAddProjectItem(projectId)
+
+  const [search, setSearch] = useState('')
+  const [selected, setSelected] = useState<InventoryItem | null>(null)
+  const [itemType, setItemType] = useState<ProjectItemType>('used')
+  const [qty, setQty] = useState(1)
+  const [unitCost, setUnitCost] = useState(0)
+  const [notes, setNotes] = useState('')
+  const [manualName, setManualName] = useState('')
+
+  const filtered = inventory.filter(i =>
+    i.item_name.toLowerCase().includes(search.toLowerCase()) ||
+    (i.category ?? '').toLowerCase().includes(search.toLowerCase())
+  )
+
+  function handleSelect(item: InventoryItem) {
+    setSelected(item)
+    setUnitCost(item.unit_cost ?? 0)
+    setQty(1)
+    setSearch(item.item_name)
+  }
+
+  async function handleAdd() {
+    const name = selected ? selected.item_name : manualName.trim()
+    if (!name) return
+    await addItem.mutateAsync({
+      project_id: projectId,
+      inventory_item_id: selected?.id ?? null,
+      item_name: name,
+      item_category: selected?.category ?? null,
+      item_type: itemType,
+      quantity: qty,
+      unit_cost: unitCost,
+      notes: notes.trim() || null,
+    })
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 px-4" onClick={onClose}>
+      <div className="bg-card border border-border rounded-xl shadow-2xl p-5 w-full max-w-md space-y-4" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold text-text-primary flex items-center gap-2">
+            <Box className="h-4 w-4 text-accent" />
+            {t('project_detail.addItem')}
+          </h2>
+          <button onClick={onClose} className="text-text-muted hover:text-text-primary"><X className="h-4 w-4" /></button>
+        </div>
+
+        {/* Search inventory */}
+        <div className="space-y-1">
+          <label className="text-xs text-text-muted">{t('project_detail.searchInventory')}</label>
+          <input
+            value={search}
+            onChange={e => { setSearch(e.target.value); setSelected(null) }}
+            placeholder={t('project_detail.searchInventoryPlaceholder')}
+            className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/40"
+          />
+          {search && !selected && filtered.length > 0 && (
+            <div className="max-h-40 overflow-y-auto rounded-lg border border-border bg-surface shadow-lg divide-y divide-border">
+              {filtered.slice(0, 8).map(item => (
+                <button
+                  key={item.id}
+                  onClick={() => handleSelect(item)}
+                  className="w-full flex items-center justify-between px-3 py-2 hover:bg-accent/5 text-left"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-text-primary">{item.item_name}</p>
+                    <p className="text-xs text-text-muted">{item.category} · {t('project_detail.stock')}: {item.quantity}</p>
+                  </div>
+                  <span className="text-xs text-accent font-medium">£{item.unit_cost?.toFixed(2)}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {search && !selected && filtered.length === 0 && (
+            <div className="space-y-1">
+              <p className="text-xs text-text-muted px-1">{t('project_detail.notInInventory')}</p>
+              <input
+                value={manualName}
+                onChange={e => setManualName(e.target.value)}
+                placeholder={t('project_detail.manualItemName')}
+                className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/40"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Item type */}
+        <div className="space-y-1">
+          <label className="text-xs text-text-muted">{t('project_detail.itemTypeLabel')}</label>
+          <div className="grid grid-cols-3 gap-2">
+            {ITEM_TYPE_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setItemType(opt.value)}
+                className={cn(
+                  'rounded-lg border px-2 py-2 text-xs font-medium transition-colors text-center',
+                  itemType === opt.value
+                    ? 'border-accent bg-accent/10 text-accent'
+                    : 'border-border bg-surface text-text-muted hover:border-accent/40'
+                )}
+              >
+                {t(opt.labelKey)}
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] text-text-muted/70 px-0.5">
+            {t(ITEM_TYPE_OPTIONS.find(o => o.value === itemType)!.descKey)}
+          </p>
+        </div>
+
+        {/* Qty + cost */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <label className="text-xs text-text-muted">{t('project_detail.quantity')}</label>
+            <input type="number" min={1} value={qty} onChange={e => setQty(Math.max(1, parseInt(e.target.value) || 1))}
+              className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-text-muted">{t('project_detail.unitCostLabel')}</label>
+            <input type="number" min={0} step={0.01} value={unitCost} onChange={e => setUnitCost(parseFloat(e.target.value) || 0)}
+              className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40" />
+          </div>
+        </div>
+
+        {/* Notes */}
+        <div className="space-y-1">
+          <label className="text-xs text-text-muted">{t('project_detail.notes')}</label>
+          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder={t('project_detail.itemNotesPlaceholder')}
+            className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/40 resize-none" />
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="rounded-lg border border-border px-4 py-2 text-sm text-text-muted hover:text-text-primary transition-colors">
+            {t('common.cancel')}
+          </button>
+          <button
+            onClick={handleAdd}
+            disabled={(!selected && !manualName.trim()) || addItem.isPending}
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-accent/90 transition-colors"
+          >
+            {addItem.isPending ? t('common.saving') : t('project_detail.addItemBtn')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function ProjectDetails() {
   const { t, i18n } = useTranslation()
   const { id } = useParams<{ id: string }>()
@@ -143,13 +310,18 @@ export function ProjectDetails() {
   const update = useUpdateProject()
   const deleteProject = useDeleteProject()
   const fieldValues = useItemFieldValues(id ?? null, 'project')
+  const { data: photos = [] } = useProjectPhotos(id ?? '')
+  const { data: projectItems = [] } = useProjectItems(id ?? '')
+  const removeItem = useRemoveProjectItem(id ?? '')
   const [editOpen, setEditOpen] = useState(false)
   const [deleteInput, setDeleteInput] = useState('')
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [statusChanging, setStatusChanging] = useState(false)
+  const [addItemOpen, setAddItemOpen] = useState(false)
 
   const project = projects.find(p => p.id === id)
   const linkedOrders = allOrders.filter(o => o.project_id === id)
+  const receptionPhoto = photos.find(p => p.phase === 'recepcao')
   const similarProjects = project
     ? projects
         .filter(p => p.id !== id && p.equipment.toLowerCase().includes(project.equipment.toLowerCase().split(' ')[0]))
@@ -254,6 +426,22 @@ export function ProjectDetails() {
           </button>
         </div>
       </div>
+
+      {/* Reception photo */}
+      {receptionPhoto && (
+        <div className="flex justify-center">
+          <div className="rounded-xl overflow-hidden border border-border bg-card shadow-sm">
+            <img
+              src={receptionPhoto.photo_url}
+              alt={t('project_detail.receptionPhoto')}
+              className="h-40 w-auto object-contain"
+            />
+            {receptionPhoto.caption && (
+              <p className="text-[10px] text-text-muted text-center px-2 py-1">{receptionPhoto.caption}</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Financial cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -464,6 +652,70 @@ export function ProjectDetails() {
         </button>
       </div>
 
+      {/* Materials used */}
+      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wider flex items-center gap-1.5">
+            <Box className="h-3.5 w-3.5" />
+            {t('project_detail.materialsTitle')}
+            {projectItems.length > 0 && ` (${projectItems.length})`}
+          </h2>
+        </div>
+
+        {projectItems.length > 0 ? (
+          <div className="space-y-2">
+            {projectItems.map(item => {
+              const typeColors: Record<string, string> = {
+                used:         'bg-blue-500/10 text-blue-400 border-blue-500/20',
+                cannibalized: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                harvested:    'bg-purple-500/10 text-purple-400 border-purple-500/20',
+              }
+              return (
+                <div key={item.id} className="flex items-center justify-between gap-3 rounded-lg bg-surface border border-border px-3 py-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-text-primary truncate">{item.item_name}</p>
+                    <p className="text-xs text-text-muted">
+                      {t('project_detail.quantity')}: {item.quantity}
+                      {item.unit_cost > 0 ? ` · ${fmtGBP(item.unit_cost * item.quantity)}` : ''}
+                      {item.item_category ? ` · ${item.item_category}` : ''}
+                    </p>
+                    {item.notes && <p className="text-xs text-text-muted/70 mt-0.5 italic">{item.notes}</p>}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={cn('text-[10px] font-medium rounded-full border px-2 py-0.5', typeColors[item.item_type] ?? '')}>
+                      {t(`project_detail.itemType_${item.item_type}`)}
+                    </span>
+                    <button
+                      onClick={() => removeItem.mutate(item.id)}
+                      className="text-text-muted hover:text-danger transition-colors"
+                      title={t('common.delete')}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+            <div className="flex justify-between border-t border-border pt-2 text-xs text-text-muted">
+              <span>{t('project_detail.materialsTotalCost')}</span>
+              <span className="font-semibold text-text-primary">
+                {fmtGBP(projectItems.reduce((sum, i) => sum + i.unit_cost * i.quantity, 0))}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-text-muted">{t('project_detail.noMaterials')}</p>
+        )}
+
+        <button
+          onClick={() => setAddItemOpen(true)}
+          className="w-full py-2 text-sm text-accent border border-accent/30 rounded-lg hover:bg-accent/10 transition-colors flex items-center justify-center gap-1.5"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          {t('project_detail.addItemBtn')}
+        </button>
+      </div>
+
       {/* Timeline */}
       <div>
         <h2 className="text-sm font-semibold text-text-muted uppercase tracking-wider mb-4">{t('project_detail.repairHistory')}</h2>
@@ -508,6 +760,10 @@ export function ProjectDetails() {
 
       {editOpen && (
         <ProjectModal open={editOpen} onClose={() => setEditOpen(false)} project={project} />
+      )}
+
+      {addItemOpen && (
+        <AddItemModal projectId={project.id} onClose={() => setAddItemOpen(false)} />
       )}
 
       {/* Delete confirmation */}
