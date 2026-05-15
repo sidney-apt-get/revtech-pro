@@ -67,6 +67,12 @@ const ORDER_STATUS_COLORS: Record<string, string> = {
   'Cancelado': 'bg-danger/15 text-danger border-danger/30',
 }
 
+const ITEM_TYPE_COLORS: Record<string, string> = {
+  used:         'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  cannibalized: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  harvested:    'bg-purple-500/10 text-purple-400 border-purple-500/20',
+}
+
 function PhaseStep({ phase, project, onSaveObs }: { phase: TimelinePhase; project: Project; onSaveObs: (key: string, value: string) => void }) {
   const { t, i18n } = useTranslation()
   const isDone = phase.doneStatuses.includes(project.status)
@@ -664,13 +670,7 @@ export function ProjectDetails() {
 
         {projectItems.length > 0 ? (
           <div className="space-y-2">
-            {projectItems.map(item => {
-              const typeColors: Record<string, string> = {
-                used:         'bg-blue-500/10 text-blue-400 border-blue-500/20',
-                cannibalized: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-                harvested:    'bg-purple-500/10 text-purple-400 border-purple-500/20',
-              }
-              return (
+            {projectItems.map(item => (
                 <div key={item.id} className="flex items-center justify-between gap-3 rounded-lg bg-surface border border-border px-3 py-2">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-text-primary truncate">{item.item_name}</p>
@@ -682,7 +682,7 @@ export function ProjectDetails() {
                     {item.notes && <p className="text-xs text-text-muted/70 mt-0.5 italic">{item.notes}</p>}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className={cn('text-[10px] font-medium rounded-full border px-2 py-0.5', typeColors[item.item_type] ?? '')}>
+                    <span className={cn('text-[10px] font-medium rounded-full border px-2 py-0.5', ITEM_TYPE_COLORS[item.item_type] ?? '')}>
                       {t(`project_detail.itemType_${item.item_type}`)}
                     </span>
                     <button
@@ -694,8 +694,7 @@ export function ProjectDetails() {
                     </button>
                   </div>
                 </div>
-              )
-            })}
+            ))}
             <div className="flex justify-between border-t border-border pt-2 text-xs text-text-muted">
               <span>{t('project_detail.materialsTotalCost')}</span>
               <span className="font-semibold text-text-primary">
@@ -712,7 +711,7 @@ export function ProjectDetails() {
           className="w-full py-2 text-sm text-accent border border-accent/30 rounded-lg hover:bg-accent/10 transition-colors flex items-center justify-center gap-1.5"
         >
           <Plus className="h-3.5 w-3.5" />
-          {t('project_detail.addItemBtn')}
+          {t('project_detail.addItem')}
         </button>
       </div>
 
