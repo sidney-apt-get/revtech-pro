@@ -46,12 +46,47 @@ async function createProjectItem(item: CreateProjectItem): Promise<ProjectItem> 
     .select()
     .single()
   if (error) throw error
+
+  // Sync parts_cost on the project
+  if (item.unit_cost > 0) {
+    const { data: proj } = await supabase
+      .from('projects')
+      .select('parts_cost')
+      .eq('id', item.project_id)
+      .single()
+    await supabase
+      .from('projects')
+      .update({ parts_cost: ((proj?.parts_cost ?? 0) as number) + item.unit_cost * item.quantity })
+      .eq('id', item.project_id)
+  }
+
   return data
 }
 
 async function deleteProjectItem(id: string): Promise<void> {
+  // Fetch item before deleting to reverse parts_cost
+  const { data: item } = await supabase
+    .from('project_items')
+    .select('project_id, unit_cost, quantity')
+    .eq('id', id)
+    .single()
+
   const { error } = await supabase.from('project_items').delete().eq('id', id)
   if (error) throw error
+
+  // Reverse parts_cost on the project
+  if (item && item.unit_cost > 0) {
+    const { data: proj } = await supabase
+      .from('projects')
+      .select('parts_cost')
+      .eq('id', item.project_id)
+      .single()
+    const newCost = Math.max(0, ((proj?.parts_cost ?? 0) as number) - item.unit_cost * item.quantity)
+    await supabase
+      .from('projects')
+      .update({ parts_cost: newCost })
+      .eq('id', item.project_id)
+  }
 }
 
 export function useProjectItems(projectId: string) {
@@ -66,7 +101,10 @@ export function useAddProjectItem(projectId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: createProjectItem,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['project_items', projectId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['project_items', projectId] })
+      qc.invalidateQueries({ queryKey: ['projects'] })
+    },
   })
 }
 
@@ -74,6 +112,9 @@ export function useRemoveProjectItem(projectId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: deleteProjectItem,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['project_items', projectId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['project_items', projectId] })
+      qc.invalidateQueries({ queryKey: ['projects'] })
+    },
   })
 }

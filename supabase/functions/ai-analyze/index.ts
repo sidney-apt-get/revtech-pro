@@ -96,7 +96,7 @@ serve(async (req) => {
     if (requestType === 'translate') {
       const prompt = `Translate the following text to ${body.targetLanguage}.\nReturn ONLY the translated text, nothing else.\n\n${body.text}`
       const r = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -131,9 +131,10 @@ serve(async (req) => {
 
     const imageBase64 = rawBase64.replace(/^data:[^;]+;base64,/, '')
 
-    // Model: gemini-3.1-flash-lite (GA) — migrated from pre-release 2026-05-15
-    // thinkingBudget:0 prevents the 25-60s thinking delay that caused prior timeouts
-    const model = 'gemini-3.1-flash-lite'
+    // Model: gemini-3.5-flash (GA) — migrated from gemini-3.1-flash-lite on 2026-05-30
+    // 4x faster than frontier models, outperforms Gemini 3.1 Pro across benchmarks
+    // thinkingBudget:0 prevents thinking delay
+    const model = 'gemini-3.5-flash'
     const payload = {
       contents: [{
         parts: [
