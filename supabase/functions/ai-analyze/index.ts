@@ -133,7 +133,7 @@ serve(async (req) => {
 
     // Model: gemini-3.5-flash (GA) — migrated from gemini-3.1-flash-lite on 2026-05-30
     // 4x faster than frontier models, outperforms Gemini 3.1 Pro across benchmarks
-    // thinkingBudget:0 prevents thinking delay
+    // thinkingConfig removed — not supported in 3.5 Flash (caused 502 errors, fixed in v19)
     const model = 'gemini-3.5-flash'
     const payload = {
       contents: [{
@@ -147,7 +147,6 @@ serve(async (req) => {
         maxOutputTokens: 4096,
         responseMimeType: 'application/json',
         responseSchema: ANALYSIS_SCHEMA,
-        thinkingConfig: { thinkingBudget: 0 },
       },
     }
 

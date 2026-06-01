@@ -156,7 +156,7 @@ export function PhotoAnalyzeButton({ onResult, className }: Props) {
       <button
         type="button"
         disabled={isLoading}
-        onClick={() => inputRef.current?.click()}
+        onClick={() => { setError(null); inputRef.current?.click() }}
         className="flex items-center gap-2 rounded-lg border border-accent/40 bg-accent/5 px-3 py-2 text-sm text-accent hover:bg-accent/10 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {isLoading ? (
