@@ -96,7 +96,7 @@ serve(async (req) => {
     if (requestType === 'translate') {
       const prompt = `Translate the following text to ${body.targetLanguage}.\nReturn ONLY the translated text, nothing else.\n\n${body.text}`
       const r = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -131,10 +131,11 @@ serve(async (req) => {
 
     const imageBase64 = rawBase64.replace(/^data:[^;]+;base64,/, '')
 
-    // Model: gemini-3.5-flash (GA) — migrated from gemini-3.1-flash-lite on 2026-05-30
-    // 4x faster than frontier models, outperforms Gemini 3.1 Pro across benchmarks
-    // thinkingConfig removed — not supported in 3.5 Flash (caused 502 errors, fixed in v19)
-    const model = 'gemini-3.5-flash'
+    // v21: revertido para gemini-3.1-flash-lite (GA)
+    // CAUSA RAIZ: Gemini 3.x thinkingConfig + responseSchema são INCOMPATÍVEIS (issue confirmado no fórum Google)
+    // gemini-3.1-flash-lite tem thinkingLevel 'minimal' por DEFEITO — sem necessidade de thinkingConfig
+    // Por isso funciona perfeitamente com responseSchema; gemini-3.5-flash não funciona nesta arquitectura
+    const model = 'gemini-3.1-flash-lite'
     const payload = {
       contents: [{
         parts: [

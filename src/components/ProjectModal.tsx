@@ -319,9 +319,23 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
                   if (result.storage_gb) setValue('storage_gb', result.storage_gb)
                   if (result.ram_gb) setValue('ram_gb', result.ram_gb)
                   if (result.battery_mah) { setValue('battery_capacity_original', result.battery_mah); setCapOrig(result.battery_mah) }
-                  if (result.suggested_defect) setValue('defect_description', result.suggested_defect)
+                  // Defect: combinar defeito sugerido + lista de danos visíveis
+                  const defectParts: string[] = []
+                  if (result.suggested_defect) defectParts.push(result.suggested_defect)
+                  if (result.visible_damage?.length) defectParts.push(`Danos visíveis: ${result.visible_damage.join(', ')}`)
+                  if (defectParts.length) setValue('defect_description', defectParts.join('\n'))
                   if (result.condition_grade) setValue('condition_grade', result.condition_grade as FormData['condition_grade'])
-                  if (result.notes) setValue('notes', result.notes)
+                  // Notes: observações do perito + CPU/GPU/ano se disponível
+                  const notesParts: string[] = []
+                  if (result.notes) notesParts.push(result.notes)
+                  const specParts: string[] = []
+                  if (result.cpu_model) specParts.push(`CPU: ${result.cpu_model}`)
+                  if (result.gpu_model) specParts.push(`GPU: ${result.gpu_model}`)
+                  if (result.year_manufactured) specParts.push(`Ano: ${result.year_manufactured}`)
+                  if (result.power_watts) specParts.push(`${result.power_watts}W`)
+                  if (result.screen_size_inches) specParts.push(`${result.screen_size_inches}"`)
+                  if (specParts.length) notesParts.push(specParts.join(' · '))
+                  if (notesParts.length) setValue('notes', notesParts.join('\n'))
                   if (result.category_slug) setCategorySlug(result.category_slug)
                   const hasDevice = !!(result.imei || result.battery_mah || result.condition_grade || result.storage_gb || result.ram_gb)
                   if (hasDevice) setDeviceOpen(true)

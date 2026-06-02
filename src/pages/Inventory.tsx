@@ -19,7 +19,7 @@ import { DeleteConfirmation } from '@/components/DeleteConfirmation'
 import type { InventoryItem } from '@/lib/supabase'
 import { fmtGBP, fmtDate } from '@/lib/utils'
 import { Plus, Pencil, Trash2, AlertTriangle, Package, Search } from 'lucide-react'
-import { PhotoAnalyzeButton } from '@/components/PhotoAnalyzeButton'
+import { PhotoAnalyzeButton, type AIPhotoResult } from '@/components/PhotoAnalyzeButton'
 
 const categories = ['Peças', 'Consumíveis', 'Ferramentas', 'Patrimônio'] as const
 type Category = typeof categories[number]
@@ -196,6 +196,7 @@ export function Inventory() {
   const [dynValues, setDynValues] = useState<Record<string, string>>({})
   const [suggestedSlug, setSuggestedSlug] = useState<string | null>(null)
   const [suggestionDismissed, setSuggestionDismissed] = useState(false)
+  const [aiInventoryResult, setAiInventoryResult] = useState<AIPhotoResult | null>(null)
   const [newPhotos, setNewPhotos] = useState<File[]>([])
   const [existingPhotos, setExistingPhotos] = useState<string[]>([])
   const { categories: subCategories } = useCategories('inventory')
@@ -247,6 +248,7 @@ export function Inventory() {
     setDynValues({})
     setSuggestedSlug(null)
     setSuggestionDismissed(false)
+    setAiInventoryResult(null)
     setNewPhotos([])
     setExistingPhotos([])
     reset({
@@ -454,14 +456,59 @@ export function Inventory() {
                 </div>
                 <PhotoAnalyzeButton
                   onResult={(result) => {
+                    // ── Nome do item
                     if (result.brand && result.model) setValue('item_name', `${result.brand} ${result.model}`)
                     else if (result.model) setValue('item_name', result.model)
                     else if (result.brand) setValue('item_name', result.brand)
-                    if (result.category_slug) { setSuggestedSlug(result.category_slug); setSuggestionDismissed(false) }
+
+                    // ── Categoria principal (mapeada do slug AI)
+                    if (result.category_slug) {
+                      const slug = result.category_slug
+                      if (slug.startsWith('consumable')) setValue('category', 'Consumíveis')
+                      else if (slug.startsWith('tool')) setValue('category', 'Ferramentas')
+                      else setValue('category', 'Peças')
+                      // Sub-categoria: sugerir e auto-confirmar se match directo
+                      setSuggestedSlug(slug)
+                      setSuggestionDismissed(false)
+                    }
+
+                    // ── Notas: observações do perito + danos + grau + complexidade
+                    const notesParts: string[] = []
+                    if (result.notes) notesParts.push(result.notes)
+                    if (result.visible_damage?.length) notesParts.push(`Danos: ${result.visible_damage.join(', ')}`)
+                    if (result.condition_grade) notesParts.push(`Grau: ${result.condition_grade}`)
+                    if (result.repair_complexity && result.repair_complexity !== 'unknown') notesParts.push(`Complexidade: ${result.repair_complexity}`)
+                    if (notesParts.length) setValue('notes', notesParts.join('\n'))
+
+                    setAiInventoryResult(result)
+                    setSuggestionDismissed(false)
                   }}
                 />
               </div>
             </div>
+
+            {/* Banner resultado IA */}
+            {aiInventoryResult && (
+              <div className="rounded-lg bg-accent/10 border border-accent/20 px-3 py-2 text-xs space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold text-accent">
+                    ✓ {[aiInventoryResult.brand, aiInventoryResult.model].filter(Boolean).join(' ')}
+                    {aiInventoryResult.confidence ? ` · ${aiInventoryResult.confidence}%` : ''}
+                  </span>
+                  <button type="button" onClick={() => setAiInventoryResult(null)} className="text-text-muted hover:text-text-primary">✕</button>
+                </div>
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-text-muted">
+                  {aiInventoryResult.condition_grade && <span>Grau: <b className="text-text-primary">{aiInventoryResult.condition_grade}</b></span>}
+                  {aiInventoryResult.estimated_value_gbp && <span>Valor ref.: <b className="text-text-primary">£{aiInventoryResult.estimated_value_gbp}</b></span>}
+                  {aiInventoryResult.repair_complexity && aiInventoryResult.repair_complexity !== 'unknown' && <span>Complexidade: <b className="text-text-primary">{aiInventoryResult.repair_complexity}</b></span>}
+                  {aiInventoryResult.year_manufactured && <span>Ano: <b className="text-text-primary">{aiInventoryResult.year_manufactured}</b></span>}
+                </div>
+                {(aiInventoryResult.visible_damage?.length ?? 0) > 0 && (
+                  <p className="text-warning">⚠️ {aiInventoryResult.visible_damage!.join(', ')}</p>
+                )}
+                <p className="text-[10px] text-text-muted">Campos preenchidos automaticamente — editáveis</p>
+              </div>
+            )}
 
             {/* Nome */}
             <div className="space-y-1.5">
