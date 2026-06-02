@@ -216,6 +216,8 @@ export function Inventory() {
 
   useEffect(() => {
     if (!watchedItemName || watchedItemName.length < 3) { setSuggestedSlug(null); return }
+    // Se o AI já definiu um slug (aiInventoryResult existe), não sobrescrever com a sugestão por keywords
+    if (aiInventoryResult) return
     const timer = setTimeout(() => {
       const slug = suggestCategory(watchedItemName)
       if (slug && slug !== dynCategorySlug) {
@@ -226,7 +228,7 @@ export function Inventory() {
       }
     }, 500)
     return () => clearTimeout(timer)
-  }, [watchedItemName, dynCategorySlug])
+  }, [watchedItemName, dynCategorySlug, aiInventoryResult])
 
   const tabItems = filterByTab(inventory, activeTab)
   const filteredItems = useMemo(() => {
