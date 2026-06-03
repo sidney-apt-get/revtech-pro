@@ -170,6 +170,20 @@ function AdminMenu({ onNavigate }: { onNavigate?: () => void }) {
               {t('admin.userManagement')}
             </span>
           </Link>
+          <Link href="/admin/audit">
+            <span
+              onClick={() => { setOpen(false); onNavigate?.() }}
+              className={cn(
+                'flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium cursor-pointer transition-colors',
+                location === '/admin/audit'
+                  ? 'text-accent bg-accent/10'
+                  : 'text-text-muted hover:text-text-primary hover:bg-surface'
+              )}
+            >
+              <History className="h-3.5 w-3.5" />
+              Log de Auditoria
+            </span>
+          </Link>
         </div>
       )}
     </div>

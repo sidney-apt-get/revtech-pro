@@ -13,9 +13,12 @@ import { cn } from '@/lib/utils'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
+import { printReportPDF } from '@/lib/pdf'
+import { useSettings } from '@/contexts/SettingsContext'
 
 export function Reports() {
   const { t, i18n } = useTranslation()
+  const { settings } = useSettings()
   const { data: projects = [] } = useProjects()
   const { data: orders = [] } = useOrders()
   const { data: expenses = [] } = useExpenses()
@@ -81,11 +84,21 @@ export function Reports() {
   }, [projects, expenses, selectedYear, MONTHS_SHORT])
 
   function handleDownloadPDF() {
-    if (reportType === 'monthly') {
-      generateMonthlyReport(projects, orders, selectedMonth, selectedYear)
-    } else {
-      generateAnnualReport(projects, orders, selectedYear)
-    }
+    // Use our professional PDF template with company logo
+    const MONTHS_FULL = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+    const period = reportType === 'monthly'
+      ? `${MONTHS_FULL[selectedMonth]} ${selectedYear}`
+      : `Ano ${selectedYear}`
+    printReportPDF({
+      period,
+      totalRevenue: metrics.totalRevenue,
+      totalCost: metrics.totalCost,
+      totalOpExpenses: metrics.totalOpExpenses,
+      profit: metrics.profit,
+      margin: metrics.margin,
+      projectCount: metrics.periodProjects.length,
+      totalPartsCost: metrics.totalPartsCost,
+    }, settings)
   }
 
   function handleExportCSV() {

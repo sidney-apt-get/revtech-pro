@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { AlertTriangle } from 'lucide-react'
+import { usePinGuard } from '@/contexts/PinGuardContext'
 
 interface DeleteConfirmationProps {
   open: boolean
@@ -11,10 +12,13 @@ interface DeleteConfirmationProps {
   onConfirm: () => void
   itemName?: string
   loading?: boolean
+  /** Optional entity type for audit context */
+  entityType?: string
 }
 
 export function DeleteConfirmation({ open, onClose, onConfirm, itemName, loading }: DeleteConfirmationProps) {
   const { t } = useTranslation()
+  const { requestPin } = usePinGuard()
   const confirmWord = t('delete.confirm_word')
   const [typed, setTyped] = useState('')
 
@@ -25,8 +29,14 @@ export function DeleteConfirmation({ open, onClose, onConfirm, itemName, loading
 
   function handleConfirm() {
     if (typed !== confirmWord) return
-    onConfirm()
-    setTyped('')
+    // Require PIN before executing the delete
+    requestPin(
+      `Confirmar eliminação permanente de "${itemName ?? 'item'}"`,
+      () => {
+        onConfirm()
+        setTyped('')
+      }
+    )
   }
 
   return (

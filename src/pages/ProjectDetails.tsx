@@ -18,9 +18,11 @@ import type { Project, ProjectPhase, ProjectStatus, InventoryItem } from '@/lib/
 import {
   ArrowLeft, Pencil, CheckCircle2, Circle, Clock, Package,
   Wrench, ClipboardCheck, TrendingUp, TrendingDown, Camera,
-  Trash2, ChevronDown, ExternalLink, Search, Plus, X, Box,
+  Trash2, ChevronDown, ExternalLink, Search, Plus, X, Box, FileText,
 } from 'lucide-react'
 import { differenceInDays } from 'date-fns'
+import { printProjectPDF } from '@/lib/pdf'
+import { useSettings } from '@/contexts/SettingsContext'
 
 type TimelinePhase = {
   key: ProjectPhase
@@ -309,6 +311,7 @@ function AddItemModal({
 
 export function ProjectDetails() {
   const { t, i18n } = useTranslation()
+  const { settings } = useSettings()
   const { id } = useParams<{ id: string }>()
   const [, navigate] = useLocation()
   const { data: projects = [], isLoading } = useProjects()
@@ -424,6 +427,29 @@ export function ProjectDetails() {
             </select>
             <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 opacity-60" />
           </div>
+          <button
+            onClick={() => printProjectPDF({
+              project,
+              settings,
+              receptionPhotoUrl: receptionPhoto?.photo_url ?? null,
+              ordersHtml: linkedOrders.length > 0
+                ? `<table style="width:100%;font-size:8.5pt;border-collapse:collapse">
+                    <tr style="border-bottom:1px solid #e5e7eb"><th style="text-align:left;padding:3px 6px;color:#888">Peça</th><th style="padding:3px 6px;color:#888">Qtd</th><th style="text-align:right;padding:3px 6px;color:#888">Custo</th><th style="padding:3px 6px;color:#888">Estado</th></tr>
+                    ${linkedOrders.map(o => `<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:3px 6px">${o.part_name}</td><td style="padding:3px 6px;text-align:center">${o.quantity}</td><td style="padding:3px 6px;text-align:right">${o.total_cost != null ? '£' + o.total_cost.toFixed(2) : '—'}</td><td style="padding:3px 6px">${o.status}</td></tr>`).join('')}
+                  </table>`
+                : undefined,
+              materialsHtml: projectItems.length > 0
+                ? `<table style="width:100%;font-size:8.5pt;border-collapse:collapse">
+                    <tr style="border-bottom:1px solid #e5e7eb"><th style="text-align:left;padding:3px 6px;color:#888">Item</th><th style="padding:3px 6px;color:#888">Tipo</th><th style="padding:3px 6px;color:#888">Qtd</th><th style="text-align:right;padding:3px 6px;color:#888">Custo</th></tr>
+                    ${projectItems.map(i => `<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:3px 6px">${i.item_name}</td><td style="padding:3px 6px">${i.item_type}</td><td style="padding:3px 6px;text-align:center">${i.quantity}</td><td style="padding:3px 6px;text-align:right">£${(i.unit_cost * i.quantity).toFixed(2)}</td></tr>`).join('')}
+                  </table>`
+                : undefined,
+            })}
+            title="Exportar PDF"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-surface hover:bg-accent/5 hover:border-accent/40 text-sm text-text-muted hover:text-accent transition-colors"
+          >
+            <FileText className="h-3.5 w-3.5" /> PDF
+          </button>
           <button onClick={() => setEditOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-surface hover:bg-accent/5 hover:border-accent/40 text-sm text-text-muted hover:text-accent transition-colors">
             <Pencil className="h-3.5 w-3.5" /> {t('common.edit')}
           </button>

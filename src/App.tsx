@@ -25,9 +25,11 @@ import { Finances } from '@/pages/Finances'
 import { Lots } from '@/pages/Lots'
 import { InventoryDetail } from '@/pages/InventoryDetail'
 import { RMA } from '@/pages/RMA'
+import { AuditLog } from '@/pages/AuditLog'
 import AuthCallback from '@/pages/AuthCallback'
 import { SettingsProvider } from '@/contexts/SettingsContext'
 import { RoleProvider } from '@/contexts/RoleContext'
+import { PinGuardProvider } from '@/contexts/PinGuardContext'
 
 function Spinner() {
   return (
@@ -73,6 +75,7 @@ export default function App() {
   return (
     <SettingsProvider>
       <RoleProvider>
+        <PinGuardProvider>
         <Switch>
           <Route path="/"><Redirect to="/dashboard" /></Route>
           <Route path="/login">
@@ -140,9 +143,13 @@ export default function App() {
           <Route path="/admin/users">
             <ProtectedAdmin><UserManagement /></ProtectedAdmin>
           </Route>
+          <Route path="/admin/audit">
+            <ProtectedAdmin><AuditLog /></ProtectedAdmin>
+          </Route>
           <Route><Redirect to="/dashboard" /></Route>
         </Switch>
         <PWAInstallBanner />
+        </PinGuardProvider>
       </RoleProvider>
     </SettingsProvider>
   )

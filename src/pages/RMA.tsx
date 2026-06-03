@@ -12,9 +12,12 @@ import { type RmaItem, type RmaStatus, type RmaDestination } from '@/lib/supabas
 import {
   Plus, X, Trash2, ChevronDown, ChevronUp,
   AlertTriangle, CheckCircle2, Clock, Wrench,
-  PackageX, TrendingDown, Filter, RotateCcw,
+  PackageX, TrendingDown, Filter, RotateCcw, FileText,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
+import { printRMAPDF } from '@/lib/pdf'
+import { useSettings } from '@/contexts/SettingsContext'
+import { usePinGuard } from '@/contexts/PinGuardContext'
 
 // RMA Card
 function RmaCard({
@@ -28,6 +31,7 @@ function RmaCard({
   onEdit: (item: RmaItem) => void
   onDelete: (id: string) => void
 }) {
+  const { settings } = useSettings()
   const [expanded, setExpanded] = useState(false)
 
   const nextStatuses: RmaStatus[] = useMemo(() => {
@@ -69,6 +73,33 @@ function RmaCard({
             <p className="text-xs text-text-muted mt-0.5 line-clamp-1">{item.defect_description}</p>
           </div>
           <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={() => printRMAPDF({
+                id: item.id,
+                rma_number: item.rma_number ?? `RMA-${item.id.slice(0,6).toUpperCase()}`,
+                equipment: item.equipment,
+                brand: item.brand ?? null,
+                model: item.model ?? null,
+                serial_number: item.serial_number ?? null,
+                supplier: item.supplier ?? null,
+                purchase_price: item.purchase_price ?? null,
+                defect_description: item.defect_description,
+                defect_category: item.defect_category ?? null,
+                status: item.status,
+                destination: item.destination ?? null,
+                destination_notes: item.destination_notes ?? null,
+                repair_cost: item.repair_cost ?? null,
+                recovery_value: item.recovery_value ?? null,
+                write_off_value: item.write_off_value ?? null,
+                notes: item.notes ?? null,
+                created_at: item.created_at,
+                updated_at: item.updated_at,
+              }, settings)}
+              title="Exportar PDF"
+              className="p-1 text-text-muted hover:text-accent transition-colors"
+            >
+              <FileText className="h-3.5 w-3.5" />
+            </button>
             <button onClick={() => onEdit(item)} className="p-1 text-text-muted hover:text-accent transition-colors">
               <Wrench className="h-3.5 w-3.5" />
             </button>
@@ -430,6 +461,7 @@ function RmaModal({ item, onClose }: { item?: RmaItem; onClose: () => void }) {
 // Main Page
 export function RMA() {
   const { t } = useTranslation()
+  const { requestPin } = usePinGuard()
   useEffect(() => { document.title = 'RMA - RevTech PRO' }, [])
 
   const { data: items = [], isLoading } = useRmaItems()
@@ -664,7 +696,15 @@ export function RMA() {
               </button>
               <button
                 disabled={deleteInput !== t('delete.confirm_word') || deleteRma.isPending}
-                onClick={() => { deleteRma.mutate(deleteTarget!); setDeleteTarget(null); setDeleteInput('') }}
+                onClick={() => {
+                  const target = deleteTarget!
+                  const itemName = items.find(i => i.id === target)?.rma_number ?? 'RMA'
+                  requestPin(`Eliminar permanentemente ${itemName}`, () => {
+                    deleteRma.mutate(target)
+                    setDeleteTarget(null)
+                    setDeleteInput('')
+                  })
+                }}
                 className="rounded-lg bg-danger px-4 py-2 text-sm font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-danger/90 transition-colors">
                 {deleteRma.isPending ? t('common.deleting') : t('common.delete')}
               </button>
