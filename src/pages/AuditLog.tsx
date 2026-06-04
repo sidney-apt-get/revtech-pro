@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { useAuditLog, type AuditActionType, type AuditEntityType } from '@/hooks/useAuditLog'
 import { fmtDate } from '@/lib/utils'
 import { Shield, Search, Filter, ChevronDown, ChevronUp, Trash2, Pencil, Plus, ArrowLeftRight, DollarSign, RefreshCw } from 'lucide-react'
@@ -171,9 +171,8 @@ export function AuditLog() {
                 {entries.map(entry => {
                   const isExpanded = expandedId === entry.id
                   return (
-                    <>
+                    <Fragment key={entry.id}>
                       <tr
-                        key={entry.id}
                         onClick={() => setExpandedId(isExpanded ? null : entry.id)}
                         className="hover:bg-surface/60 cursor-pointer transition-colors"
                       >
@@ -209,7 +208,7 @@ export function AuditLog() {
                         </td>
                       </tr>
                       {isExpanded && (
-                        <tr key={`${entry.id}-detail`} className="bg-surface/50">
+                        <tr className="bg-surface/50">
                           <td colSpan={6} className="px-6 py-4">
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
                               <div>
@@ -244,7 +243,7 @@ export function AuditLog() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   )
                 })}
               </tbody>
