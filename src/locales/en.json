@@ -1111,7 +1111,7 @@
     "itemType_cannibalized": "Reclaimed",
     "itemType_cannibalized_desc": "Part recovered/reclaimed from another device",
     "itemType_harvested": "Harvested",
-    "itemType_harvested_desc": "Hardware removed from this device for individual resale",
+    "itemType_harvested_desc": "Hardware removed from this device for individual resale — automatically creates a linked inventory item and transfers the cost",
     "quantity": "Quantity",
     "unitCostLabel": "Unit cost (£)",
     "itemNotesPlaceholder": "Notes about this item...",

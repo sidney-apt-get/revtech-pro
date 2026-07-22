@@ -5,6 +5,7 @@ import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useInventory, useCreateInventoryItem, useUpdateInventoryItem, useDeleteInventoryItem } from '@/hooks/useInventory'
+import { useProjects } from '@/hooks/useProjects'
 import { useCategories } from '@/hooks/useCategories'
 import { saveItemFieldValues } from '@/hooks/useItemFieldValues'
 import { DynamicFields } from '@/components/DynamicFields'
@@ -183,6 +184,7 @@ export function Inventory() {
   const [, navigate] = useLocation()
   useEffect(() => { document.title = t('page_titles.inventory') + ' — RevTech PRO' }, [t])
   const { data: inventory = [], isLoading } = useInventory()
+  const { data: allProjects = [] } = useProjects()
   const create = useCreateInventoryItem()
   const update = useUpdateInventoryItem()
   const remove = useDeleteInventoryItem()
@@ -562,8 +564,22 @@ export function Inventory() {
 
             {watchedContext === 'cannibalized' && (
               <div className="space-y-1.5">
-                <Label className="text-xs">ID do projecto de origem (opcional)</Label>
-                <Input {...register('source_project_id')} placeholder="UUID do projecto" />
+                <Label className="text-xs">Projecto de origem (opcional)</Label>
+                <select
+                  value={watch('source_project_id') ?? ''}
+                  onChange={e => setValue('source_project_id', e.target.value)}
+                  className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                >
+                  <option value="">— Nenhum —</option>
+                  {[...allProjects]
+                    .sort((a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime())
+                    .map(p => (
+                      <option key={p.id} value={p.id}>
+                        {[p.ticket_number, p.equipment].filter(Boolean).join(' — ')}
+                      </option>
+                    ))}
+                </select>
+                <p className="text-[10px] text-text-muted">Liga esta peça ao equipamento de onde foi retirada — fica visível na ficha do item</p>
               </div>
             )}
 
