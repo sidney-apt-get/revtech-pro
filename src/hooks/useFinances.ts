@@ -1,6 +1,37 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase, type Expense, type FinancialGoal } from '@/lib/supabase'
 
+export type InventoryTransaction = {
+  id: string
+  type: string
+  amount: number
+  description: string | null
+  category: string
+  date: string
+  created_at: string
+}
+
+/**
+ * Vendas de itens de inventário (peças harvested, consumíveis revendidos, etc).
+ * Lê da tabela transactions — receita (venda_inventario) e custo (custo_inventario).
+ * Alimenta a receita e o lucro do Dashboard, Finanças e Relatórios em paralelo
+ * com as vendas de projectos (projects.sale_price).
+ */
+export function useInventorySales() {
+  return useQuery({
+    queryKey: ['inventory-sales'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('id, type, amount, description, category, date, created_at')
+        .in('category', ['venda_inventario', 'custo_inventario'])
+        .order('date', { ascending: false })
+      if (error) throw error
+      return (data ?? []) as InventoryTransaction[]
+    },
+  })
+}
+
 export function useExpenses() {
   return useQuery({
     queryKey: ['expenses'],

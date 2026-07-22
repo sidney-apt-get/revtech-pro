@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useProjects } from '@/hooks/useProjects'
 import { useOrders } from '@/hooks/useOrders'
-import { useExpenses } from '@/hooks/useFinances'
+import { useExpenses, useInventorySales } from '@/hooks/useFinances'
 import { exportToCSV } from '@/lib/reports'
 import { calcROI, fmtGBP } from '@/lib/utils'
 import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns'
@@ -22,6 +22,7 @@ export function Reports() {
   const { data: projects = [] } = useProjects()
   const { data: orders = [] } = useOrders()
   const { data: expenses = [] } = useExpenses()
+  const { data: invSales = [] } = useInventorySales()
   const locale = i18n.language === 'pt' ? pt : enGB
   const currentYear = new Date().getFullYear()
   const currentMonth = new Date().getMonth()
@@ -60,14 +61,21 @@ export function Reports() {
       : expenses.filter(e => parseISO(e.date).getFullYear() === selectedYear)
     const totalOpExpenses = periodExpenses.reduce((s, e) => s + e.amount, 0)
 
-    const totalRevenue = periodProjects.reduce((s, p) => s + (p.sale_price ?? 0), 0)
-    const totalCost = periodProjects.reduce((s, p) => s + calcROI(p).cost, 0)
+    // Vendas de inventário do período (receita + custo)
+    const periodInvSales = reportType === 'monthly'
+      ? invSales.filter(t => isWithinInterval(parseISO(t.date), { start: monthStart, end: monthEnd }))
+      : invSales.filter(t => parseISO(t.date).getFullYear() === selectedYear)
+    const invRevenue = periodInvSales.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
+    const invCost = periodInvSales.filter(t => t.type === 'cost').reduce((s, t) => s + t.amount, 0)
+
+    const totalRevenue = periodProjects.reduce((s, p) => s + (p.sale_price ?? 0), 0) + invRevenue
+    const totalCost = periodProjects.reduce((s, p) => s + calcROI(p).cost, 0) + invCost
     const totalPartsCost = periodOrders.reduce((s, o) => s + (o.total_cost ?? 0), 0)
     const profit = totalRevenue - totalCost - totalOpExpenses
     const margin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0
 
     return { totalRevenue, totalCost, totalPartsCost, totalOpExpenses, profit, margin, periodProjects, periodOrders }
-  }, [projects, orders, expenses, selectedMonth, selectedYear, reportType])
+  }, [projects, orders, expenses, invSales, selectedMonth, selectedYear, reportType])
 
   const monthlyChart = useMemo(() => {
     return Array.from({ length: 12 }, (_, m) => {

@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useProjects } from '@/hooks/useProjects'
-import { useExpenses, useCreateExpense, useDeleteExpense, useFinancialGoals, useUpsertGoal } from '@/hooks/useFinances'
+import { useExpenses, useCreateExpense, useDeleteExpense, useFinancialGoals, useUpsertGoal, useInventorySales } from '@/hooks/useFinances'
 import { useLots } from '@/hooks/useSmartCatalog'
 import { calcROI, fmtGBP } from '@/lib/utils'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -53,6 +53,7 @@ export function Finances() {
   const { data: expenses = [], isLoading: loadingExpenses } = useExpenses()
   const { data: goals = [] } = useFinancialGoals()
   const { data: lots = [] } = useLots()
+  const { data: invSales = [] } = useInventorySales()
   const createExpense = useCreateExpense()
   const deleteExpense = useDeleteExpense()
   const upsertGoal = useUpsertGoal()
@@ -82,8 +83,13 @@ export function Finances() {
       p.status === 'Vendido' && p.sold_at &&
       parseISO(p.sold_at) >= start && parseISO(p.sold_at) <= end
     )
-    const revenue = soldProjects.reduce((s, p) => s + (p.sale_price ?? 0), 0)
-    const directCosts = soldProjects.reduce((s, p) => s + calcROI(p).cost, 0)
+    // Vendas de inventário do período (peças harvested, consumíveis revendidos)
+    const periodInvSales = invSales.filter(t => { const d = parseISO(t.date); return d >= start && d <= end })
+    const invRevenue = periodInvSales.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
+    const invCost = periodInvSales.filter(t => t.type === 'cost').reduce((s, t) => s + t.amount, 0)
+
+    const revenue = soldProjects.reduce((s, p) => s + (p.sale_price ?? 0), 0) + invRevenue
+    const directCosts = soldProjects.reduce((s, p) => s + calcROI(p).cost, 0) + invCost
     const operationalExpenses = expenses
       .filter(e => { const d = parseISO(e.date); return d >= start && d <= end })
       .reduce((s, e) => s + e.amount, 0)
@@ -105,7 +111,7 @@ export function Finances() {
       .slice(0, 5)
 
     return { revenue, directCosts, operationalExpenses, grossProfit, netProfit, margin, taxEstimate, soldProjects, top5, lotsInPeriod, lotsCost }
-  }, [projects, expenses, lots, periodRange])
+  }, [projects, expenses, lots, invSales, periodRange])
 
   const [expenseModal, setExpenseModal] = useState(false)
   const [expForm, setExpForm] = useState({

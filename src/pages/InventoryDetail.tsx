@@ -210,6 +210,49 @@ export function InventoryDetail() {
         })
       }
 
+      // ── VENDA DE ITEM DE INVENTÁRIO → entra no sistema financeiro
+      // Regista uma transação de receita que o Dashboard, Finanças e Relatórios lêem.
+      // O lucro é a receita menos o custo alocado do item (custo unitário × qtd).
+      if (stockOutReason === 'sold' && salePrice > 0) {
+        const costBasis = item.unit_cost * stockOutQty
+        const saleDate = new Date().toISOString().split('T')[0]
+        // Receita da venda
+        await supabase.from('transactions').insert({
+          user_id: user?.id ?? null,
+          project_id: null,
+          type: 'income',
+          amount: salePrice,
+          description: `Venda de inventário: ${item.item_name} (×${stockOutQty})`,
+          category: 'venda_inventario',
+          date: saleDate,
+        })
+        // Custo da venda (custo de mercadoria vendida) — para o lucro ser correcto
+        if (costBasis > 0) {
+          await supabase.from('transactions').insert({
+            user_id: user?.id ?? null,
+            project_id: null,
+            type: 'cost',
+            amount: costBasis,
+            description: `Custo de venda: ${item.item_name} (×${stockOutQty})`,
+            category: 'custo_inventario',
+            date: saleDate,
+          })
+        }
+        // Regista também o custo como metadado no histórico do item (para rastreio)
+        await supabase.from('item_history').insert({
+          item_id: item.id,
+          item_type: 'inventory',
+          event_type: 'sold_revenue',
+          event_data: {
+            quantity: stockOutQty,
+            sale_price: salePrice,
+            cost_basis: costBasis,
+            profit: salePrice - costBasis,
+          },
+          user_id: user?.id ?? null,
+        })
+      }
+
       if (newQty <= item.min_stock) {
         sendTelegramNotification(
           `⚠️ <b>Stock baixo após baixa</b>\n${item.item_name}: ${newQty} unidades restantes (mínimo: ${item.min_stock})`

@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useProjects } from './useProjects'
 import { useInventory } from './useInventory'
-import { useExpenses } from './useFinances'
+import { useExpenses, useInventorySales } from './useFinances'
 import { calcROI } from '@/lib/utils'
 import { startOfMonth, endOfMonth, isWithinInterval, differenceInDays, subMonths, startOfWeek, endOfWeek, parseISO } from 'date-fns'
 
@@ -9,6 +9,7 @@ export function useDashboard() {
   const { data: projects = [] } = useProjects()
   const { data: inventory = [] } = useInventory()
   const { data: expenses = [] } = useExpenses()
+  const { data: invSales = [] } = useInventorySales()
 
   return useMemo(() => {
     const now = new Date()
@@ -24,11 +25,19 @@ export function useDashboard() {
       isWithinInterval(new Date(p.received_at), { start: monthStart, end: monthEnd })
     )
 
+    // Vendas de inventário do mês (peças harvested, consumíveis revendidos)
+    const invSalesThisMonth = invSales.filter(t =>
+      isWithinInterval(parseISO(t.date), { start: monthStart, end: monthEnd }))
+    const invSalesRevenue = invSalesThisMonth
+      .filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
+    const invSalesCost = invSalesThisMonth
+      .filter(t => t.type === 'cost').reduce((s, t) => s + t.amount, 0)
+
     const totalInvested = receivedThisMonth.reduce((s, p) =>
       s + (p.purchase_price || 0) + (p.parts_cost || 0) + (p.shipping_in || 0), 0)
-    const totalRevenue = soldThisMonth.reduce((s, p) => s + (p.sale_price || 0), 0)
+    const totalRevenue = soldThisMonth.reduce((s, p) => s + (p.sale_price || 0), 0) + invSalesRevenue
     const totalCostSold = soldThisMonth.reduce((s, p) =>
-      s + (p.purchase_price || 0) + (p.parts_cost || 0) + (p.shipping_in || 0) + (p.shipping_out || 0), 0)
+      s + (p.purchase_price || 0) + (p.parts_cost || 0) + (p.shipping_in || 0) + (p.shipping_out || 0), 0) + invSalesCost
 
     // Despesas operacionais do mês corrente (electricidade, subscrições, etc.)
     const monthlyOpExpenses = expenses
@@ -138,5 +147,5 @@ export function useDashboard() {
       monthlyProfit,
       weeklyFlow,
     }
-  }, [projects, inventory, expenses])
+  }, [projects, inventory, expenses, invSales])
 }
