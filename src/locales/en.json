@@ -1,7 +1,6 @@
 {
   "nav": {
     "dashboard": "Dashboard",
-    "assistant": "Assistant",
     "projects": "Projects",
     "partsOrders": "Parts Orders",
     "inventory": "Inventory",
@@ -9,8 +8,6 @@
     "contacts": "Contacts",
     "reports": "Reports",
     "analytics": "Analytics",
-    "map": "Map & Platforms",
-    "ebay": "eBay / Back Market",
     "finances": "Finances",
     "lots": "Purchase Lots",
     "rma": "RMA — Defects"

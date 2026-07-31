@@ -6,7 +6,8 @@ import { useOrders } from '@/hooks/useOrders'
 import { autoUpdateDefectDatabase } from '@/hooks/useDefects'
 import { useItemFieldValues } from '@/hooks/useItemFieldValues'
 import { useProjectPhotos } from '@/hooks/useProjectPhotos'
-import { useInventory } from '@/hooks/useInventory'
+import { useInventory, useCreateInventoryItem } from '@/hooks/useInventory'
+import { useCreateRmaItem } from '@/hooks/useRMA'
 import { useProjectItems, useAddProjectItem, useRemoveProjectItem, type ProjectItemType } from '@/hooks/useProjectItems'
 import { sendTelegramNotification } from '@/lib/telegram'
 import { PhotoGallery } from '@/components/PhotoGallery'
@@ -19,6 +20,7 @@ import {
   ArrowLeft, Pencil, CheckCircle2, Circle, Clock, Package,
   Wrench, ClipboardCheck, TrendingUp, TrendingDown, Camera,
   Trash2, ChevronDown, ExternalLink, Search, Plus, X, Box, FileText,
+  MoreVertical, RotateCcw, Landmark,
 } from 'lucide-react'
 import { differenceInDays } from 'date-fns'
 import { printProjectPDF } from '@/lib/pdf'
@@ -309,6 +311,95 @@ function AddItemModal({
   )
 }
 
+// ── Modal de Venda — captura preço, plataforma e data ────────────────────────
+const SALE_PLATFORMS = ['eBay UK', 'Back Market', 'CeX', 'Gumtree', 'Facebook Marketplace', 'Outro']
+
+function SaleModal({
+  project,
+  cost,
+  onConfirm,
+  onClose,
+  saving,
+}: {
+  project: Project
+  cost: number
+  onConfirm: (salePrice: number, platform: string, soldAt: string) => void
+  onClose: () => void
+  saving: boolean
+}) {
+  const [price, setPrice] = useState(project.sale_price ?? 0)
+  const [platform, setPlatform] = useState(project.sale_platform ?? '')
+  const [soldAt, setSoldAt] = useState(
+    project.sold_at ? new Date(project.sold_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+  )
+  const profit = price - cost
+  const margin = price > 0 ? (profit / price) * 100 : 0
+  const positive = profit >= 0
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 px-4" onClick={onClose}>
+      <div className="bg-card border border-border rounded-xl shadow-2xl p-5 w-full max-w-md space-y-4" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold text-text-primary flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-success" /> Registar Venda
+          </h2>
+          <button onClick={onClose} className="text-text-muted hover:text-text-primary"><X className="h-4 w-4" /></button>
+        </div>
+        <p className="text-xs text-text-muted">{project.ticket_number ? `${project.ticket_number} · ` : ''}{project.equipment}</p>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <label className="text-xs text-text-muted">Preço de venda (£) *</label>
+            <input type="number" min={0} step={0.01} autoFocus value={price}
+              onChange={e => setPrice(parseFloat(e.target.value) || 0)}
+              className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-text-muted">Data da venda</label>
+            <input type="date" value={soldAt}
+              onChange={e => setSoldAt(e.target.value)}
+              className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40" />
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-xs text-text-muted">Plataforma</label>
+          <select value={platform} onChange={e => setPlatform(e.target.value)}
+            className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40">
+            <option value="">Selecciona...</option>
+            {SALE_PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
+        </div>
+
+        {/* Resumo do lucro */}
+        <div className={cn('rounded-lg border px-3 py-2.5 flex items-center justify-between', positive ? 'border-success/20 bg-success/5' : 'border-danger/20 bg-danger/5')}>
+          <div className="text-xs text-text-muted">
+            <div>Custo: {fmtGBP(cost)}</div>
+            <div>Venda: {fmtGBP(price)}</div>
+          </div>
+          <div className="text-right">
+            <div className={cn('text-lg font-bold', positive ? 'text-success' : 'text-danger')}>
+              {positive ? '+' : ''}{fmtGBP(profit)}
+            </div>
+            <div className="text-[10px] text-text-muted">margem {margin.toFixed(1)}%</div>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="rounded-lg border border-border px-4 py-2 text-sm text-text-muted hover:text-text-primary transition-colors">Cancelar</button>
+          <button
+            onClick={() => onConfirm(price, platform, soldAt)}
+            disabled={price <= 0 || saving}
+            className="rounded-lg bg-success px-4 py-2 text-sm font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-success/90 transition-colors"
+          >
+            {saving ? 'A registar...' : 'Confirmar Venda'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function ProjectDetails() {
   const { t, i18n } = useTranslation()
   const { settings } = useSettings()
@@ -318,6 +409,8 @@ export function ProjectDetails() {
   const { data: allOrders = [] } = useOrders()
   const update = useUpdateProject()
   const deleteProject = useDeleteProject()
+  const createRma = useCreateRmaItem()
+  const createInventory = useCreateInventoryItem()
   const fieldValues = useItemFieldValues(id ?? null, 'project')
   const { data: photos = [] } = useProjectPhotos(id ?? '')
   const { data: projectItems = [] } = useProjectItems(id ?? '')
@@ -327,6 +420,9 @@ export function ProjectDetails() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [statusChanging, setStatusChanging] = useState(false)
   const [addItemOpen, setAddItemOpen] = useState(false)
+  const [saleModalOpen, setSaleModalOpen] = useState(false)
+  const [savedFlash, setSavedFlash] = useState(false)
+  const [actionsOpen, setActionsOpen] = useState(false)
 
   const project = projects.find(p => p.id === id)
   const linkedOrders = allOrders.filter(o => o.project_id === id)
@@ -370,25 +466,114 @@ export function ProjectDetails() {
     await update.mutateAsync({ id: project!.id, [key]: value }).catch(() => {})
   }
 
+  function flashSaved() {
+    setSavedFlash(true)
+    setTimeout(() => setSavedFlash(false), 1800)
+  }
+
   async function handleStatusChange(status: ProjectStatus) {
+    // Vender exige capturar preço/plataforma/data — abre o modal de venda
+    if (status === 'Vendido') {
+      setSaleModalOpen(true)
+      return
+    }
     setStatusChanging(true)
     try {
       await update.mutateAsync({ id: project!.id, status })
-      if (status === 'Vendido' || status === 'Cancelado') {
+      flashSaved()
+      if (status === 'Cancelado') {
         autoUpdateDefectDatabase({ ...project!, status }).catch(() => {})
       }
-      if (status === 'Vendido') {
-        const { profit } = calcROI(project!)
-        const margin = project!.sale_price ? (profit / project!.sale_price * 100) : 0
-        sendTelegramNotification(
-          `💰 <b>Venda registada!</b>\nTicket: ${project!.ticket_number ?? '—'}\nEquipamento: ${project!.equipment}\nVendido por: £${project!.sale_price ?? 0} via ${project!.sale_platform ?? '—'}\nLucro: £${profit.toFixed(2)} (${margin.toFixed(1)}%)`
-        ).catch(() => {})
-      } else {
-        sendTelegramNotification(
-          `📋 <b>Projecto actualizado</b>\nTicket: ${project!.ticket_number ?? '—'}\n${project!.status} → ${status}`
-        ).catch(() => {})
-      }
+      sendTelegramNotification(
+        `📋 <b>Projecto actualizado</b>\nTicket: ${project!.ticket_number ?? '—'}\n${project!.status} → ${status}`
+      ).catch(() => {})
     } finally { setStatusChanging(false) }
+  }
+
+  // Confirma a venda: grava preço, plataforma e data → o ledger regista automaticamente
+  async function handleConfirmSale(salePrice: number, platform: string, soldAt: string) {
+    setStatusChanging(true)
+    try {
+      await update.mutateAsync({
+        id: project!.id,
+        status: 'Vendido',
+        sale_price: salePrice,
+        sale_platform: platform || null,
+        sold_at: soldAt || new Date().toISOString().split('T')[0],
+      })
+      setSaleModalOpen(false)
+      flashSaved()
+      autoUpdateDefectDatabase({ ...project!, status: 'Vendido' }).catch(() => {})
+      const profit = salePrice - cost
+      const margin = salePrice > 0 ? (profit / salePrice * 100) : 0
+      sendTelegramNotification(
+        `💰 <b>Venda registada!</b>\nTicket: ${project!.ticket_number ?? '—'}\nEquipamento: ${project!.equipment}\nVendido por: £${salePrice} via ${platform || '—'}\nLucro: £${profit.toFixed(2)} (${margin.toFixed(1)}%)`
+      ).catch(() => {})
+    } finally { setStatusChanging(false) }
+  }
+
+  // Enviar equipamento para RMA (controlo de defeito) a partir da ficha
+  async function handleSendToRma() {
+    setActionsOpen(false)
+    if (!window.confirm(`Enviar "${project!.equipment}" para RMA (controlo de defeito)?`)) return
+    try {
+      await createRma.mutateAsync({
+        equipment: project!.equipment,
+        brand: project!.brand ?? null,
+        model: project!.model ?? null,
+        serial_number: project!.serial_number ?? null,
+        imei: project!.imei ?? null,
+        supplier: project!.supplier_name ?? null,
+        purchase_price: project!.purchase_price ?? null,
+        purchase_date: project!.received_at ? new Date(project!.received_at).toISOString().split('T')[0] : null,
+        project_id: project!.id,
+        defect_description: project!.defect_description || 'Enviado da ficha do projecto',
+        defect_category: null,
+        status: 'received',
+        destination: null,
+        destination_notes: null,
+        repair_cost: null,
+        recovery_value: null,
+        write_off_value: null,
+        order_id: null,
+        photo_urls: [],
+        notes: `Criado a partir do projecto ${project!.ticket_number ?? project!.id.slice(0, 8)}`,
+      } as Parameters<typeof createRma.mutateAsync>[0])
+      flashSaved()
+      navigate('/rma')
+    } catch (e) {
+      console.error('RMA create failed', e)
+      window.alert('Erro ao criar RMA.')
+    }
+  }
+
+  // Tombar equipamento como Património (activo da empresa) → cria item de inventário
+  async function handleMarkAsAsset() {
+    setActionsOpen(false)
+    if (!window.confirm(`Tombar "${project!.equipment}" como Património da empresa?\nCria um item de inventário (activo) ligado a este projecto.`)) return
+    try {
+      const assetCost = calcROI(project!).cost
+      await createInventory.mutateAsync({
+        item_name: project!.equipment,
+        category: 'Patrimônio',
+        quantity: 1,
+        min_stock: 0,
+        unit_cost: assetCost,
+        item_context: 'cannibalized',
+        source_project_id: project!.id,
+        cannibalization_reason: `Tombado como património do projecto ${project!.ticket_number ?? ''}`.trim(),
+        supplier: project!.supplier_name ?? null,
+        notes: `Activo da empresa. Custo de aquisição: ${fmtGBP(assetCost)}`,
+        entry_date: new Date().toISOString().split('T')[0],
+      } as Parameters<typeof createInventory.mutateAsync>[0])
+      // Marca o projecto como Cancelado (saiu do fluxo de venda) para não contar como stock a vender
+      await update.mutateAsync({ id: project!.id, status: 'Cancelado' })
+      flashSaved()
+      navigate('/inventory')
+    } catch (e) {
+      console.error('Asset create failed', e)
+      window.alert('Erro ao tombar como património.')
+    }
   }
 
   async function handleDelete() {
@@ -453,6 +638,27 @@ export function ProjectDetails() {
           <button onClick={() => setEditOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-surface hover:bg-accent/5 hover:border-accent/40 text-sm text-text-muted hover:text-accent transition-colors">
             <Pencil className="h-3.5 w-3.5" /> {t('common.edit')}
           </button>
+          {/* Mais ações — RMA / Património */}
+          <div className="relative">
+            <button onClick={() => setActionsOpen(o => !o)} className="p-1.5 rounded-lg border border-border bg-surface text-text-muted hover:text-accent hover:border-accent/40 transition-colors">
+              <MoreVertical className="h-3.5 w-3.5" />
+            </button>
+            {actionsOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setActionsOpen(false)} />
+                <div className="absolute right-0 mt-1 z-50 w-56 rounded-xl border border-border bg-card shadow-xl overflow-hidden">
+                  <button onClick={handleSendToRma} className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-text-primary hover:bg-surface transition-colors text-left">
+                    <RotateCcw className="h-4 w-4 text-amber-400 shrink-0" />
+                    <span>Enviar para RMA<br /><span className="text-[10px] text-text-muted">controlo de defeito</span></span>
+                  </button>
+                  <button onClick={handleMarkAsAsset} className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-text-primary hover:bg-surface transition-colors text-left border-t border-border">
+                    <Landmark className="h-4 w-4 text-purple-400 shrink-0" />
+                    <span>Tombar como Património<br /><span className="text-[10px] text-text-muted">activo da empresa</span></span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
           <button onClick={() => setDeleteOpen(true)} className="p-1.5 rounded-lg border border-border bg-surface text-text-muted hover:text-danger hover:border-danger/30 transition-colors">
             <Trash2 className="h-3.5 w-3.5" />
           </button>
@@ -789,6 +995,23 @@ export function ProjectDetails() {
 
       {addItemOpen && (
         <AddItemModal projectId={project.id} onClose={() => setAddItemOpen(false)} />
+      )}
+
+      {saleModalOpen && (
+        <SaleModal
+          project={project}
+          cost={cost}
+          saving={statusChanging}
+          onConfirm={handleConfirmSale}
+          onClose={() => setSaleModalOpen(false)}
+        />
+      )}
+
+      {/* Toast "Guardado" */}
+      {savedFlash && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] rounded-full bg-success text-white text-sm font-medium px-4 py-2 shadow-lg flex items-center gap-2 animate-fade-in">
+          <CheckCircle2 className="h-4 w-4" /> Guardado
+        </div>
       )}
 
       {/* Delete confirmation */}

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useLocation } from 'wouter'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import { useInventory, useUpdateInventoryItem, useDeleteInventoryItem } from '@/hooks/useInventory'
 import { useProjects } from '@/hooks/useProjects'
 import { useItemFieldValues } from '@/hooks/useItemFieldValues'
@@ -107,6 +108,7 @@ export function InventoryDetail() {
   const [, navigate] = useLocation()
   const { data: items = [], isLoading } = useInventory()
   const { data: projects = [] } = useProjects()
+  const qc = useQueryClient()
   const updateItem = useUpdateInventoryItem()
   const deleteItem = useDeleteInventoryItem()
   const fieldValues = useItemFieldValues(id ?? null, 'inventory')
@@ -258,6 +260,12 @@ export function InventoryDetail() {
           `⚠️ <b>Stock baixo após baixa</b>\n${item.item_name}: ${newQty} unidades restantes (mínimo: ${item.min_stock})`
         ).catch(() => {})
       }
+
+      // Actualiza o ledger e KPIs financeiros se houve venda
+      if (stockOutReason === 'sold') {
+        qc.invalidateQueries({ queryKey: ['transactions'] })
+      }
+      qc.invalidateQueries({ queryKey: ['inventory'] })
 
       setShowStockOut(false)
       setStockOutQty(1)

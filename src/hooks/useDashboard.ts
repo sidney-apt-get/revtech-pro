@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
 import { useProjects } from './useProjects'
 import { useInventory } from './useInventory'
-import { useExpenses, useInventorySales } from './useFinances'
+import { useExpenses } from './useFinances'
+import { useLedger, computePnL } from './useLedger'
 import { calcROI } from '@/lib/utils'
 import { startOfMonth, endOfMonth, isWithinInterval, differenceInDays, subMonths, startOfWeek, endOfWeek, parseISO } from 'date-fns'
 
@@ -9,7 +10,7 @@ export function useDashboard() {
   const { data: projects = [] } = useProjects()
   const { data: inventory = [] } = useInventory()
   const { data: expenses = [] } = useExpenses()
-  const { data: invSales = [] } = useInventorySales()
+  const { data: ledger = [] } = useLedger()
 
   return useMemo(() => {
     const now = new Date()
@@ -25,19 +26,13 @@ export function useDashboard() {
       isWithinInterval(new Date(p.received_at), { start: monthStart, end: monthEnd })
     )
 
-    // Vendas de inventário do mês (peças harvested, consumíveis revendidos)
-    const invSalesThisMonth = invSales.filter(t =>
-      isWithinInterval(parseISO(t.date), { start: monthStart, end: monthEnd }))
-    const invSalesRevenue = invSalesThisMonth
-      .filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
-    const invSalesCost = invSalesThisMonth
-      .filter(t => t.type === 'cost').reduce((s, t) => s + t.amount, 0)
+    // ── Receita e COGS vêm do LEDGER (fonte única: vendas de projeto + inventário)
+    const pnl = computePnL(ledger, monthStart, monthEnd)
+    const totalRevenue = pnl.revenue
+    const totalCostSold = pnl.cogs
 
     const totalInvested = receivedThisMonth.reduce((s, p) =>
       s + (p.purchase_price || 0) + (p.parts_cost || 0) + (p.shipping_in || 0), 0)
-    const totalRevenue = soldThisMonth.reduce((s, p) => s + (p.sale_price || 0), 0) + invSalesRevenue
-    const totalCostSold = soldThisMonth.reduce((s, p) =>
-      s + (p.purchase_price || 0) + (p.parts_cost || 0) + (p.shipping_in || 0) + (p.shipping_out || 0), 0) + invSalesCost
 
     // Despesas operacionais do mês corrente (electricidade, subscrições, etc.)
     const monthlyOpExpenses = expenses
@@ -94,18 +89,16 @@ export function useDashboard() {
         ticket: p.ticket_number,
       }))
 
-    // ── Monthly profit chart (last 6 months) — lucro LÍQUIDO com despesas ──
+    // ── Monthly profit chart (last 6 months) — lucro LÍQUIDO do ledger + despesas ──
     const monthlyProfit = Array.from({ length: 6 }, (_, i) => {
       const m = subMonths(now, 5 - i)
       const s = startOfMonth(m)
       const e = endOfMonth(m)
-      const sold = projects.filter(p => p.status === 'Vendido' && p.sold_at && isWithinInterval(new Date(p.sold_at), { start: s, end: e }))
-      const rev = sold.reduce((a, p) => a + (p.sale_price || 0), 0)
-      const directCost = sold.reduce((a, p) => a + (p.purchase_price || 0) + (p.parts_cost || 0) + (p.shipping_in || 0) + (p.shipping_out || 0), 0)
+      const mp = computePnL(ledger, s, e)
       const opExpenses = expenses
         .filter(exp => isWithinInterval(parseISO(exp.date), { start: s, end: e }))
         .reduce((a, exp) => a + exp.amount, 0)
-      return { monthDate: m, revenue: rev, profit: rev - directCost - opExpenses, count: sold.length }
+      return { monthDate: m, revenue: mp.revenue, profit: mp.grossProfit - opExpenses, count: mp.count }
     })
 
     // ── Weekly projects created vs sold (last 8 weeks) ────────────────
@@ -147,5 +140,5 @@ export function useDashboard() {
       monthlyProfit,
       weeklyFlow,
     }
-  }, [projects, inventory, expenses, invSales])
+  }, [projects, inventory, expenses, ledger])
 }

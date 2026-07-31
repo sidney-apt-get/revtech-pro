@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase, type Project } from '@/lib/supabase'
+import { syncProjectSaleTransactions, removeProjectTransactions } from '@/lib/ledger'
 
 async function fetchProjects(): Promise<Project[]> {
   const { data, error } = await supabase
@@ -34,10 +35,14 @@ async function createProject(p: Omit<Project, 'id' | 'user_id' | 'created_at' | 
 async function updateProject({ id, ...p }: Partial<Project> & { id: string }) {
   const { data, error } = await supabase.from('projects').update(p).eq('id', id).select().single()
   if (error) throw error
+  // Ledger: mantém as transações de venda em sincronia com o estado do projecto
+  await syncProjectSaleTransactions(data as Project)
   return data
 }
 
 async function deleteProject(id: string) {
+  // Remove transações do ledger antes de apagar o projecto
+  await removeProjectTransactions(id)
   const { error } = await supabase.from('projects').delete().eq('id', id)
   if (error) throw error
 }
@@ -58,7 +63,11 @@ export function useUpdateProject() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: updateProject,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['projects'] })
+      qc.invalidateQueries({ queryKey: ['transactions'] })
+      qc.invalidateQueries({ queryKey: ['inventory-sales'] })
+    },
   })
 }
 
@@ -66,6 +75,10 @@ export function useDeleteProject() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: deleteProject,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['projects'] })
+      qc.invalidateQueries({ queryKey: ['transactions'] })
+      qc.invalidateQueries({ queryKey: ['inventory-sales'] })
+    },
   })
 }

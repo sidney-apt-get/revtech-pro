@@ -1,164 +1,79 @@
 # RevTech PRO — Contexto Completo para Claude
-# Última actualização: Maio 2026
+# Última actualização: 2026-06-03
 
 ## NEGÓCIO
 - Oficina familiar em Livingston, Scotland
-- Compra electrónicos com defeito no eBay UK
-- Repara e revende via CeX, Back Market, eBay UK
-- Trabalha com: portáteis, telemóveis, consolas, áudio vintage,
-  componentes PC, tablets, iPads, e-readers, periféricos
+- Compra electrónicos com defeito no eBay UK, repara e revende via CeX, Back Market, eBay UK
+- Equipamentos: portáteis, telemóveis, consolas, áudio vintage, PCs, tablets, periféricos
 - Dono: Sidney Nogueira (sidneycomvoce@gmail.com) — admin
 
-## SISTEMA ACTUAL
+## SISTEMA
 - App: https://revtech-new.vercel.app
-- GitHub: https://github.com/sidney-apt-get/revtech-pro
+- GitHub: https://github.com/sidney-apt-get/revtech-pro (branch: master)
 - Supabase Project ID: yurtqojjrwlnxpvykvti
-- Supabase URL: https://yurtqojjrwlnxpvykvti.supabase.co
 - Stack: React 19 + Vite + TypeScript + TailwindCSS + Supabase + Vercel
 - Auth: Google OAuth via Supabase
-- i18n: PT-BR e EN-GB (react-i18next)
 
-## COMO TRABALHAR NO SISTEMA
+## DEPLOY
+```
 cd C:\RevTech\revtech-new
-claude (abre Claude Code)
+git add . && git commit -m "mensagem" && git push origin master && vercel --prod --yes
+```
+Ou duplo clique num dos scripts .cmd na raiz do projecto.
 
-NUNCA tocar em:
-- C:\RevTech\revtech-pro (sistema antigo abandonado)
-- C:\RevTech\revtech-pro-temp (sistema antigo abandonado)
+**IMPORTANTE**: Se o user vê código antigo → Ctrl+Shift+R (limpa cache do service worker)
 
-## DEPLOY
-git add . && git commit -m "mensagem" && git push && vercel --prod --yes
+NUNCA tocar em: C:\RevTech\revtech-pro / C:\RevTech\revtech-pro-temp (sistemas antigos)
 
-## CREDENCIAIS (onde estão — não os valores)
-- Google OAuth Client ID/Secret: Google Cloud Console > My Project 7384
-- Supabase anon key: .env.local
-- eBay App ID: .env.local (SIDNEYNO-RevTechS-PRD-b6c2e06b1-7cb91251)
-- Back Market API Key: .env.local
-- Telegram Token: Supabase Edge Function secrets
-- Gemini API Key: Supabase Edge Function secrets (GEMINI_API_KEY)
-- ⚠️ REVOGAR URGENTE: Google Client Secret foi partilhado publicamente
-  → console.cloud.google.com > My Project 7384 > OAuth 2.0 > revogar e gerar novo
+## ESTADO ACTUAL (2026-06-03)
 
-## TABELAS SUPABASE (todas existentes)
-- projects — projectos de reparação
-- inventory — peças e equipamentos em stock
-- contacts — fornecedores e clientes
-- transactions — transacções financeiras
-- checklists — listas de verificação recepção/entrega
-- defect_database — base de defeitos (alimentada automaticamente)
-- parts_orders — encomendas de peças
-- app_settings — configurações da empresa
-- user_roles — roles dos utilizadores (admin/technician/viewer)
-- time_entries — registo de tempo por projecto
-- warranties — garantias pós-venda
-- project_photos — fotos por fase do projecto
-- lots — lotes de compra
-- categories — taxonomia de categorias de equipamentos
-- category_fields — campos específicos por categoria
-- item_field_values — valores dos campos dinâmicos
-- item_history — histórico universal de todos os items
-- expenses — despesas operacionais
-- financial_goals — metas financeiras mensais
-- scanner_sessions — sessões de pareamento (não usado actualmente)
+### ✅ EM PRODUÇÃO (tudo deployado)
+- AI foto: preenche 6+ campos automáticos (nome, categoria, sub-categoria, notes, banner)
+- Gemini: gemini-3.1-flash-lite v21 — FUNCIONA com responseSchema
+  ⚠️ NUNCA usar gemini-3.5-flash com responseSchema via REST (incompatível)
+- parts_cost: actualizado automaticamente ao adicionar/remover materiais na OS
+- RMA: controlo de estoque com defeito (7 estados, KPIs, Telegram)
+- PIN + Audit Log (/admin/audit) + PDF (4 templates com logo) — DEPLOYADO
+- LEDGER financeiro (tabela transactions) = fonte única de receita/COGS
+  - Dashboard/Finances/Reports lêem via useLedger()/computePnL — NÃO somar sale_price directo
+  - Vender projeto → SaleModal captura preço/plataforma/sold_at → escreve no ledger
+  - Vender inventário (stock-out 'sold') → escreve no ledger
+- Ficha do projeto: menu ⋮ com "Enviar para RMA" e "Tombar como Património"
 
-## MIGRATIONS EXECUTADAS (001-022)
-001 tickets, 002 checklists, 003 defects, 004 orders,
-005 settings, 006 roles, 007 fix_admin, 008 security,
-009 time_tracking, 010 warranties, 011 photos,
-012 device_fields, 013 finances, 014 taxonomy,
-015 camera_sessions, 016 pairing, 017 purchase_ref,
-018 defect_auto, 019 purchase_ref, 020 inventory_fields,
-021 telegram_settings, 022 scanner_sessions
+### DEPLOY: só git push (webhook Vercel auto-deploya; token CLI expirou, vercel --prod não é preciso)
 
-## EDGE FUNCTIONS SUPABASE
-- ai-analyze: análise de imagem com Gemini 2.5-flash
-  + tradução de texto via Gemini
-  Status: deployada, modelo gemini-2.5-flash
-- telegram-notify: notificações Telegram
-  Status: deployada, secrets configurados
+## REGRAS CRÍTICAS DE IA
 
-## FUNCIONALIDADES ACTIVAS
-✅ Login Google OAuth com roles (admin/technician/viewer)
-✅ PIN de protecção nas configurações
-✅ Dashboard com métricas reais e gráficos
-✅ Projectos com Kanban + lista + ficha completa (/projects/:id)
-✅ Formulário dinâmico por categoria de equipamento
-✅ Auto-preenchimento por IA (Gemini Vision) via foto
-✅ Inventário com lista densa + ficha completa (/inventory/:id)
-✅ Dar baixa de stock com motivo e ligação a projecto
-✅ Encomendas de peças → ligação automática a inventário/projecto
-✅ Quando todas as peças entregues → projecto muda para Em Manutenção
-✅ Lotes de compra ligados a projectos (custo por item auto)
-✅ Checklists de recepção e entrega com fotos
-✅ Galeria de fotos por fase da reparação
-✅ Tickets com QR Code imprimíveis
-✅ Etiquetas de preço imprimíveis (100x60mm)
-✅ Base de defeitos alimentada automaticamente por projectos concluídos
-✅ Histórico de reparações por equipamento (na ficha do projecto)
-✅ Garantias pós-venda
-✅ Time tracking por técnico
-✅ Finanças com balanço diário/semanal/mensal/anual
-✅ Relatórios PDF/CSV
-✅ Analytics com gráficos
-✅ Notificações Telegram (novo projecto, venda, stock baixo)
-✅ Alertas de stock baixo dispensáveis (8 horas)
-✅ Tradução de conteúdo inserido pelo utilizador (botão 🌐)
-✅ i18n completo PT-BR e EN-GB
-✅ PWA instalável no telemóvel
-✅ Sidebar recolhível
-✅ Histórico universal por item (item_history)
-✅ Campos dinâmicos por categoria (category_fields)
-✅ Subcategoria com sugestão automática por nome do item
-✅ Comparador de preços CeX/eBay/Back Market
-✅ Gestão de utilizadores (admin)
-✅ Configurações: logo, cores, PIN, moeda, prefixo tickets
-✅ Backup/restauro de dados
-✅ Delete com confirmação ELIMINAR/DELETE
+### Edge Function ai-analyze (v21, gemini-3.1-flash-lite)
+- NUNCA mudar para gemini-3.5-flash sem resolver a incompatibilidade com responseSchema
+- thinkingConfig + responseSchema = INCOMPATÍVEL no REST v1beta (causa 502/504)
+- gemini-3.1-flash-lite funciona porque usa thinkingLevel 'minimal' por defeito
 
-## REMOVIDO DO SISTEMA (não reimplementar)
-- Mapa de fornecedores (inútil)
-- eBay/Back Market search (demo sem dados reais)
-- Sistema de scanner/pareamento QR (não funcionou)
-- Chat IA flutuante (TechMasterChat)
-- Diagnósticos por IA (página separada)
-- Assistente de Bancada (removido em 09/05/2026 — commit 73b19f9b)
-  Nav entry removida de Layout.tsx; rota /assistant removida de App.tsx
-  Chaves "nav.assistant" ainda em pt.json e en.json (orphans inofensivos)
-  Chaves assistantTitle/assistantSubtitle ainda em translations.ts (orphan)
+### Supabase
+- Faz pausa após 1 semana sem actividade (plano free)
+- Ao retomar: restore_project via Supabase MCP antes de qualquer operação
+- admin_pin armazenado em app_settings (plain text, defeito "1234")
+- Categorias encoding: ficheiros SQL devem ser guardados em UTF-8
 
-## DEPLOY
-- git add . && git commit -m "mensagem" && git push origin master && vercel --prod --yes
-- Webhook Vercel estava partido em 09/05/2026 — resolvido forçando push manual
-- GitHub repo: sidney-apt-get/revtech-pro (branch: master)
-- Vercel project ID: prj_EyYiSap5kknzB6qDcu7zZUAf5CBn
-- Vercel team ID: team_G8yhDWDyXmrOLSWfNccwDvxV
+## ARQUITECTURA DO SISTEMA
 
-## PROBLEMAS CONHECIDOS ACTUAIS
-1. Categorias com encoding incorrecto no selector de
-   novo projecto — emojis aparecem como ðŸŽµ
-   Ficheiro: src/pages/Projects.tsx
-   Solução aplicada: categoryIcons.ts com ASCII
+### Contextos
+- SettingsProvider (cores, logo, moeda, ticket prefix)
+- RoleProvider (admin/technician/viewer)
+- PinGuardProvider — NOVO: modal PIN para acções protegidas
 
-2. Google Client Secret foi partilhado publicamente —
-   REVOGAR em console.cloud.google.com
+### Hooks principais
+- useProjects, useOrders, useInventory, useRMA, useFinances
+- useProjectItems — materiais da OS (actualiza parts_cost)
+- useAuditLog — NOVO: log de auditoria
 
-## IDENTIFICAÇÃO POR IA — ESTADO ACTUAL (09/05/2026)
-- Modelo: gemini-2.5-pro (upgrade de gemini-2.5-flash)
-- JSON schema obrigatório com responseMimeType: application/json
-- Novos campos: estimated_value_gbp, repair_complexity
-- Timeout: 55s (era 25s) com thinkingBudget: 1024
-- Retry automático no frontend em caso de timeout
-- Resolução da imagem: 1280px (era 1024px)
-- Edge function: v13 deployada via Supabase MCP
-- Commit: 5ae91de — deploy Vercel: dpl_536gCMctoFuginmE2jnvocJtGNFv
+### Ficheiros lib/
+- pdf.ts — NOVO: geração de PDF por impressão (4 templates)
+- printLabel.ts — etiquetas de preço existentes
 
-## TAXONOMIA DE CATEGORIAS (slugs principais)
-audio, audio-amplifier, audio-turntable, audio-speakers,
-audio-tubes, laptops, laptop-windows, laptop-macbook-pro,
-laptop-macbook-air, laptop-screen, laptop-battery,
-laptop-ram, laptop-ssd, laptop-charger,
-desktop, desktop-imac, desktop-windows-tower,
-desktop-cpu, desktop-gpu, desktop-motherboard, desktop-psu,
-consoles, console-playstation, console-xbox,
-console-nintendo-home, console-nintendo-portable,
-console-c
+### Páginas admin (ProtectedAdmin + PinProtection)
+- /settings, /admin/users, /admin/audit (NOVO)
+
+## PROBLEMAS CONHECIDOS
+1. Google Client Secret comprometido — REVOGAR urgente em console.cloud.google.com
+2. Encoding das categorias: corrigido em DB, mas migrações futuras devem usar UTF-8

@@ -10,13 +10,11 @@ import { Projects } from '@/pages/Projects'
 import { Inventory } from '@/pages/Inventory'
 import { Contacts } from '@/pages/Contacts'
 import { Analytics } from '@/pages/Analytics'
-import { Map } from '@/pages/Map'
 import { DefectDatabase } from '@/pages/DefectDatabase'
 import { PartsOrders } from '@/pages/PartsOrders'
 import { Reports } from '@/pages/Reports'
 import { Settings } from '@/pages/Settings'
 import { UserManagement } from '@/pages/UserManagement'
-import { EbaySearch } from '@/pages/EbaySearch'
 import { Labels } from '@/pages/Labels'
 import { SerialHistory } from '@/pages/SerialHistory'
 import { Warranties } from '@/pages/Warranties'
@@ -106,9 +104,6 @@ export default function App() {
           <Route path="/analytics">
             <Protected><Analytics /></Protected>
           </Route>
-          <Route path="/map">
-            <Protected><Map /></Protected>
-          </Route>
           <Route path="/defects">
             <Protected><DefectDatabase /></Protected>
           </Route>
@@ -117,9 +112,6 @@ export default function App() {
           </Route>
           <Route path="/reports">
             <Protected><Reports /></Protected>
-          </Route>
-          <Route path="/ebay">
-            <Protected><EbaySearch /></Protected>
           </Route>
           <Route path="/labels">
             <Protected><Labels /></Protected>

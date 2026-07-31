@@ -1,9 +1,12 @@
 import { useState, useMemo, useEffect } from 'react'
+import { useLocation } from 'wouter'
 import { useTranslation } from 'react-i18next'
 import { useProjects } from '@/hooks/useProjects'
-import { useExpenses, useCreateExpense, useDeleteExpense, useFinancialGoals, useUpsertGoal, useInventorySales } from '@/hooks/useFinances'
+import { useInventory } from '@/hooks/useInventory'
+import { useExpenses, useCreateExpense, useDeleteExpense, useFinancialGoals, useUpsertGoal } from '@/hooks/useFinances'
+import { useLedger, computePnL, ledgerCategoryLabel, type LedgerEntry } from '@/hooks/useLedger'
 import { useLots } from '@/hooks/useSmartCatalog'
-import { calcROI, fmtGBP } from '@/lib/utils'
+import { calcROI, fmtGBP, fmtDate } from '@/lib/utils'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -47,13 +50,15 @@ function BudgetBar({ value, target, color = 'accent' }: { value: number; target:
 
 export function Finances() {
   const { t, i18n } = useTranslation()
+  const [, navigate] = useLocation()
   const locale = i18n.language === 'pt' ? pt : enGB
   useEffect(() => { document.title = t('page_titles.finances') + ' — RevTech PRO' }, [t])
   const { data: projects = [], isLoading: loadingProjects } = useProjects()
   const { data: expenses = [], isLoading: loadingExpenses } = useExpenses()
   const { data: goals = [] } = useFinancialGoals()
   const { data: lots = [] } = useLots()
-  const { data: invSales = [] } = useInventorySales()
+  const { data: ledger = [] } = useLedger()
+  const { data: inventory = [] } = useInventory()
   const createExpense = useCreateExpense()
   const deleteExpense = useDeleteExpense()
   const upsertGoal = useUpsertGoal()
@@ -83,13 +88,10 @@ export function Finances() {
       p.status === 'Vendido' && p.sold_at &&
       parseISO(p.sold_at) >= start && parseISO(p.sold_at) <= end
     )
-    // Vendas de inventário do período (peças harvested, consumíveis revendidos)
-    const periodInvSales = invSales.filter(t => { const d = parseISO(t.date); return d >= start && d <= end })
-    const invRevenue = periodInvSales.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
-    const invCost = periodInvSales.filter(t => t.type === 'cost').reduce((s, t) => s + t.amount, 0)
-
-    const revenue = soldProjects.reduce((s, p) => s + (p.sale_price ?? 0), 0) + invRevenue
-    const directCosts = soldProjects.reduce((s, p) => s + calcROI(p).cost, 0) + invCost
+    // Receita e COGS do período — vêm do LEDGER (fonte única de verdade)
+    const pnl = computePnL(ledger, start, end)
+    const revenue = pnl.revenue
+    const directCosts = pnl.cogs
     const operationalExpenses = expenses
       .filter(e => { const d = parseISO(e.date); return d >= start && d <= end })
       .reduce((s, e) => s + e.amount, 0)
@@ -106,12 +108,34 @@ export function Finances() {
 
     // Top 5 most profitable items
     const top5 = soldProjects
-      .map(p => ({ name: p.equipment, profit: calcROI(p).profit }))
+      .map(p => ({ id: p.id, name: p.equipment, profit: calcROI(p).profit }))
       .sort((a, b) => b.profit - a.profit)
       .slice(0, 5)
 
-    return { revenue, directCosts, operationalExpenses, grossProfit, netProfit, margin, taxEstimate, soldProjects, top5, lotsInPeriod, lotsCost }
-  }, [projects, expenses, lots, invSales, periodRange])
+    return { revenue, directCosts, operationalExpenses, grossProfit, netProfit, margin, taxEstimate, soldProjects, top5, lotsInPeriod, lotsCost, pnl }
+  }, [projects, expenses, lots, ledger, periodRange])
+
+  // Capital imobilizado: stock actual + projectos activos por vender
+  const inventoryCapital = useMemo(
+    () => inventory.reduce((s, i) => s + (i.unit_cost || 0) * (i.quantity || 0), 0),
+    [inventory]
+  )
+  const activeProjectsCapital = useMemo(
+    () => projects
+      .filter(p => !['Vendido', 'Cancelado'].includes(p.status))
+      .reduce((s, p) => s + calcROI(p).cost, 0),
+    [projects]
+  )
+  const periodLabel = useMemo(() => {
+    switch (period) {
+      case 'today': return 'Hoje'
+      case 'week': return 'Esta semana'
+      case 'month': return format(now, 'MMMM yyyy', { locale })
+      case 'year': return format(now, 'yyyy', { locale })
+      case 'custom': return `${customStart} a ${customEnd}`
+      default: return format(now, 'MMMM yyyy', { locale })
+    }
+  }, [period, customStart, customEnd, now, locale])
 
   const [expenseModal, setExpenseModal] = useState(false)
   const [expForm, setExpForm] = useState({
@@ -149,19 +173,16 @@ export function Finances() {
       const start = startOfMonth(d)
       const end = endOfMonth(d)
 
-      const soldProjects = projects.filter(p =>
-        p.status === 'Vendido' && p.sold_at &&
-        parseISO(p.sold_at) >= start && parseISO(p.sold_at) <= end
-      )
-      const revenue = soldProjects.reduce((s, p) => s + (p.sale_price ?? 0), 0)
-      const projectCosts = soldProjects.reduce((s, p) => s + calcROI(p).cost, 0)
+      const mp = computePnL(ledger, start, end)
+      const revenue = mp.revenue
+      const cogs = mp.cogs
       const otherExpenses = expenses
         .filter(e => {
           const ed = parseISO(e.date)
           return ed >= start && ed <= end
         })
         .reduce((s, e) => s + e.amount, 0)
-      const totalExpenses = projectCosts + otherExpenses
+      const totalExpenses = cogs + otherExpenses
       const profit = revenue - totalExpenses
 
       return {
@@ -174,7 +195,7 @@ export function Finances() {
         label: format(d, 'MMM yy', { locale }),
       }
     })
-  }, [projects, expenses])
+  }, [ledger, expenses, now, locale])
 
   const current = monthlyData[monthlyData.length - 1]
   const prev = monthlyData[monthlyData.length - 2]
@@ -311,12 +332,16 @@ export function Finances() {
           <CardHeader><CardTitle className="text-sm">{t('finances.top5Items')}</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {periodStats.top5.map((item, i) => (
-              <div key={i} className="flex items-center justify-between text-xs">
-                <span className="text-text-muted truncate flex-1 mr-2">{i + 1}. {item.name}</span>
+              <button
+                key={item.id}
+                onClick={() => navigate(`/projects/${item.id}`)}
+                className="w-full flex items-center justify-between text-xs rounded-lg px-2 py-1.5 hover:bg-surface transition-colors text-left"
+              >
+                <span className="text-text-primary truncate flex-1 mr-2 hover:text-accent">{i + 1}. {item.name}</span>
                 <span className={cn('font-semibold shrink-0', item.profit >= 0 ? 'text-success' : 'text-danger')}>
                   {fmtGBP(item.profit)}
                 </span>
-              </div>
+              </button>
             ))}
           </CardContent>
         </Card>
@@ -336,6 +361,7 @@ export function Finances() {
       <Tabs defaultValue="resumo">
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="resumo">{t('finances.tabs.summary')}</TabsTrigger>
+          <TabsTrigger value="livro">Livro</TabsTrigger>
           <TabsTrigger value="despesas">{t('finances.tabs.expenses')}</TabsTrigger>
           <TabsTrigger value="metas">{t('finances.tabs.goals')}</TabsTrigger>
           <TabsTrigger value="projecoes">{t('finances.tabs.projections')}</TabsTrigger>
@@ -419,6 +445,68 @@ export function Finances() {
             </div>
           )}
 
+          {/* DRE — Demonstração de Resultados do período */}
+          <Card>
+            <CardHeader><CardTitle className="text-sm flex items-center gap-2"><PoundSterling className="h-4 w-4 text-accent" />Demonstração de Resultados — {periodLabel}</CardTitle></CardHeader>
+            <CardContent>
+              <table className="w-full text-sm">
+                <tbody>
+                  <tr className="border-b border-border/50">
+                    <td className="py-1.5 text-text-muted">Receita — projectos</td>
+                    <td className="py-1.5 text-right text-text-primary">{fmtGBP(periodStats.pnl.revenueProjects)}</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-1.5 text-text-muted">Receita — inventário</td>
+                    <td className="py-1.5 text-right text-text-primary">{fmtGBP(periodStats.pnl.revenueInventory)}</td>
+                  </tr>
+                  <tr className="border-b border-border font-semibold">
+                    <td className="py-1.5 text-text-primary">Receita total</td>
+                    <td className="py-1.5 text-right text-success">{fmtGBP(periodStats.pnl.revenue)}</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-1.5 text-text-muted">(−) Custo de mercadoria vendida</td>
+                    <td className="py-1.5 text-right text-danger">−{fmtGBP(periodStats.pnl.cogs)}</td>
+                  </tr>
+                  <tr className="border-b border-border font-semibold">
+                    <td className="py-1.5 text-text-primary">Lucro bruto</td>
+                    <td className={cn('py-1.5 text-right', periodStats.pnl.grossProfit >= 0 ? 'text-success' : 'text-danger')}>{fmtGBP(periodStats.pnl.grossProfit)}</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-1.5 text-text-muted">(−) Despesas operacionais</td>
+                    <td className="py-1.5 text-right text-danger">−{fmtGBP(periodStats.operationalExpenses)}</td>
+                  </tr>
+                  <tr className="font-bold text-base">
+                    <td className="py-2 text-text-primary">Lucro líquido</td>
+                    <td className={cn('py-2 text-right', periodStats.netProfit >= 0 ? 'text-success' : 'text-danger')}>{fmtGBP(periodStats.netProfit)}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div className="mt-2 pt-2 border-t border-border/50 flex justify-between text-xs text-text-muted">
+                <span>Margem líquida: <span className="font-semibold text-accent">{periodStats.margin.toFixed(1)}%</span></span>
+                <span>{periodStats.pnl.count} venda(s) no período</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Capital imobilizado em stock */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <Card><CardContent className="p-4">
+              <p className="text-xs text-text-muted">Capital em inventário</p>
+              <p className="text-lg font-bold text-text-primary mt-1">{fmtGBP(inventoryCapital)}</p>
+              <p className="text-[10px] text-text-muted mt-0.5">custo do stock actual</p>
+            </CardContent></Card>
+            <Card><CardContent className="p-4">
+              <p className="text-xs text-text-muted">Capital em projectos activos</p>
+              <p className="text-lg font-bold text-text-primary mt-1">{fmtGBP(activeProjectsCapital)}</p>
+              <p className="text-[10px] text-text-muted mt-0.5">custo investido por vender</p>
+            </CardContent></Card>
+            <Card><CardContent className="p-4">
+              <p className="text-xs text-text-muted">Total imobilizado</p>
+              <p className="text-lg font-bold text-accent mt-1">{fmtGBP(inventoryCapital + activeProjectsCapital)}</p>
+              <p className="text-[10px] text-text-muted mt-0.5">dinheiro parado no negócio</p>
+            </CardContent></Card>
+          </div>
+
           {/* Chart */}
           <Card>
             <CardHeader><CardTitle className="text-sm">{t('finances.chart6Months')}</CardTitle></CardHeader>
@@ -437,6 +525,11 @@ export function Finances() {
               </ResponsiveContainer>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* ABA — LIVRO (Ledger) */}
+        <TabsContent value="livro" className="space-y-3 mt-4">
+          <LedgerTab ledger={ledger} />
         </TabsContent>
 
         {/* ABA 2 — DESPESAS */}
@@ -714,5 +807,99 @@ export function Finances() {
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+// ── Aba LIVRO — todas as transações do ledger ────────────────────────────────
+type LedgerFilter = 'all' | 'income' | 'cost'
+
+function LedgerTab({ ledger }: { ledger: LedgerEntry[] }) {
+  const [filter, setFilter] = useState<LedgerFilter>('all')
+  const [search, setSearch] = useState('')
+
+  const filtered = useMemo(() => {
+    let rows = ledger
+    if (filter !== 'all') rows = rows.filter(e => e.type === filter)
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      rows = rows.filter(e =>
+        (e.description ?? '').toLowerCase().includes(q) ||
+        ledgerCategoryLabel(e.category).toLowerCase().includes(q))
+    }
+    return rows
+  }, [ledger, filter, search])
+
+  const totalIncome = filtered.filter(e => e.type === 'income').reduce((s, e) => s + Number(e.amount), 0)
+  const totalCost = filtered.filter(e => e.type === 'cost').reduce((s, e) => s + Number(e.amount), 0)
+
+  return (
+    <>
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex rounded-lg border border-border overflow-hidden">
+          {(['all', 'income', 'cost'] as LedgerFilter[]).map(f => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={cn('px-3 py-1.5 text-xs font-medium transition-colors',
+                filter === f ? 'bg-accent text-white' : 'text-text-muted hover:bg-surface')}
+            >
+              {f === 'all' ? 'Tudo' : f === 'income' ? 'Receitas' : 'Custos'}
+            </button>
+          ))}
+        </div>
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Pesquisar transação..."
+          className="flex-1 min-w-[160px] rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-accent"
+        />
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        <Card><CardContent className="p-3 text-center">
+          <p className="text-[10px] text-text-muted uppercase">Receitas</p>
+          <p className="text-base font-bold text-success mt-0.5">{fmtGBP(totalIncome)}</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-3 text-center">
+          <p className="text-[10px] text-text-muted uppercase">Custos</p>
+          <p className="text-base font-bold text-danger mt-0.5">{fmtGBP(totalCost)}</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-3 text-center">
+          <p className="text-[10px] text-text-muted uppercase">Lucro bruto</p>
+          <p className={cn('text-base font-bold mt-0.5', totalIncome - totalCost >= 0 ? 'text-success' : 'text-danger')}>{fmtGBP(totalIncome - totalCost)}</p>
+        </CardContent></Card>
+      </div>
+
+      <div className="rounded-xl border border-border overflow-hidden">
+        {filtered.length === 0 ? (
+          <p className="text-center py-10 text-sm text-text-muted">Nenhuma transação. As vendas de projectos e de inventário aparecem aqui automaticamente.</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-surface">
+                <th className="px-3 py-2 text-left text-[10px] font-semibold text-text-muted uppercase tracking-wider">Data</th>
+                <th className="px-3 py-2 text-left text-[10px] font-semibold text-text-muted uppercase tracking-wider">Descrição</th>
+                <th className="px-3 py-2 text-left text-[10px] font-semibold text-text-muted uppercase tracking-wider hidden sm:table-cell">Categoria</th>
+                <th className="px-3 py-2 text-right text-[10px] font-semibold text-text-muted uppercase tracking-wider">Valor</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {filtered.map(e => (
+                <tr key={e.id} className="hover:bg-surface/50 transition-colors">
+                  <td className="px-3 py-2 text-xs text-text-muted whitespace-nowrap">{fmtDate(e.date)}</td>
+                  <td className="px-3 py-2 text-text-primary">{e.description ?? '—'}</td>
+                  <td className="px-3 py-2 hidden sm:table-cell">
+                    <span className="text-[10px] rounded-full border border-border px-2 py-0.5 text-text-muted">{ledgerCategoryLabel(e.category)}</span>
+                  </td>
+                  <td className={cn('px-3 py-2 text-right font-semibold whitespace-nowrap', e.type === 'income' ? 'text-success' : 'text-danger')}>
+                    {e.type === 'income' ? '+' : '−'}{fmtGBP(Number(e.amount))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </>
   )
 }

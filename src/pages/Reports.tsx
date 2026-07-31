@@ -1,8 +1,10 @@
 import { useState, useMemo } from 'react'
+import { useLocation } from 'wouter'
 import { useTranslation } from 'react-i18next'
 import { useProjects } from '@/hooks/useProjects'
 import { useOrders } from '@/hooks/useOrders'
-import { useExpenses, useInventorySales } from '@/hooks/useFinances'
+import { useExpenses } from '@/hooks/useFinances'
+import { useLedger, computePnL } from '@/hooks/useLedger'
 import { exportToCSV } from '@/lib/reports'
 import { calcROI, fmtGBP } from '@/lib/utils'
 import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns'
@@ -18,11 +20,12 @@ import { useSettings } from '@/contexts/SettingsContext'
 
 export function Reports() {
   const { t, i18n } = useTranslation()
+  const [, navigate] = useLocation()
   const { settings } = useSettings()
   const { data: projects = [] } = useProjects()
   const { data: orders = [] } = useOrders()
   const { data: expenses = [] } = useExpenses()
-  const { data: invSales = [] } = useInventorySales()
+  const { data: ledger = [] } = useLedger()
   const locale = i18n.language === 'pt' ? pt : enGB
   const currentYear = new Date().getFullYear()
   const currentMonth = new Date().getMonth()
@@ -61,35 +64,52 @@ export function Reports() {
       : expenses.filter(e => parseISO(e.date).getFullYear() === selectedYear)
     const totalOpExpenses = periodExpenses.reduce((s, e) => s + e.amount, 0)
 
-    // Vendas de inventário do período (receita + custo)
-    const periodInvSales = reportType === 'monthly'
-      ? invSales.filter(t => isWithinInterval(parseISO(t.date), { start: monthStart, end: monthEnd }))
-      : invSales.filter(t => parseISO(t.date).getFullYear() === selectedYear)
-    const invRevenue = periodInvSales.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0)
-    const invCost = periodInvSales.filter(t => t.type === 'cost').reduce((s, t) => s + t.amount, 0)
+    // Receita e COGS do período — vêm do LEDGER (vendas de projeto + inventário)
+    const periodStart = reportType === 'monthly' ? monthStart : new Date(selectedYear, 0, 1)
+    const periodEnd = reportType === 'monthly' ? monthEnd : new Date(selectedYear, 11, 31, 23, 59, 59)
+    const pnl = computePnL(ledger, periodStart, periodEnd)
 
-    const totalRevenue = periodProjects.reduce((s, p) => s + (p.sale_price ?? 0), 0) + invRevenue
-    const totalCost = periodProjects.reduce((s, p) => s + calcROI(p).cost, 0) + invCost
+    const totalRevenue = pnl.revenue
+    const totalCost = pnl.cogs
     const totalPartsCost = periodOrders.reduce((s, o) => s + (o.total_cost ?? 0), 0)
     const profit = totalRevenue - totalCost - totalOpExpenses
     const margin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0
 
-    return { totalRevenue, totalCost, totalPartsCost, totalOpExpenses, profit, margin, periodProjects, periodOrders }
-  }, [projects, orders, expenses, invSales, selectedMonth, selectedYear, reportType])
+    return { totalRevenue, totalCost, totalPartsCost, totalOpExpenses, profit, margin, periodProjects, periodOrders, pnl }
+  }, [projects, orders, expenses, ledger, selectedMonth, selectedYear, reportType])
 
   const monthlyChart = useMemo(() => {
     return Array.from({ length: 12 }, (_, m) => {
       const mStart = startOfMonth(new Date(selectedYear, m, 1))
       const mEnd = endOfMonth(new Date(selectedYear, m, 1))
-      const mp = projects.filter(p => p.status === 'Vendido' && p.sold_at && new Date(p.sold_at).getFullYear() === selectedYear && new Date(p.sold_at).getMonth() === m)
-      const rev = mp.reduce((s, p) => s + (p.sale_price ?? 0), 0)
-      const directCost = mp.reduce((s, p) => s + calcROI(p).cost, 0)
+      const mp = computePnL(ledger, mStart, mEnd)
       const opExp = expenses
         .filter(e => isWithinInterval(parseISO(e.date), { start: mStart, end: mEnd }))
         .reduce((s, e) => s + e.amount, 0)
-      return { month: MONTHS_SHORT[m], revenue: rev, profit: rev - directCost - opExp }
+      return { month: MONTHS_SHORT[m], revenue: mp.revenue, profit: mp.grossProfit - opExp }
     })
-  }, [projects, expenses, selectedYear, MONTHS_SHORT])
+  }, [ledger, expenses, selectedYear, MONTHS_SHORT])
+
+  // Margens por plataforma de venda (do período seleccionado)
+  const platformMargins = useMemo(() => {
+    const map = new Map<string, { revenue: number; cost: number; count: number }>()
+    for (const p of metrics.periodProjects) {
+      const key = p.sale_platform || 'Sem plataforma'
+      const { cost, revenue } = calcROI(p)
+      const cur = map.get(key) ?? { revenue: 0, cost: 0, count: 0 }
+      cur.revenue += revenue; cur.cost += cost; cur.count += 1
+      map.set(key, cur)
+    }
+    return [...map.entries()]
+      .map(([platform, v]) => ({
+        platform,
+        revenue: v.revenue,
+        profit: v.revenue - v.cost,
+        margin: v.revenue > 0 ? ((v.revenue - v.cost) / v.revenue) * 100 : 0,
+        count: v.count,
+      }))
+      .sort((a, b) => b.profit - a.profit)
+  }, [metrics.periodProjects])
 
   function handleDownloadPDF() {
     // Use our professional PDF template with company logo
@@ -238,7 +258,8 @@ export function Reports() {
               ) : metrics.periodProjects.map(p => {
                 const { profit } = calcROI(p)
                 return (
-                  <div key={p.id} className="flex items-center justify-between rounded-lg bg-surface px-3 py-2 border border-border">
+                  <button key={p.id} onClick={() => navigate(`/projects/${p.id}`)}
+                    className="w-full flex items-center justify-between rounded-lg bg-surface px-3 py-2 border border-border hover:border-accent/40 hover:bg-accent/5 transition-colors text-left">
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
                         {p.ticket_number && <span className="text-xs font-mono text-accent/70">{p.ticket_number}</span>}
@@ -250,13 +271,46 @@ export function Reports() {
                       <p className={cn('text-sm font-bold', profit >= 0 ? 'text-success' : 'text-danger')}>{fmtGBP(profit)}</p>
                       <p className="text-xs text-text-muted">{fmtGBP(p.sale_price ?? 0)} {t('reports.saleLabel')}</p>
                     </div>
-                  </div>
+                  </button>
                 )
               })}
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Margens por plataforma */}
+      {platformMargins.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle className="text-base">Margens por plataforma de venda</CardTitle></CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="px-2 py-2 text-left text-[10px] font-semibold text-text-muted uppercase tracking-wider">Plataforma</th>
+                    <th className="px-2 py-2 text-right text-[10px] font-semibold text-text-muted uppercase tracking-wider">Vendas</th>
+                    <th className="px-2 py-2 text-right text-[10px] font-semibold text-text-muted uppercase tracking-wider">Receita</th>
+                    <th className="px-2 py-2 text-right text-[10px] font-semibold text-text-muted uppercase tracking-wider">Lucro</th>
+                    <th className="px-2 py-2 text-right text-[10px] font-semibold text-text-muted uppercase tracking-wider">Margem</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {platformMargins.map(pm => (
+                    <tr key={pm.platform} className="hover:bg-surface/50">
+                      <td className="px-2 py-2 text-text-primary font-medium">{pm.platform}</td>
+                      <td className="px-2 py-2 text-right text-text-muted">{pm.count}</td>
+                      <td className="px-2 py-2 text-right text-text-primary">{fmtGBP(pm.revenue)}</td>
+                      <td className={cn('px-2 py-2 text-right font-semibold', pm.profit >= 0 ? 'text-success' : 'text-danger')}>{fmtGBP(pm.profit)}</td>
+                      <td className={cn('px-2 py-2 text-right font-semibold', pm.margin >= 0 ? 'text-accent' : 'text-danger')}>{pm.margin.toFixed(1)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Parts orders */}
       {metrics.periodOrders.length > 0 && (
