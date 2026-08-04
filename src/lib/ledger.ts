@@ -53,7 +53,16 @@ export async function syncProjectSaleTransactions(project: Project): Promise<voi
     : new Date().toISOString().split('T')[0]
   const label = [project.ticket_number, project.equipment].filter(Boolean).join(' — ')
 
-  const rows = [
+  type LedgerRow = {
+    user_id: string
+    project_id: string
+    type: string
+    amount: number
+    description: string
+    category: string
+    date: string
+  }
+  const rows: LedgerRow[] = [
     {
       user_id: user.id,
       project_id: project.id,

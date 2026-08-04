@@ -18,10 +18,6 @@ export function useDashboard() {
     const monthEnd = endOfMonth(now)
 
     // ── Financial KPIs ──────────────────────────────────────────────
-    const soldThisMonth = projects.filter(p =>
-      p.status === 'Vendido' && p.sold_at &&
-      isWithinInterval(new Date(p.sold_at), { start: monthStart, end: monthEnd })
-    )
     const receivedThisMonth = projects.filter(p =>
       isWithinInterval(new Date(p.received_at), { start: monthStart, end: monthEnd })
     )
