@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { NumberInput } from '@/components/NumberInput'
 import { DeleteConfirmation } from '@/components/DeleteConfirmation'
 import type { InventoryItem } from '@/lib/supabase'
-import { fmtGBP, fmtDate } from '@/lib/utils'
+import { fmtGBP, fmtDate, cn } from '@/lib/utils'
 import { Plus, Pencil, Trash2, AlertTriangle, Package, Search } from 'lucide-react'
 import { PhotoAnalyzeButton, type AIPhotoResult } from '@/components/PhotoAnalyzeButton'
 
@@ -191,6 +191,8 @@ export function Inventory() {
 
   const [activeTab, setActiveTab] = useState<ContextTab>('all')
   const [search, setSearch] = useState('')
+  const [stockFilter, setStockFilter] = useState<'active' | 'low' | 'out' | 'all'>('active')
+  const [sortBy, setSortBy] = useState<'recent' | 'name' | 'qty' | 'value'>('recent')
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<InventoryItem | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<InventoryItem | null>(null)
@@ -234,17 +236,39 @@ export function Inventory() {
 
   const tabItems = filterByTab(inventory, activeTab)
   const filteredItems = useMemo(() => {
-    if (!search.trim()) return tabItems
-    const q = search.toLowerCase()
-    return tabItems.filter(i =>
-      i.item_name.toLowerCase().includes(q) ||
-      i.supplier?.toLowerCase().includes(q) ||
-      i.location?.toLowerCase().includes(q) ||
-      i.barcode?.toLowerCase().includes(q)
-    )
-  }, [tabItems, search])
+    let rows = tabItems
+    // Filtro por estado de stock
+    if (stockFilter === 'active') rows = rows.filter(i => i.quantity > 0)
+    else if (stockFilter === 'low') rows = rows.filter(i => i.quantity > 0 && i.quantity < i.min_stock)
+    else if (stockFilter === 'out') rows = rows.filter(i => i.quantity === 0)
+    // Pesquisa
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      rows = rows.filter(i =>
+        i.item_name.toLowerCase().includes(q) ||
+        i.supplier?.toLowerCase().includes(q) ||
+        i.location?.toLowerCase().includes(q) ||
+        i.barcode?.toLowerCase().includes(q)
+      )
+    }
+    // Ordenação
+    const sorted = [...rows]
+    if (sortBy === 'name') sorted.sort((a, b) => a.item_name.localeCompare(b.item_name))
+    else if (sortBy === 'qty') sorted.sort((a, b) => b.quantity - a.quantity)
+    else if (sortBy === 'value') sorted.sort((a, b) => (b.quantity * b.unit_cost) - (a.quantity * a.unit_cost))
+    else sorted.sort((a, b) => new Date(b.entry_date ?? b.created_at).getTime() - new Date(a.entry_date ?? a.created_at).getTime())
+    return sorted
+  }, [tabItems, search, stockFilter, sortBy])
 
-  const lowCount = inventory.filter(i => i.quantity < i.min_stock).length
+  // Contadores globais de estado de stock + valor total
+  const stockStats = useMemo(() => {
+    const inStock = inventory.filter(i => i.quantity >= i.min_stock && i.quantity > 0).length
+    const low = inventory.filter(i => i.quantity > 0 && i.quantity < i.min_stock).length
+    const out = inventory.filter(i => i.quantity === 0).length
+    const totalValue = inventory.reduce((s, i) => s + i.quantity * i.unit_cost, 0)
+    return { inStock, low, out, totalValue, active: inventory.filter(i => i.quantity > 0).length }
+  }, [inventory])
+  const lowCount = stockStats.low
 
   function openNew() {
     setEditing(null)
@@ -368,8 +392,8 @@ export function Inventory() {
         <div>
           <h1 className="text-2xl font-bold text-text-primary">{t('inventory.title')}</h1>
           <p className="text-text-muted text-sm mt-0.5">
-            {inventory.length} itens
-            {lowCount > 0 && <span className="ml-2 text-warning font-medium">· {lowCount} com stock baixo</span>}
+            {stockStats.active} em stock · {inventory.length} no total
+            {lowCount > 0 && <span className="ml-2 text-warning font-medium">· {lowCount} baixo</span>}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
@@ -388,7 +412,58 @@ export function Inventory() {
         </div>
       </div>
 
-      {/* Context tabs */}
+      {/* Resumo do stock */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="rounded-xl border border-border bg-card p-3">
+          <p className="text-[10px] text-text-muted uppercase tracking-wider">Em stock</p>
+          <p className="text-lg font-bold text-success mt-0.5">{stockStats.inStock}</p>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-3">
+          <p className="text-[10px] text-text-muted uppercase tracking-wider">Stock baixo</p>
+          <p className="text-lg font-bold text-warning mt-0.5">{stockStats.low}</p>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-3">
+          <p className="text-[10px] text-text-muted uppercase tracking-wider">Esgotados</p>
+          <p className="text-lg font-bold text-text-muted mt-0.5">{stockStats.out}</p>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-3">
+          <p className="text-[10px] text-text-muted uppercase tracking-wider">Valor total</p>
+          <p className="text-lg font-bold text-accent mt-0.5">{fmtGBP(stockStats.totalValue)}</p>
+        </div>
+      </div>
+
+      {/* Filtro de estado de stock + ordenação */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5">
+          {([
+            { id: 'active', label: 'Com stock', n: stockStats.active },
+            { id: 'low', label: 'Baixo', n: stockStats.low },
+            { id: 'out', label: 'Esgotados', n: stockStats.out },
+            { id: 'all', label: 'Todos', n: inventory.length },
+          ] as const).map(f => (
+            <button
+              key={f.id}
+              onClick={() => setStockFilter(f.id)}
+              className={cn('shrink-0 rounded-lg px-2.5 py-1 text-xs font-medium border transition-colors',
+                stockFilter === f.id ? 'bg-accent/15 text-accent border-accent/40' : 'border-border text-text-muted hover:text-text-primary hover:border-accent/40')}
+            >
+              {f.label} <span className="opacity-60">({f.n})</span>
+            </button>
+          ))}
+        </div>
+        <select
+          value={sortBy}
+          onChange={e => setSortBy(e.target.value as typeof sortBy)}
+          className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+        >
+          <option value="recent">Mais recente</option>
+          <option value="name">Nome (A-Z)</option>
+          <option value="qty">Quantidade</option>
+          <option value="value">Valor em stock</option>
+        </select>
+      </div>
+
+      {/* Context tabs (categoria / origem) */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
         {TABS.map(tab => {
           const count = filterByTab(inventory, tab.id).length
@@ -426,7 +501,11 @@ export function Inventory() {
           <tbody className="bg-card">
             {filteredItems.length === 0 ? (
               <tr><td colSpan={8} className="text-center py-12 text-text-muted text-sm">
-                {search ? t('inventory.noItems') : t('inventory.noItemsInCategory')}
+                {search
+                  ? t('inventory.noItems')
+                  : stockFilter === 'active'
+                    ? 'Nenhum item com stock nesta vista. Usa "Esgotados" ou "Todos" para ver o resto.'
+                    : t('inventory.noItemsInCategory')}
               </td></tr>
             ) : (
               filteredItems.map(item => (
