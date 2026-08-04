@@ -90,6 +90,20 @@ async function createProjectItem(item: CreateProjectItem): Promise<ProjectItem> 
     .single()
   if (error) throw error
 
+  // ── Baixa de STOCK: material tirado do inventário (used/cannibalized) desconta a quantidade
+  //    'harvested' NÃO desconta (cria um item novo, não consome stock existente)
+  if (item.item_type !== 'harvested' && item.inventory_item_id) {
+    const { data: inv } = await supabase
+      .from('inventory')
+      .select('quantity')
+      .eq('id', item.inventory_item_id)
+      .single()
+    if (inv) {
+      const newQty = Math.max(0, (inv.quantity as number) - item.quantity)
+      await supabase.from('inventory').update({ quantity: newQty }).eq('id', item.inventory_item_id)
+    }
+  }
+
   // ── Cost sync on the project
   if (item.unit_cost > 0) {
     const delta = item.unit_cost * item.quantity
@@ -122,6 +136,20 @@ async function deleteProjectItem(id: string): Promise<void> {
   // If it was harvested and auto-created an inventory item, remove that too
   if (item.item_type === 'harvested' && item.inventory_item_id) {
     await supabase.from('inventory').delete().eq('id', item.inventory_item_id)
+  }
+
+  // Devolver STOCK: material used/cannibalized que veio do inventário volta a somar
+  if (item.item_type !== 'harvested' && item.inventory_item_id) {
+    const { data: inv } = await supabase
+      .from('inventory')
+      .select('quantity')
+      .eq('id', item.inventory_item_id)
+      .single()
+    if (inv) {
+      await supabase.from('inventory')
+        .update({ quantity: (inv.quantity as number) + item.quantity })
+        .eq('id', item.inventory_item_id)
+    }
   }
 
   // Reverse cost on the project
