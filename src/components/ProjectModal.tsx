@@ -25,7 +25,8 @@ import type { Project } from '@/lib/supabase'
 import { ALL_STATUSES } from '@/lib/utils'
 import { getCategoryIcon } from '@/lib/categoryIcons'
 import { PhotoAnalyzeButton, type AIPhotoResult } from './PhotoAnalyzeButton'
-import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react'
+import { createAccessory, ACCESSORY_DESTINATIONS, type AccessoryDestination } from '@/hooks/useProjectAccessories'
+import { ChevronDown, ChevronUp, ExternalLink, Package, X, Plus } from 'lucide-react'
 
 const STORAGE_OPTIONS = [16, 32, 64, 128, 256, 512, 1024]
 const RAM_OPTIONS = [1, 2, 3, 4, 6, 8, 12, 16]
@@ -110,6 +111,12 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
   const [categorySlug, setCategorySlug] = useState<string>('')
   const [dynValues, setDynValues] = useState<Record<string, string>>({})
   const [lotId, setLotId] = useState<string>('')
+  // Acessórios incluídos declarados na entrada (só para projectos novos)
+  type IntakeAccessory = { name: string; destination: AccessoryDestination; cost: number }
+  const [intakeAccessories, setIntakeAccessories] = useState<IntakeAccessory[]>([])
+  const [accName, setAccName] = useState('')
+  const [accDest, setAccDest] = useState<AccessoryDestination>('included')
+  const [accCost, setAccCost] = useState(0)
   const [activeLots, setActiveLots] = useState<Array<{ id: string; lot_number: string | null; supplier: string | null; purchase_price: number; estimated_items: number | null }>>([])
   const [aiPhoto, setAiPhoto] = useState<AIPhotoResult | null>(null)
   const [aiMessage, setAiMessage] = useState<string | null>(null)
@@ -197,6 +204,8 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
       setCategorySlug('')
       setDynValues({})
       setLotId('')
+      setIntakeAccessories([])
+      setAccName(''); setAccDest('included'); setAccCost(0)
     }
   }, [project, reset, open])
 
@@ -255,6 +264,18 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
       if (categorySlug) allDynValues['_category_slug'] = categorySlug
       if (Object.keys(allDynValues).length > 0) {
         await saveItemFieldValues(savedId, 'project', allDynValues).catch(() => {})
+      }
+    }
+
+    // Criar acessórios declarados na entrada (só projectos novos)
+    if (savedId && isNew && intakeAccessories.length > 0) {
+      for (const acc of intakeAccessories) {
+        await createAccessory({
+          project_id: savedId,
+          name: acc.name,
+          destination: acc.destination,
+          allocated_cost: acc.cost,
+        }).catch(() => {})
       }
     }
 
@@ -622,6 +643,61 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
           <F label={t('projects.modal.notesLabel')}>
             <Textarea {...register('notes')} placeholder="Observações adicionais..." rows={2} />
           </F>
+
+          {/* Acessórios incluídos — só na criação */}
+          {!project && (
+            <div className="border-t border-border pt-4 space-y-3">
+              <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider flex items-center gap-1.5">
+                <Package className="h-3.5 w-3.5" /> Acessórios / Itens incluídos
+              </h4>
+              <p className="text-[11px] text-text-muted -mt-1">O que veio na caixa (teclado, rato, carregador, cabos). Podes acrescentar depois na ficha.</p>
+
+              {intakeAccessories.length > 0 && (
+                <div className="space-y-1.5">
+                  {intakeAccessories.map((acc, i) => (
+                    <div key={i} className="flex items-center justify-between gap-2 rounded-lg bg-surface border border-border px-3 py-1.5 text-sm">
+                      <span className="text-text-primary truncate">{acc.name}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] text-text-muted">{ACCESSORY_DESTINATIONS.find(d => d.value === acc.destination)?.label}{acc.cost > 0 ? ` · £${acc.cost}` : ''}</span>
+                        <button type="button" onClick={() => setIntakeAccessories(list => list.filter((_, idx) => idx !== i))} className="text-text-muted hover:text-danger"><X className="h-3.5 w-3.5" /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="grid grid-cols-12 gap-2 items-end">
+                <div className="col-span-5 space-y-1">
+                  <Label className="text-xs">Nome</Label>
+                  <Input value={accName} onChange={e => setAccName(e.target.value)} placeholder="ex: Teclado A1314" />
+                </div>
+                <div className="col-span-4 space-y-1">
+                  <Label className="text-xs">Destino</Label>
+                  <select value={accDest} onChange={e => setAccDest(e.target.value as AccessoryDestination)}
+                    className="w-full rounded-md border border-border bg-surface px-2 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent">
+                    {ACCESSORY_DESTINATIONS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                  </select>
+                </div>
+                <div className="col-span-2 space-y-1">
+                  <Label className="text-xs">Custo £</Label>
+                  <Input type="number" min={0} step="0.01" value={accCost || ''} onChange={e => setAccCost(parseFloat(e.target.value) || 0)}
+                    disabled={accDest === 'included' || accDest === 'discard'} />
+                </div>
+                <div className="col-span-1">
+                  <button type="button"
+                    onClick={() => {
+                      if (!accName.trim()) return
+                      const needsCost = accDest === 'sell_separate' || accDest === 'keep_stock'
+                      setIntakeAccessories(list => [...list, { name: accName.trim(), destination: accDest, cost: needsCost ? accCost : 0 }])
+                      setAccName(''); setAccDest('included'); setAccCost(0)
+                    }}
+                    className="w-full h-9 rounded-md bg-accent/10 border border-accent/30 text-accent hover:bg-accent/20 flex items-center justify-center">
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="border-t border-border pt-4 space-y-3">
             <h4 className="text-sm font-semibold text-text-muted uppercase tracking-wider">{t('projects.modal.photosSection')}</h4>

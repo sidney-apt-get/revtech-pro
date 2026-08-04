@@ -9,6 +9,7 @@ import { useProjectPhotos } from '@/hooks/useProjectPhotos'
 import { useInventory, useCreateInventoryItem } from '@/hooks/useInventory'
 import { useCreateRmaItem } from '@/hooks/useRMA'
 import { useProjectItems, useAddProjectItem, useRemoveProjectItem, type ProjectItemType } from '@/hooks/useProjectItems'
+import { useProjectAccessories, useAddAccessory, useRemoveAccessory, ACCESSORY_DESTINATIONS, type AccessoryDestination } from '@/hooks/useProjectAccessories'
 import { sendTelegramNotification } from '@/lib/telegram'
 import { PhotoGallery } from '@/components/PhotoGallery'
 import { ProjectModal } from '@/components/ProjectModal'
@@ -400,6 +401,93 @@ function SaleModal({
   )
 }
 
+// ── Modal de Acessório — declara item incluído + destino + custo ──────────────
+function AccessoryModal({
+  suggestedCost,
+  onConfirm,
+  onClose,
+  saving,
+}: {
+  suggestedCost: number
+  onConfirm: (name: string, note: string, destination: AccessoryDestination, cost: number) => void
+  onClose: () => void
+  saving: boolean
+}) {
+  const [name, setName] = useState('')
+  const [note, setNote] = useState('')
+  const [destination, setDestination] = useState<AccessoryDestination>('included')
+  const [cost, setCost] = useState(0)
+  const destInfo = ACCESSORY_DESTINATIONS.find(d => d.value === destination)!
+  const needsCost = destInfo.movesToInventory
+
+  // Ao escolher um destino que move para inventário, sugere o custo (editável)
+  function pickDestination(d: AccessoryDestination) {
+    setDestination(d)
+    const info = ACCESSORY_DESTINATIONS.find(x => x.value === d)!
+    if (info.movesToInventory && cost === 0) setCost(suggestedCost)
+    if (!info.movesToInventory) setCost(0)
+  }
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 px-4" onClick={onClose}>
+      <div className="bg-card border border-border rounded-xl shadow-2xl p-5 w-full max-w-md space-y-4" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold text-text-primary flex items-center gap-2">
+            <Package className="h-4 w-4 text-accent" /> Adicionar Acessório
+          </h2>
+          <button onClick={onClose} className="text-text-muted hover:text-text-primary"><X className="h-4 w-4" /></button>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-xs text-text-muted">Nome do acessório *</label>
+          <input autoFocus value={name} onChange={e => setName(e.target.value)}
+            placeholder="ex: Teclado A1314, Magic Mouse, Carregador 85W"
+            className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/40" />
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-xs text-text-muted">Destino</label>
+          <div className="grid grid-cols-2 gap-2">
+            {ACCESSORY_DESTINATIONS.map(d => (
+              <button key={d.value} onClick={() => pickDestination(d.value)}
+                className={cn('rounded-lg border px-2 py-2 text-xs font-medium transition-colors text-center',
+                  destination === d.value ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-surface text-text-muted hover:border-accent/40')}>
+                {d.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] text-text-muted/70 px-0.5">{destInfo.desc}</p>
+        </div>
+
+        {needsCost && (
+          <div className="space-y-1">
+            <label className="text-xs text-text-muted">Custo alocado (£) — sugerido, podes ajustar</label>
+            <input type="number" min={0} step={0.01} value={cost} onChange={e => setCost(parseFloat(e.target.value) || 0)}
+              className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/40" />
+            <p className="text-[10px] text-text-muted/70">Este valor sai do custo do equipamento principal e passa a ser o custo deste acessório no inventário.</p>
+          </div>
+        )}
+
+        <div className="space-y-1">
+          <label className="text-xs text-text-muted">Nota (opcional)</label>
+          <textarea value={note} onChange={e => setNote(e.target.value)} rows={2}
+            placeholder="Estado, observações..."
+            className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/40 resize-none" />
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="rounded-lg border border-border px-4 py-2 text-sm text-text-muted hover:text-text-primary transition-colors">Cancelar</button>
+          <button onClick={() => onConfirm(name.trim(), note.trim(), destination, cost)}
+            disabled={!name.trim() || saving}
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-accent/90 transition-colors">
+            {saving ? 'A guardar...' : 'Adicionar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function ProjectDetails() {
   const { t, i18n } = useTranslation()
   const { settings } = useSettings()
@@ -415,11 +503,15 @@ export function ProjectDetails() {
   const { data: photos = [] } = useProjectPhotos(id ?? '')
   const { data: projectItems = [] } = useProjectItems(id ?? '')
   const removeItem = useRemoveProjectItem(id ?? '')
+  const { data: accessories = [] } = useProjectAccessories(id ?? '')
+  const addAccessory = useAddAccessory(id ?? '')
+  const removeAccessory = useRemoveAccessory(id ?? '')
   const [editOpen, setEditOpen] = useState(false)
   const [deleteInput, setDeleteInput] = useState('')
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [statusChanging, setStatusChanging] = useState(false)
   const [addItemOpen, setAddItemOpen] = useState(false)
+  const [accModalOpen, setAccModalOpen] = useState(false)
   const [saleModalOpen, setSaleModalOpen] = useState(false)
   const [savedFlash, setSavedFlash] = useState(false)
   const [actionsOpen, setActionsOpen] = useState(false)
@@ -890,6 +982,61 @@ export function ProjectDetails() {
         </button>
       </div>
 
+      {/* Acessórios / Itens incluídos */}
+      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wider flex items-center gap-1.5">
+            <Package className="h-3.5 w-3.5" />
+            Acessórios / Itens incluídos
+            {accessories.length > 0 && ` (${accessories.length})`}
+          </h2>
+        </div>
+        <p className="text-[11px] text-text-muted -mt-1">O que veio na caixa com o equipamento (teclado, rato, carregador, cabos). Cada um pode ir junto na venda, ser vendido separado, guardado como stock, ou descartado.</p>
+
+        {accessories.length > 0 ? (
+          <div className="space-y-2">
+            {accessories.map(acc => {
+              const dest = ACCESSORY_DESTINATIONS.find(d => d.value === acc.destination)
+              const destColor: Record<AccessoryDestination, string> = {
+                included: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+                sell_separate: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+                keep_stock: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                discard: 'bg-danger/10 text-danger border-danger/20',
+              }
+              return (
+                <div key={acc.id} className="flex items-center justify-between gap-3 rounded-lg bg-surface border border-border px-3 py-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-text-primary truncate">{acc.name}</p>
+                    <p className="text-xs text-text-muted">
+                      {acc.allocated_cost > 0 ? `Custo alocado: ${fmtGBP(acc.allocated_cost)}` : 'Sem custo separado'}
+                      {acc.inventory_item_id ? ' · no inventário' : ''}
+                    </p>
+                    {acc.condition_note && <p className="text-xs text-text-muted/70 mt-0.5 italic">{acc.condition_note}</p>}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={cn('text-[10px] font-medium rounded-full border px-2 py-0.5', destColor[acc.destination])}>
+                      {dest?.label ?? acc.destination}
+                    </span>
+                    <button onClick={() => removeAccessory.mutate(acc.id)} className="text-text-muted hover:text-danger transition-colors" title="Remover">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <p className="text-xs text-text-muted">Nenhum acessório declarado.</p>
+        )}
+
+        <button
+          onClick={() => setAccModalOpen(true)}
+          className="w-full py-2 text-sm text-accent border border-accent/30 rounded-lg hover:bg-accent/10 transition-colors flex items-center justify-center gap-1.5"
+        >
+          <Plus className="h-3.5 w-3.5" /> Adicionar Acessório
+        </button>
+      </div>
+
       {/* Materials used */}
       <div className="rounded-xl border border-border bg-card p-4 space-y-3">
         <div className="flex items-center justify-between gap-2">
@@ -995,6 +1142,25 @@ export function ProjectDetails() {
 
       {addItemOpen && (
         <AddItemModal projectId={project.id} onClose={() => setAddItemOpen(false)} />
+      )}
+
+      {accModalOpen && (
+        <AccessoryModal
+          suggestedCost={Math.round(((project.purchase_price || 0) / (accessories.length + 2)) * 100) / 100}
+          saving={addAccessory.isPending}
+          onClose={() => setAccModalOpen(false)}
+          onConfirm={async (name, note, destination, accCost) => {
+            await addAccessory.mutateAsync({
+              project_id: project.id,
+              name,
+              condition_note: note || null,
+              destination,
+              allocated_cost: accCost,
+            })
+            setAccModalOpen(false)
+            flashSaved()
+          }}
+        />
       )}
 
       {saleModalOpen && (
