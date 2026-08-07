@@ -10,7 +10,7 @@ import { ALL_STATUSES, calcROI, fmtGBP, fmtDate, STATUS_COLORS, STATUS_DOT, cn }
 import { Plus, Kanban, Filter, Search, TrendingUp, TrendingDown, ArrowUpDown, List, Pencil } from 'lucide-react'
 
 type View = 'list' | 'kanban'
-type SortBy = 'date_desc' | 'date_asc' | 'profit_desc' | 'value_desc'
+type SortBy = 'date_desc' | 'date_asc' | 'profit_desc' | 'value_desc' | 'ticket_desc' | 'name_asc'
 
 
 function ProjectRow({ project, onEdit }: { project: Project; onEdit: (p: Project) => void }) {
@@ -81,10 +81,12 @@ export function Projects() {
     date_asc: t('projects.sort.date_asc'),
     profit_desc: t('projects.sort.profit_desc'),
     value_desc: t('projects.sort.value_desc'),
+    ticket_desc: 'Ticket ↓',
+    name_asc: 'Equipamento (A-Z)',
   }
   const { data: projects = [], isLoading } = useProjects()
   const [view, setView] = useState<View>('list')
-  const [filter, setFilter] = useState<ProjectStatus | 'all'>('all')
+  const [filter, setFilter] = useState<ProjectStatus | 'all' | 'active'>('active')
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<SortBy>('date_desc')
   const [modalOpen, setModalOpen] = useState(false)
@@ -95,9 +97,11 @@ export function Projects() {
   function handleEdit(p: Project) { setEditing(p); setModalOpen(true) }
   function handleNew() { setEditing(null); setModalOpen(true) }
 
+  const CLOSED: ProjectStatus[] = ['Vendido', 'Cancelado']
   const filtered = useMemo(() => {
     let list = projects
-    if (filter !== 'all') list = list.filter(p => p.status === filter)
+    if (filter === 'active') list = list.filter(p => !CLOSED.includes(p.status))
+    else if (filter !== 'all') list = list.filter(p => p.status === filter)
     if (search.trim()) {
       const q = search.toLowerCase()
       list = list.filter(p =>
@@ -106,7 +110,10 @@ export function Projects() {
         (p.model ?? '').toLowerCase().includes(q) ||
         (p.defect_description ?? '').toLowerCase().includes(q) ||
         (p.ticket_number ?? '').toLowerCase().includes(q) ||
-        (p.serial_number ?? '').toLowerCase().includes(q)
+        (p.serial_number ?? '').toLowerCase().includes(q) ||
+        (p.imei ?? '').toLowerCase().includes(q) ||
+        (p.buyer_name ?? '').toLowerCase().includes(q) ||
+        (p.supplier_name ?? '').toLowerCase().includes(q)
       )
     }
     return [...list].sort((a, b) => {
@@ -116,6 +123,8 @@ export function Projects() {
         return pb - pa
       }
       if (sortBy === 'value_desc') return (b.sale_price ?? b.purchase_price) - (a.sale_price ?? a.purchase_price)
+      if (sortBy === 'ticket_desc') return (b.ticket_number ?? '').localeCompare(a.ticket_number ?? '')
+      if (sortBy === 'name_asc') return a.equipment.localeCompare(b.equipment)
       return new Date(b.received_at).getTime() - new Date(a.received_at).getTime()
     })
   }, [projects, filter, search, sortBy])
@@ -131,7 +140,9 @@ export function Projects() {
       <div className="flex items-center justify-between shrink-0 flex-wrap gap-2">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">{t('projects.title')}</h1>
-          <p className="text-text-muted text-sm mt-0.5">{t('projects.total', { count: projects.length })}</p>
+          <p className="text-text-muted text-sm mt-0.5">
+            {projects.filter(p => p.status !== 'Vendido' && p.status !== 'Cancelado').length} activos · {projects.length} no total
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex rounded-lg border border-border overflow-hidden">
@@ -186,7 +197,13 @@ export function Projects() {
       <div className="flex items-center gap-2 overflow-x-auto pb-1 shrink-0">
         <Filter className="h-4 w-4 text-text-muted shrink-0" />
         <button
-          onClick={() => setFilter('all')}
+          onClick={() => { setFilter('active'); setPage(0) }}
+          className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium border transition-colors ${filter === 'active' ? 'bg-accent text-white border-accent' : 'border-border text-text-muted hover:text-text-primary'}`}
+        >
+          Activos ({projects.filter(p => p.status !== 'Vendido' && p.status !== 'Cancelado').length})
+        </button>
+        <button
+          onClick={() => { setFilter('all'); setPage(0) }}
           className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium border transition-colors ${filter === 'all' ? 'bg-accent text-white border-accent' : 'border-border text-text-muted hover:text-text-primary'}`}
         >
           {t('common.all')} ({projects.length})
@@ -196,7 +213,7 @@ export function Projects() {
           return (
             <button
               key={s}
-              onClick={() => setFilter(s)}
+              onClick={() => { setFilter(s); setPage(0) }}
               className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium border transition-colors ${filter === s ? 'bg-accent text-white border-accent' : 'border-border text-text-muted hover:text-text-primary'}`}
             >
               {t(`statusMap.${s}`, { defaultValue: s })} ({count})
